@@ -1,0 +1,1403 @@
+# Carpeta: Decorators
+
+## 📖 Descripción
+
+Esta carpeta contiene los **decoradores TypeScript** que se utilizan para definir metadatos de comandos y argumentos. Los decoradores permiten escribir código declarativo y legible.
+
+## 🏗️ Estructura
+
+```
+decorators/
+├── command.decorator.ts     # Decorador @Command
+├── argument.decorator.ts    # Decorador @Arg
+└── plugin.decorator.ts      # Decorador @UsePlugins
+```
+
+## 🎨 Decorador @Command
+
+Define los metadatos de un comando.
+
+### Ubicación
+
+```typescript
+// src/core/decorators/command.decorator.ts
+```
+
+### Interfaz
+
+```typescript
+interface ICommandOptions {
+    name: string; // Nombre del comando (requerido)
+    description: string; // Descripción del comando (requerido)
+    category?: CommandCategoryTag; // Categoría del comando (opcional, default: Other)
+    aliases?: string[]; // Aliases opcionales
+}
+```
+
+### Uso
+
+```typescript
+import { Command } from '@/core/decorators/command.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+import { CommandCategoryTag } from '@/utils/CommandCategories';
+
+@Command({
+    name: 'ping',
+    description: 'Verifica la latencia del bot',
+    category: CommandCategoryTag.Info, // Opcional
+    aliases: ['latencia', 'pong'],
+})
+export abstract class PingDefinition extends BaseCommand {
+    // ...
+}
+```
+
+> **Nota:** Si no especificas `category`, el loader asignará automáticamente `CommandCategoryTag.Other`.
+
+### Metadata Key
+
+```typescript
+export const COMMAND_METADATA_KEY = Symbol('commandMetadata');
+```
+
+Este símbolo se usa para almacenar y recuperar los metadatos del comando usando `reflect-metadata`.
+
+### Funcionamiento Interno
+
+1. **Aplicación del Decorador**
+
+    ```typescript
+    @Command({ name: 'ping', description: 'Test' })
+    class MyCommand {}
+    ```
+
+2. **Almacenamiento de Metadata**
+
+    ```typescript
+    Reflect.defineMetadata(COMMAND_METADATA_KEY, options, target);
+    ```
+
+3. **Recuperación en CommandLoader**
+    ```typescript
+    const meta = Reflect.getMetadata(COMMAND_METADATA_KEY, commandClass);
+    // meta = { name: 'ping', description: 'Test' }
+    ```
+
+### Validaciones
+
+El decorador NO valida los datos. Las validaciones se hacen en:
+
+-   **CommandLoader**: Al cargar el comando
+-   **SlashCommandLoader**: Al registrar en Discord
+
+### Ejemplo Completo
+
+```typescript
+@Command({
+    name: 'userinfo',
+    description: 'Muestra información de un usuario',
+    aliases: ['info', 'user', 'perfil'],
+})
+export abstract class UserInfoDefinition extends BaseCommand {
+    // Los argumentos van aquí con @Arg
+}
+```
+
+---
+
+## 🎯 Decorador @Arg
+
+Define un argumento de un comando.
+
+### Ubicación
+
+```typescript
+// src/core/decorators/argument.decorator.ts
+```
+
+### Interfaz
+
+```typescript
+interface IArgumentOption {
+    label: string; // Etiqueta mostrada al usuario
+    value: string | number; // Valor real del argumento
+}
+
+interface IArgumentOptions {
+    name: string; // Nombre del argumento (requerido) - Se mantiene intacto para mostrar
+    normalizedName?: string; // Nombre normalizado (auto) - Usado internamente para resolución
+    description: string; // Descripción del argumento (requerido)
+    index: number; // Posición del argumento (requerido)
+    required?: boolean; // Si es obligatorio (default: false)
+    validate?: (val: any) => boolean | string; // Función de validación (opcional)
+    type?: () => any; // Tipo personalizado - Obligatorio si usas parser
+    parser?: (val: any) => any; // Parser personalizado - Obligatorio para tipos no primitivos/Discord
+    rawText?: boolean; // Captura todo el texto después del comando (solo text commands)
+    options?: IArgumentOption[]; // Opciones predefinidas (choices en Discord)
+    propertyName?: string | symbol; // Nombre de la propiedad (auto)
+    designType?: any; // Tipo de diseño (auto)
+}
+```
+
+**Notas importantes:**
+
+-   ✅ **El `name` se mantiene intacto** para mostrar en ayudas y mensajes de error
+-   ✅ **`normalizedName` se genera automáticamente** al cargar el comando: lowercase, sin acentos, sin espacios, solo alfanumérico
+-   ✅ **Ejemplo:** `name: "Usuario Objetivo"` → `normalizedName: "usuarioobjetivo"`
+-   ✅ **El CommandLoader normaliza automáticamente** todos los nombres al cargar comandos
+
+**Propiedades importantes:**
+
+| Propiedad  | Tipo                              | Descripción                                                                    |
+| ---------- | --------------------------------- | ------------------------------------------------------------------------------ |
+| `parser`   | `(val: any) => any`               | **Obligatorio** para tipos personalizados. Transforma el valor raw en tu tipo. |
+| `type`     | `() => any`                       | **Obligatorio** si usas `parser`. Especifica el tipo esperado para validación. |
+| `validate` | `(val: any) => boolean \| string` | Validación adicional después del parseo.                                       |
+| `rawText`  | `boolean`                         | Captura todo el texto restante (solo text commands). Ver sección dedicada.     |
+| `options`  | `IArgumentOption[]`               | Opciones predefinidas (choices). Ver sección dedicada.                         |
+
+### Uso Básico
+
+```typescript
+import { Arg } from '@/core/decorators/argument.decorator';
+
+export abstract class MyDefinition extends BaseCommand {
+    @Arg({
+        name: 'texto',
+        description: 'Un texto cualquiera',
+        index: 0,
+        required: true,
+    })
+    public texto!: string;
+}
+```
+
+### Metadata Key
+
+```typescript
+export const ARGUMENT_METADATA_KEY = Symbol('commandArguments');
+```
+
+### Funcionamiento Interno
+
+1. **Aplicación del Decorador**
+
+    ```typescript
+    @Arg({ name: 'usuario', index: 0 })
+    public usuario!: User;
+    ```
+
+2. **Obtención del Tipo de Diseño**
+
+    ```typescript
+    const designType = Reflect.getMetadata('design:type', target, propertyKey);
+    // designType = User (la clase)
+    ```
+
+3. **Almacenamiento en Array Ordenado**
+
+    ```typescript
+    const args = Reflect.getOwnMetadata(ARGUMENT_METADATA_KEY, target.constructor) || [];
+    args.push({ ...options, propertyName: propertyKey, designType });
+    args.sort((a, b) => a.index - b.index); // Ordenar por index
+    Reflect.defineMetadata(ARGUMENT_METADATA_KEY, args, target.constructor);
+    ```
+
+4. **Recuperación en ArgumentResolver**
+    ```typescript
+    const argsMeta = Reflect.getMetadata(ARGUMENT_METADATA_KEY, commandClass);
+    // argsMeta = [{ name: 'usuario', index: 0, ... }, ...]
+    ```
+
+### Ordenamiento Automático
+
+Los argumentos se ordenan automáticamente por su `index`:
+
+```typescript
+@Arg({ name: 'segundo', index: 1 })
+public segundo!: string;
+
+@Arg({ name: 'primero', index: 0 })
+public primero!: string;
+
+// Resultado interno: [primero, segundo]
+```
+
+### Tipos Soportados
+
+El decorador funciona con cualquier tipo de TypeScript:
+
+```typescript
+// Primitivos
+public texto!: string;        // String
+public numero!: number;       // Number
+public activo!: boolean;      // Boolean
+public lista!: string[];      // Array
+
+// Tipos de Discord
+public usuario!: User;        // Usuario
+public miembro!: GuildMember; // Miembro
+public canal!: Channel;       // Canal
+public rol!: Role;            // Rol
+```
+
+### Validación Personalizada
+
+```typescript
+@Arg({
+    name: 'edad',
+    description: 'Tu edad',
+    index: 0,
+    required: true,
+    validate: (value: number) => {
+        if (value < 0) return 'La edad no puede ser negativa';
+        if (value > 150) return 'La edad no es realista';
+        return true; // Validación exitosa
+    }
+})
+public edad!: number;
+```
+
+**Reglas:**
+
+-   Retorna `true` si la validación es exitosa
+-   Retorna un `string` con el mensaje de error si falla
+-   Retorna `false` para usar mensaje de error genérico
+
+### Parser Personalizado para Tipos Complejos
+
+Para tipos que **no son primitivos** (string, number, boolean) **ni Discord** (User, Role, etc.), debes proporcionar un `parser`:
+
+```typescript
+// Clase personalizada
+class MinecraftPlayer {
+    constructor(public username: string, public uuid: string) {}
+
+    static fromString(input: string): MinecraftPlayer {
+        // Validar formato: "username:uuid"
+        const parts = input.split(':');
+        if (parts.length !== 2) {
+            throw new Error('Formato inválido. Use: username:uuid');
+        }
+        return new MinecraftPlayer(parts[0], parts[1]);
+    }
+}
+
+// Uso en definición
+@Command({ name: 'mcban' })
+export abstract class McBanDefinition extends BaseCommand {
+    @Arg({
+        name: 'jugador',
+        description: 'Jugador de Minecraft (formato: username:uuid)',
+        index: 0,
+        required: true,
+        parser: (val: any) => MinecraftPlayer.fromString(val),
+        type: () => MinecraftPlayer, // Obligatorio con parser
+    })
+    public jugador!: MinecraftPlayer;
+}
+
+// Uso en comando
+export class McBanCommand extends McBanDefinition {
+    async run(): Promise<void> {
+        // this.jugador ya es una instancia de MinecraftPlayer
+        await this.reply(`Baneando a ${this.jugador.username} (${this.jugador.uuid})`);
+    }
+}
+```
+
+**Ejemplo: Fecha personalizada**
+
+```typescript
+class CustomDate {
+    constructor(public date: Date) {}
+
+    static parse(input: string): CustomDate {
+        const date = new Date(input);
+        if (isNaN(date.getTime())) {
+            throw new Error('Fecha inválida');
+        }
+        return new CustomDate(date);
+    }
+}
+
+@Arg({
+    name: 'fecha',
+    description: 'Fecha (formato: YYYY-MM-DD)',
+    index: 0,
+    required: true,
+    parser: (val: any) => CustomDate.parse(val),
+    type: () => CustomDate,
+})
+public fecha!: CustomDate;
+```
+
+**¿Cuándo usar `parser`?**
+
+| Tipo                                | Necesita Parser | Ejemplo                            |
+| ----------------------------------- | --------------- | ---------------------------------- |
+| `string`, `number`, `boolean`       | ❌ No           | `public nombre!: string`           |
+| `User`, `Role`, `Channel`, `Member` | ❌ No           | `public usuario!: User`            |
+| Clases personalizadas               | ✅ **Sí**       | `public jugador!: MinecraftPlayer` |
+| Tipos complejos                     | ✅ **Sí**       | `public config!: GameConfig`       |
+
+**Error sin parser:**
+
+Si usas un tipo personalizado sin `parser`, obtendrás:
+
+```
+❌ El argumento `jugador` es de tipo personalizado `MinecraftPlayer` y requiere un parser.
+Ejemplo: @Arg({ ..., parser: (val) => new MinecraftPlayer(val), type: () => MinecraftPlayer })
+```
+
+---
+
+### 📝 Raw Text (Captura de Texto Completo)
+
+La propiedad `rawText` permite capturar **todo el texto restante** después del comando o argumentos previos, sin necesidad de comillas.
+
+#### ✅ Cuándo usar `rawText`
+
+-   Comandos que replican texto: `!say`, `!announce`, `!embed`
+-   Descripciones largas: `!setstatus`, `!bio`
+-   Mensajes personalizados sin formato estricto
+
+#### 🔧 Comportamiento
+
+**Text Commands (`!comando`):**
+
+-   ✅ Captura todo el texto después del comando (o después de argumentos previos)
+-   ✅ No requiere comillas
+-   ✅ Puede combinarse con otros argumentos
+
+**Slash Commands (`/comando`):**
+
+-   ⚠️ Se comporta como un argumento de texto normal
+-   ⚠️ No captura "todo el texto", solo su propio valor
+
+#### 📖 Ejemplo Básico: Comando Say
+
+```typescript
+@Command({
+    name: 'say',
+    description: 'Replica un mensaje',
+})
+export abstract class SayDefinition extends BaseCommand {
+    @Arg({
+        name: 'mensaje',
+        description: 'El mensaje a replicar',
+        index: 0,
+        required: true,
+        rawText: true, // ✅ Captura todo el texto
+    })
+    public mensaje!: string;
+}
+
+export class SayCommand extends SayDefinition {
+    async run(): Promise<void> {
+        await this.send(this.mensaje);
+    }
+}
+```
+
+**Uso:**
+
+```
+Usuario: !say Hola mundo, este es un mensaje largo sin comillas
+Bot: Hola mundo, este es un mensaje largo sin comillas
+```
+
+#### 🔀 Ejemplo Avanzado: Combinando Argumentos
+
+Puedes tener argumentos normales **antes** del `rawText`:
+
+```typescript
+@Command({
+    name: 'announce',
+    description: 'Anuncia un mensaje en un canal',
+})
+export abstract class AnnounceDefinition extends BaseCommand {
+    @Arg({
+        name: 'canal',
+        description: 'Canal donde anunciar',
+        index: 0,
+        required: true,
+    })
+    public canal!: Channel;
+
+    @Arg({
+        name: 'mensaje',
+        description: 'El mensaje a anunciar',
+        index: 1,
+        required: true,
+        rawText: true, // ✅ Captura todo después del canal
+    })
+    public mensaje!: string;
+}
+
+export class AnnounceCommand extends AnnounceDefinition {
+    async run(): Promise<void> {
+        const textChannel = this.canal as TextChannel;
+        await textChannel.send(this.mensaje);
+        await this.reply('✅ Anuncio enviado');
+    }
+}
+```
+
+**Uso Text Command:**
+
+```
+Usuario: !announce #general Este es el anuncio completo sin comillas
+# El canal es: #general
+# El mensaje es: "Este es el anuncio completo sin comillas"
+```
+
+**Uso Slash Command:**
+
+```
+/announce canal:#general mensaje:Este es el mensaje
+# Funciona como argumento normal separado
+```
+
+#### ⚙️ Reglas Importantes
+
+1. **Solo para Text Commands**: `rawText` solo afecta comandos de texto (`!comando`), no slash commands
+2. **Posición**: El argumento con `rawText` debe ser el **último** o después de todos los argumentos fijos
+3. **Argumentos previos**: Se omiten correctamente del texto capturado
+4. **Sin comillas necesarias**: El usuario NO necesita usar comillas, todo el texto se captura automáticamente
+
+#### ❌ Casos de Uso Incorrectos
+
+```typescript
+// ❌ MAL: rawText no debe estar en el medio
+@Arg({ name: 'texto', index: 0, rawText: true })
+public texto!: string;
+
+@Arg({ name: 'numero', index: 1 }) // Este nunca recibirá valor
+public numero!: number;
+
+// ✅ BIEN: rawText al final
+@Arg({ name: 'numero', index: 0 })
+public numero!: number;
+
+@Arg({ name: 'texto', index: 1, rawText: true })
+public texto!: string;
+```
+
+#### 🎯 Ejemplo Completo: Comando Set Status
+
+```typescript
+@Command({
+    name: 'setstatus',
+    description: 'Cambia el estado del bot',
+    aliases: ['status'],
+})
+export abstract class SetStatusDefinition extends BaseCommand {
+    @Arg({
+        name: 'tipo',
+        description: 'Tipo de actividad (playing, watching, listening)',
+        index: 0,
+        required: true,
+        validate: (val: string) => {
+            const valid = ['playing', 'watching', 'listening', 'competing'];
+            if (!valid.includes(val.toLowerCase())) {
+                return `Tipo inválido. Usa: ${valid.join(', ')}`;
+            }
+            return true;
+        },
+    })
+    public tipo!: string;
+
+    @Arg({
+        name: 'texto',
+        description: 'El texto del estado',
+        index: 1,
+        required: true,
+        rawText: true, // ✅ Todo el texto después del tipo
+    })
+    public texto!: string;
+}
+
+export class SetStatusCommand extends SetStatusDefinition {
+    async run(): Promise<void> {
+        const activityType = this.tipo.toLowerCase();
+
+        await this.ctx.client.user?.setActivity(this.texto, {
+            type:
+                activityType === 'playing'
+                    ? 0
+                    : activityType === 'watching'
+                    ? 3
+                    : activityType === 'listening'
+                    ? 2
+                    : 5,
+        });
+
+        await this.reply(`✅ Estado cambiado: ${this.tipo} ${this.texto}`);
+    }
+}
+```
+
+**Uso:**
+
+```
+Usuario: !setstatus playing Minecraft con los usuarios
+Bot: ✅ Estado cambiado: playing Minecraft con los usuarios
+
+Usuario: !setstatus watching videos en YouTube y aprendiendo código
+Bot: ✅ Estado cambiado: watching videos en YouTube y aprendiendo código
+```
+
+---
+
+### 🎛️ Options (Opciones Predefinidas / Choices)
+
+La propiedad `options` permite definir un conjunto fijo de valores que el usuario puede elegir. En **slash commands**, se convierten automáticamente en el sistema de **choices** de Discord.
+
+#### 📚 Interfaz
+
+```typescript
+interface IArgumentOption {
+    label: string; // Texto mostrado al usuario
+    value: string | number; // Valor real usado en el código
+}
+```
+
+#### ✅ Cuándo usar `options`
+
+-   Comandos con valores predefinidos (idiomas, modos, tipos)
+-   Prevenir valores inválidos
+-   Mejorar UX con autocompletado en slash commands
+-   Validación automática de valores (tanto text como slash commands)
+
+#### 🔧 Comportamiento
+
+**Text Commands (`!comando`):**
+
+-   ✅ Valida que el valor ingresado coincida con uno de los `value` definidos
+-   ✅ Lanza `ValidationError` si el valor no es válido
+-   ✅ Case-sensitive por defecto
+
+**Slash Commands (`/comando`):**
+
+-   ✅ Se convierte automáticamente en **choices** de Discord
+-   ✅ El usuario ve un dropdown con las opciones
+-   ✅ Discord previene valores inválidos automáticamente
+-   ✅ Muestra `label` al usuario pero envía `value` al bot
+
+#### 📖 Ejemplo Básico: Comando Language
+
+```typescript
+@Command({
+    name: 'language',
+    description: 'Cambia el idioma del bot',
+    aliases: ['lang', 'idioma'],
+})
+export abstract class LanguageDefinition extends BaseCommand {
+    @Arg({
+        name: 'idioma',
+        description: 'El idioma a usar',
+        index: 0,
+        required: true,
+        options: [
+            { label: 'Español', value: 'es' },
+            { label: 'English', value: 'en' },
+            { label: 'Português', value: 'pt' },
+            { label: 'Français', value: 'fr' },
+        ],
+    })
+    public idioma!: string;
+}
+
+export class LanguageCommand extends LanguageDefinition {
+    async run(): Promise<void> {
+        // idioma será 'es', 'en', 'pt', o 'fr'
+        await this.reply(`✅ Idioma cambiado a: ${this.idioma}`);
+    }
+}
+```
+
+**Uso Text Command:**
+
+```
+Usuario: !language es
+Bot: ✅ Idioma cambiado a: es
+
+Usuario: !language español
+Bot: ❌ Valor inválido para idioma. Valores permitidos: es, en, pt, fr
+
+Usuario: !language EN
+Bot: ❌ Valor inválido para idioma. Valores permitidos: es, en, pt, fr
+```
+
+**Uso Slash Command:**
+
+```
+/language idioma:[Dropdown aparece con: Español, English, Português, Français]
+# Usuario selecciona "Español"
+# El bot recibe: idioma = "es"
+```
+
+#### 🎮 Ejemplo con Valores Numéricos: Set Status
+
+```typescript
+@Command({
+    name: 'setstatus',
+    description: 'Cambia el estado del bot',
+})
+export abstract class SetStatusDefinition extends BaseCommand {
+    @Arg({
+        name: 'tipo',
+        description: 'Tipo de actividad',
+        index: 0,
+        required: true,
+        options: [
+            { label: 'Jugando', value: 0 }, // ActivityType.Playing
+            { label: 'Viendo', value: 3 }, // ActivityType.Watching
+            { label: 'Escuchando', value: 2 }, // ActivityType.Listening
+            { label: 'Compitiendo', value: 5 }, // ActivityType.Competing
+        ],
+    })
+    public tipo!: number;
+
+    @Arg({
+        name: 'texto',
+        description: 'El texto del estado',
+        index: 1,
+        required: true,
+    })
+    public texto!: string;
+}
+
+export class SetStatusCommand extends SetStatusDefinition {
+    async run(): Promise<void> {
+        await this.ctx.client.user?.setActivity(this.texto, {
+            type: this.tipo, // Ya es un número válido de ActivityType
+        });
+
+        const tipoTexto =
+            ['Jugando', '', '', 'Viendo', '', 'Compitiendo'][this.tipo] || 'Escuchando';
+        await this.reply(`✅ Estado cambiado: ${tipoTexto} ${this.texto}`);
+    }
+}
+```
+
+**Uso Text Command:**
+
+```
+Usuario: !setstatus 0 Minecraft
+Bot: ✅ Estado cambiado: Jugando Minecraft
+
+Usuario: !setstatus 3 YouTube
+Bot: ✅ Estado cambiado: Viendo YouTube
+
+Usuario: !setstatus 7 algo
+Bot: ❌ Valor inválido para tipo. Valores permitidos: 0, 3, 2, 5
+
+Usuario: !setstatus jugando Minecraft
+Bot: ❌ Valor inválido para tipo. Valores permitidos: 0, 3, 2, 5
+```
+
+**Uso Slash Command:**
+
+```
+/setstatus tipo:[Dropdown: Jugando, Viendo, Escuchando, Compitiendo] texto:Minecraft
+# Usuario selecciona "Jugando"
+# El bot recibe: tipo = 0
+```
+
+#### 🔀 Ejemplo Avanzado: Configuración de Servidor
+
+```typescript
+@Command({
+    name: 'config',
+    description: 'Configura el servidor',
+})
+export abstract class ConfigDefinition extends BaseCommand {
+    @Arg({
+        name: 'opcion',
+        description: 'La opción a configurar',
+        index: 0,
+        required: true,
+        options: [
+            { label: 'Nivel de Moderación', value: 'moderation_level' },
+            { label: 'Canal de Logs', value: 'log_channel' },
+            { label: 'Prefijo', value: 'prefix' },
+            { label: 'Idioma', value: 'language' },
+        ],
+    })
+    public opcion!: string;
+
+    @Arg({
+        name: 'valor',
+        description: 'El nuevo valor',
+        index: 1,
+        required: true,
+    })
+    public valor!: string;
+}
+
+export class ConfigCommand extends ConfigDefinition {
+    async run(): Promise<void> {
+        // opcion será uno de los valores predefinidos
+        switch (this.opcion) {
+            case 'moderation_level':
+                // Actualizar nivel de moderación
+                break;
+            case 'log_channel':
+                // Configurar canal de logs
+                break;
+            case 'prefix':
+                // Cambiar prefijo
+                break;
+            case 'language':
+                // Cambiar idioma
+                break;
+        }
+
+        await this.reply(`✅ Configuración actualizada: ${this.opcion} = ${this.valor}`);
+    }
+}
+```
+
+#### 🎯 Options vs Validation
+
+| Característica       | `options`                         | `validate`                     |
+| -------------------- | --------------------------------- | ------------------------------ |
+| **Propósito**        | Valores predefinidos fijos        | Validación personalizada       |
+| **Slash Commands**   | ✅ Convierte a choices (dropdown) | ❌ No afecta                   |
+| **Text Commands**    | ✅ Valida automáticamente         | ✅ Valida con función custom   |
+| **Error automático** | ✅ Sí                             | ✅ Sí (si retorna string)      |
+| **Cuándo usar**      | Lista fija conocida               | Lógica compleja, regex, rangos |
+
+**Ejemplo combinando ambos:**
+
+```typescript
+@Arg({
+    name: 'modo',
+    description: 'Modo de juego',
+    index: 0,
+    required: true,
+    options: [
+        { label: 'Normal', value: 'normal' },
+        { label: 'Hardcore', value: 'hardcore' },
+        { label: 'Creativo', value: 'creative' },
+    ],
+    validate: (val: string) => {
+        // Validación adicional (ejemplo: verificar permisos)
+        if (val === 'hardcore' && !tienePermisoAdmin) {
+            return 'No tienes permisos para usar el modo hardcore';
+        }
+        return true;
+    },
+})
+public modo!: string;
+```
+
+#### ⚙️ Reglas Importantes
+
+1. **Validación Estricta**: El valor debe coincidir **exactamente** con uno de los `value` definidos
+2. **Case Sensitive**: Por defecto es sensible a mayúsculas/minúsculas
+3. **Tipo Compatible**: El tipo del argumento debe coincidir con el tipo de los `value` (string o number)
+4. **Slash Commands**: Se convierten automáticamente a choices de Discord
+5. **Text Commands**: Se validan en `ArgumentResolver` antes de ejecutar el comando
+
+#### ❌ Casos de Uso Incorrectos
+
+```typescript
+// ❌ MAL: Tipo string pero values numéricos
+@Arg({
+    name: 'nivel',
+    options: [
+        { label: 'Bajo', value: 1 },
+        { label: 'Alto', value: 2 },
+    ],
+})
+public nivel!: string; // Debería ser number
+
+// ❌ MAL: Values inconsistentes
+@Arg({
+    name: 'modo',
+    options: [
+        { label: 'Opción 1', value: 'valor1' },
+        { label: 'Opción 2', value: 2 }, // ❌ Mezcla string y number
+    ],
+})
+public modo!: string;
+
+// ✅ BIEN: Tipo y values coinciden
+@Arg({
+    name: 'nivel',
+    options: [
+        { label: 'Bajo', value: 1 },
+        { label: 'Alto', value: 2 },
+    ],
+})
+public nivel!: number;
+
+// ✅ BIEN: Todos los values son string
+@Arg({
+    name: 'modo',
+    options: [
+        { label: 'Opción 1', value: 'valor1' },
+        { label: 'Opción 2', value: 'valor2' },
+    ],
+})
+public modo!: string;
+```
+
+#### 🎨 Mejores Prácticas
+
+1. **Labels Descriptivos**: Usa texto claro y comprensible para los usuarios
+2. **Values Concisos**: Usa identificadores cortos y consistentes para tu código
+3. **Orden Lógico**: Ordena las opciones de más común a menos común
+4. **Documentación**: Comenta por qué se eligieron esos valores específicos
+5. **Constantes**: Considera usar enums o constantes para los values
+
+```typescript
+// ✅ EXCELENTE: Usando enums
+enum GameMode {
+    Normal = 'normal',
+    Hardcore = 'hardcore',
+    Creative = 'creative',
+}
+
+@Arg({
+    name: 'modo',
+    description: 'Modo de juego',
+    index: 0,
+    required: true,
+    options: [
+        { label: 'Normal', value: GameMode.Normal },
+        { label: 'Hardcore', value: GameMode.Hardcore },
+        { label: 'Creativo', value: GameMode.Creative },
+    ],
+})
+public modo!: string;
+```
+
+#### 🔧 Comportamiento
+
+**Slash Commands:**
+
+-   ✅ Aparecen como menú desplegable (choices)
+-   ✅ El usuario solo puede elegir una opción
+-   ✅ No puede escribir valores personalizados
+
+**Text Commands:**
+
+-   ✅ El usuario escribe el `value` de la opción
+-   ✅ Se valida automáticamente contra las opciones
+-   ✅ Error si el valor no coincide
+
+#### 📖 Estructura
+
+```typescript
+options: [
+    { label: 'Texto mostrado', value: 'valor_real' },
+    { label: 'Otra opción', value: 123 },
+];
+```
+
+-   **`label`**: Texto que ve el usuario (en slash commands)
+-   **`value`**: Valor real que recibe el comando (string o number)
+
+#### 📝 Ejemplo Básico: Idioma
+
+```typescript
+@Command({
+    name: 'language',
+    description: 'Cambia el idioma del bot',
+})
+export abstract class LanguageDefinition extends BaseCommand {
+    @Arg({
+        name: 'idioma',
+        description: 'Idioma a configurar',
+        index: 0,
+        required: true,
+        options: [
+            { label: 'Español', value: 'es' },
+            { label: 'English', value: 'en' },
+            { label: 'Português', value: 'pt' },
+            { label: 'Français', value: 'fr' },
+        ],
+    })
+    public idioma!: string;
+}
+
+export class LanguageCommand extends LanguageDefinition {
+    async run(): Promise<void> {
+        // this.idioma será: 'es', 'en', 'pt' o 'fr'
+        await this.reply(`Idioma cambiado a: ${this.idioma}`);
+    }
+}
+```
+
+**Uso:**
+
+```
+Slash Command:
+/language idioma:[menú con Español, English, Português, Français]
+
+Text Command:
+!language es      ✅ Válido
+!language en      ✅ Válido
+!language de      ❌ Error: debe ser es, en, pt o fr
+```
+
+#### 📝 Ejemplo Avanzado: SetStatus con Options
+
+```typescript
+@Command({
+    name: 'setstatus',
+    description: 'Cambia el estado del bot',
+})
+export abstract class SetStatusDefinition extends BaseCommand {
+    @Arg({
+        name: 'tipo',
+        description: 'Tipo de actividad',
+        index: 0,
+        required: true,
+        options: [
+            { label: 'Jugando', value: 'playing' },
+            { label: 'Viendo', value: 'watching' },
+            { label: 'Escuchando', value: 'listening' },
+            { label: 'Compitiendo', value: 'competing' },
+            { label: 'Transmitiendo', value: 'streaming' },
+        ],
+    })
+    public tipo!: string;
+
+    @Arg({
+        name: 'texto',
+        description: 'El texto del estado',
+        index: 1,
+        required: true,
+        rawText: true, // Combinar options + rawText
+    })
+    public texto!: string;
+}
+
+export class SetStatusCommand extends SetStatusDefinition {
+    async run(): Promise<void> {
+        const activityMap = {
+            playing: 0,
+            watching: 3,
+            listening: 2,
+            competing: 5,
+            streaming: 1,
+        };
+
+        await this.ctx.client.user?.setActivity(this.texto, {
+            type: activityMap[this.tipo as keyof typeof activityMap],
+        });
+
+        await this.reply(`✅ Estado: ${this.tipo} ${this.texto}`);
+    }
+}
+```
+
+**Uso:**
+
+```
+Slash Command:
+/setstatus tipo:[menú desplegable] texto:Minecraft en el servidor
+
+Text Command:
+!setstatus playing Minecraft en el servidor    ✅ Válido
+!setstatus coding TypeScript y Discord.js     ❌ Error: tipo inválido
+```
+
+#### 📝 Ejemplo con Números: Nivel de Dificultad
+
+```typescript
+@Command({
+    name: 'setdifficulty',
+    description: 'Cambia la dificultad del juego',
+})
+export abstract class SetDifficultyDefinition extends BaseCommand {
+    @Arg({
+        name: 'nivel',
+        description: 'Nivel de dificultad',
+        index: 0,
+        required: true,
+        options: [
+            { label: 'Fácil', value: 1 },
+            { label: 'Normal', value: 2 },
+            { label: 'Difícil', value: 3 },
+            { label: 'Extremo', value: 4 },
+        ],
+    })
+    public nivel!: number; // Recibe 1, 2, 3 o 4
+}
+
+export class SetDifficultyCommand extends SetDifficultyDefinition {
+    async run(): Promise<void> {
+        // this.nivel es un número (1-4)
+        const labels = ['', 'Fácil', 'Normal', 'Difícil', 'Extremo'];
+        await this.reply(`Dificultad cambiada a: ${labels[this.nivel]}`);
+    }
+}
+```
+
+**Uso:**
+
+```
+Slash Command:
+/setdifficulty nivel:[Fácil, Normal, Difícil, Extremo]
+
+Text Command:
+!setdifficulty 1    ✅ Válido (Fácil)
+!setdifficulty 4    ✅ Válido (Extremo)
+!setdifficulty 5    ❌ Error: debe ser 1, 2, 3 o 4
+```
+
+#### ⚙️ Validación Automática
+
+El sistema valida automáticamente que el valor sea una de las opciones:
+
+```typescript
+@Arg({
+    name: 'modo',
+    options: [
+        { label: 'PvP', value: 'pvp' },
+        { label: 'PvE', value: 'pve' },
+    ],
+})
+public modo!: string;
+
+// Text command: !comando survival
+// ❌ Error: El valor de `modo` debe ser una de las opciones válidas:
+//    `PvP` (pvp), `PvE` (pve)
+```
+
+#### 🎨 Combinando con Otras Propiedades
+
+```typescript
+@Arg({
+    name: 'tipo',
+    description: 'Tipo de recompensa',
+    index: 0,
+    required: true,
+    options: [
+        { label: 'Monedas', value: 'coins' },
+        { label: 'Experiencia', value: 'xp' },
+        { label: 'Objetos', value: 'items' },
+    ],
+    validate: (val: string) => {
+        // Validación adicional después de verificar opciones
+        if (val === 'items' && !hasInventorySpace()) {
+            return 'No tienes espacio en el inventario';
+        }
+        return true;
+    },
+})
+public tipo!: string;
+```
+
+#### ❌ Casos de Uso Incorrectos
+
+```typescript
+// ❌ MAL: options con rawText
+@Arg({
+    name: 'texto',
+    rawText: true,
+    options: [...], // No tiene sentido
+})
+
+// ❌ MAL: options con parser personalizado
+@Arg({
+    name: 'jugador',
+    parser: (val) => new MinecraftPlayer(val),
+    options: [...], // Los parsers manejan su propia lógica
+})
+
+// ✅ BIEN: options simple
+@Arg({
+    name: 'modo',
+    options: [
+        { label: 'Fácil', value: 'easy' },
+        { label: 'Difícil', value: 'hard' },
+    ],
+})
+```
+
+#### 🔍 Características
+
+| Característica            | Slash Commands            | Text Commands                          |
+| ------------------------- | ------------------------- | -------------------------------------- |
+| **UI**                    | ✅ Menú desplegable       | ❌ Usuario escribe el value            |
+| **Validación**            | ✅ Automática por Discord | ✅ Automática por ArgumentResolver     |
+| **Autocompletado**        | ✅ Sí                     | ❌ No                                  |
+| **Prevención de errores** | ✅ No puede escribir mal  | ⚠️ Puede escribir mal (pero se valida) |
+| **Mensaje de error**      | ❌ No aplica              | ✅ Lista de opciones válidas           |
+
+---
+
+### Ejemplo Completo
+
+```typescript
+import { Arg } from '@/core/decorators/argument.decorator';
+import { Command } from '@/core/decorators/command.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+import { User } from 'discord.js';
+
+@Command({
+    name: 'transfer',
+    description: 'Transfiere monedas',
+})
+export abstract class TransferDefinition extends BaseCommand {
+    @Arg({
+        name: 'cantidad',
+        description: 'Cantidad a transferir',
+        index: 0,
+        required: true,
+        validate: (value: number) => {
+            if (value <= 0) return 'Debe ser mayor a 0';
+            if (value > 1000000) return 'Máximo 1,000,000';
+            if (!Number.isInteger(value)) return 'Debe ser entero';
+            return true;
+        },
+    })
+    public cantidad!: number;
+
+    @Arg({
+        name: 'destinatario',
+        description: 'Usuario destinatario',
+        index: 1,
+        required: true,
+    })
+    public destinatario!: User;
+
+    @Arg({
+        name: 'nota',
+        description: 'Nota opcional',
+        index: 2,
+        required: false,
+    })
+    public nota?: string;
+}
+```
+
+---
+
+## 🔌 Decorador @UsePlugins
+
+Define plugins específicos que se ejecutan para un comando.
+
+### Ubicación
+
+```typescript
+// src/core/decorators/plugin.decorator.ts
+```
+
+### Uso
+
+```typescript
+import { Command } from '@/core/decorators/command.decorator';
+import { UsePlugins } from '@/core/decorators/plugin.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+import { CooldownPlugin } from '@/plugins/cooldown.plugin';
+import { RolePermissionPlugin } from '@/plugins/role-permission.plugin';
+
+@Command({
+    name: 'ban',
+    description: 'Banea un usuario',
+})
+@UsePlugins(CooldownPlugin, RolePermissionPlugin)
+export class BanCommand extends BaseCommand {
+    async run(): Promise<void> {
+        // Lógica del comando
+    }
+}
+```
+
+### Metadata Key
+
+```typescript
+export const PLUGIN_METADATA_KEY = Symbol('commandPlugins');
+```
+
+### Orden de Ejecución
+
+Los plugins se ejecutan en el orden especificado:
+
+**onBeforeExecute** (orden normal):
+
+```
+1. CooldownPlugin.onBeforeExecute()
+2. RolePermissionPlugin.onBeforeExecute()
+3. BanCommand.run()
+```
+
+**onAfterExecute** (orden INVERSO):
+
+```
+4. RolePermissionPlugin.onAfterExecute()
+5. CooldownPlugin.onAfterExecute()
+```
+
+### Prioridad
+
+`@UsePlugins` tiene **máxima prioridad**:
+
+1. ✅ Primero se ejecutan plugins de `@UsePlugins`
+2. ✅ Luego se ejecutan plugins de scope (registry)
+
+```typescript
+// En /src/config/plugins.config.ts
+PluginRegistry.register({
+    plugin: new LoggerPlugin(),     // [A]
+    scope: PluginScope.DeepFolder,
+    folderPath: '',
+});
+
+// En el comando
+@UsePlugins(CooldownPlugin)         // [B]
+export class MyCommand extends BaseCommand {
+    async run() { ... }
+}
+```
+
+**Orden:**
+
+1. `CooldownPlugin.onBeforeExecute()` (B - decorador)
+2. `LoggerPlugin.onBeforeExecute()` (A - scope)
+3. `MyCommand.run()`
+4. `LoggerPlugin.onAfterExecute()` (inverso)
+5. `CooldownPlugin.onAfterExecute()` (inverso)
+
+### Ejemplo Completo
+
+```typescript
+import { Command } from '@/core/decorators/command.decorator';
+import { Arg } from '@/core/decorators/argument.decorator';
+import { UsePlugins } from '@/core/decorators/plugin.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+import { User } from 'discord.js';
+
+// Importar plugins
+import { CooldownPlugin } from '@/plugins/cooldown.plugin';
+import { RolePermissionPlugin } from '@/plugins/role-permission.plugin';
+import { AuditLogPlugin } from '@/plugins/audit-log.plugin';
+
+@Command({
+    name: 'ban',
+    description: 'Banea un usuario del servidor',
+    aliases: ['banear'],
+})
+@UsePlugins(CooldownPlugin, RolePermissionPlugin, AuditLogPlugin)
+export class BanCommand extends BaseCommand {
+    @Arg({
+        name: 'usuario',
+        description: 'Usuario a banear',
+        index: 0,
+        required: true,
+    })
+    public usuario!: User;
+
+    @Arg({
+        name: 'razon',
+        description: 'Razón del baneo',
+        index: 1,
+        required: false,
+        rawText: true,
+    })
+    public razon?: string;
+
+    async run(): Promise<void> {
+        // Los 3 plugins ya validaron antes de llegar aquí
+        await this.usuario.ban({ reason: this.razon || 'No especificada' });
+
+        const embed = this.getEmbed('success')
+            .setTitle('✅ Usuario Baneado')
+            .setDescription(`${this.usuario.tag} ha sido baneado`)
+            .addFields({ name: 'Razón', value: this.razon || 'No especificada' });
+
+        await this.reply({ embeds: [embed] });
+        // Los 3 plugins se ejecutan en orden inverso después de esto
+    }
+}
+```
+
+### Diferencia con Scope
+
+| Característica   | `@UsePlugins` (Decorador)    | Scope (Registry)                |
+| ---------------- | ---------------------------- | ------------------------------- |
+| **Ubicación**    | En cada comando              | `/src/config/plugins.config.ts` |
+| **Alcance**      | Solo el comando decorado     | Múltiples comandos              |
+| **Prioridad**    | ✅ Primera (máxima)          | Segunda                         |
+| **Centralizado** | ❌ No                        | ✅ Sí                           |
+| **Cuándo usar**  | Plugins únicos de un comando | Plugins comunes/globales        |
+
+---
+
+## 🔧 Internals: reflect-metadata
+
+Ambos decoradores usan la librería `reflect-metadata` para almacenar y recuperar metadatos en runtime.
+
+### ¿Qué es reflect-metadata?
+
+Es una librería que permite agregar metadatos arbitrarios a clases, métodos y propiedades:
+
+```typescript
+import 'reflect-metadata';
+
+// Definir metadata
+Reflect.defineMetadata('myKey', { data: 'value' }, target);
+
+// Obtener metadata
+const meta = Reflect.getMetadata('myKey', target);
+```
+
+### Metadata Keys Usados
+
+```typescript
+// Metadata del comando
+COMMAND_METADATA_KEY = Symbol('commandMetadata');
+
+// Metadata de argumentos
+ARGUMENT_METADATA_KEY = Symbol('commandArguments');
+
+// Metadata de tipos de diseño (automático de TypeScript)
+('design:type');
+```
+
+### Flujo de Metadata
+
+```
+Definición con Decoradores
+         ↓
+   @Command(...) → Reflect.defineMetadata(COMMAND_METADATA_KEY, ...)
+   @Arg(...) → Reflect.defineMetadata(ARGUMENT_METADATA_KEY, ...)
+         ↓
+   CommandLoader lee metadata
+         ↓
+   Reflect.getMetadata(COMMAND_METADATA_KEY, ...)
+   Reflect.getMetadata(ARGUMENT_METADATA_KEY, ...)
+         ↓
+   Sistema usa la información
+```
+
+## ⚙️ Configuración de TypeScript
+
+Para que los decoradores funcionen, necesitas estas opciones en `tsconfig.json`:
+
+```json
+{
+    "compilerOptions": {
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true
+    }
+}
+```
+
+-   **experimentalDecorators**: Habilita el uso de decoradores
+-   **emitDecoratorMetadata**: Emite metadata de tipos de diseño
+
+## 📚 Recursos Relacionados
+
+-   `/src/definition/` - Uso de los decoradores
+-   `/src/core/loaders/command.loader.ts` - Lee metadata de @Command
+-   `/src/core/resolvers/argument.resolver.ts` - Usa metadata de @Arg
+-   [reflect-metadata](https://github.com/rbuckton/reflect-metadata) - Librería de metadata

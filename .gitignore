@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+
+# Testing
+coverage/
+*.lcov
+.nyc_output/
