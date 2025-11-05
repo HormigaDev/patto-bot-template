@@ -590,6 +590,18 @@ intents = [
 
 ---
 
+## 🛠️ Ecosistema Patto (Próximamente)
+
+### Patto Bot Features
+
+**Patto Bot Features** será un conjunto de paquetes modulares y editables para expandir tu bot de Discord. Podrás agregar funcionalidades como persistencia con MongoDB, sistemas de economía o herramientas de moderación con un simple comando. Cada feature será flexible, integrable con el template y personalizable según tu estilo. ¡En desarrollo para potenciar tu bot!
+
+### Patto CLI
+
+**Patto CLI** será una herramienta de línea de comandos para agilizar el desarrollo de bots. Genera comandos, plugins y tests con comandos como `patto generate`, y gestiona la instalación de features con sus dependencias, actualizando automáticamente el `.env.template`. Diseñada para optimizar tu flujo de trabajo. ¡En camino para simplificar tu experiencia!
+
+---
+
 ## 🤝 Contribuir
 
 Las contribuciones son bienvenidas! Por favor:
