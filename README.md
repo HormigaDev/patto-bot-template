@@ -603,7 +603,7 @@ Las contribuciones son bienvenidas! Por favor:
 
 ## 📝 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE_SPANISH`](./translates/LICENSE_SPANISH) para más detalles.
+Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE`](./.licences/LICENSE_SPANISH) para más detalles.
 
 ---
 
@@ -612,6 +612,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE_SPANISH`](./t
 **HormigaDev**
 
 -   GitHub: [@HormigaDev](https://github.com/HormigaDev)
+-   Discord: [BBEL Studios](https://discord.gg/x79VjB37vQ)
 
 ---
 
