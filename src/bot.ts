@@ -79,10 +79,10 @@ export class Bot {
                 this.commandHandler,
             );
             this.client.on(messageEvent.name as any, messageEvent.execute);
-            console.log('✅ Comandos de texto habilitados (USE_MESSAGE_CONTENT=Yes)');
+            console.log('✅ Comandos de texto habilitados (USE_MESSAGE_CONTENT=true)');
         } else {
             console.log(
-                '⚠️  Comandos de texto deshabilitados (USE_MESSAGE_CONTENT no está configurado como Yes)',
+                '⚠️  Comandos de texto deshabilitados (USE_MESSAGE_CONTENT no está configurado como true)',
             );
         }
     }
