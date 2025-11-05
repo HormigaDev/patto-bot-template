@@ -5,6 +5,7 @@ import { CommandHandler } from '@/core/handlers/command.handler';
 import { registerInteractionCreateEvent } from '@/events/interactionCreate.event';
 import { registerMessageCreateEvent } from '@/events/messageCreate.event';
 import { registerReadyEvent } from '@/events/ready.event';
+import { Env } from '@/utils/Env';
 import '@/config/plugins.config';
 
 export class Bot {
@@ -13,35 +14,24 @@ export class Bot {
     private slashCommandLoader: SlashCommandLoader;
     private commandHandler: CommandHandler;
 
-    /**
-     * Verifica si el bot debe procesar mensajes de texto
-     * Acepta: yes, yés, yês (insensible a mayúsculas y acentos unicode)
-     */
-    private static shouldUseMessageContent(): boolean {
-        const value = process.env.USE_MESSAGE_CONTENT;
-        if (!value) return false;
-
-        // Normalizar: remover acentos y convertir a minúsculas
-        const normalized = value
-            .normalize('NFD') // Descomponer caracteres con acentos
-            .replace(/[\u0300-\u036f]/g, '') // Remover marcas diacríticas
-            .toLowerCase()
-            .trim();
-
-        return normalized === 'yes';
-    }
-
     constructor() {
-        let intents: any = process.env.INTENTS;
-        if (!intents || isNaN(parseInt(intents))) {
-            // Intents por defecto
+        const config = Env.get();
+
+        // Determinar intents
+        let intents: any;
+
+        if (config.INTENTS !== undefined) {
+            // Usar intents personalizados
+            intents = config.INTENTS;
+        } else {
+            // Intents automáticos según configuración
             intents = [GatewayIntentBits.Guilds] as number[];
 
-            // Solo agregar intents de mensajes si USE_MESSAGE_CONTENT está habilitado
-            if (Bot.shouldUseMessageContent()) {
+            if (config.USE_MESSAGE_CONTENT) {
                 intents.push(GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent);
             }
         }
+
         this.client = new Client({
             intents,
         });
@@ -55,12 +45,14 @@ export class Bot {
      * Inicia el bot
      */
     async start(): Promise<void> {
+        const config = Env.get();
+
         try {
             await this.commandLoader.loadCommands();
 
             this.registerEvents();
 
-            await this.client.login(process.env.BOT_TOKEN);
+            await this.client.login(config.BOT_TOKEN);
         } catch (error) {
             console.error('❌ Error al iniciar el bot:', error);
             process.exit(1);
@@ -79,9 +71,9 @@ export class Bot {
             this.commandHandler,
         );
         this.client.on(interactionEvent.name as any, interactionEvent.execute);
-
+        const config = Env.get();
         // Solo registrar evento de mensajes si USE_MESSAGE_CONTENT está habilitado
-        if (Bot.shouldUseMessageContent()) {
+        if (config.USE_MESSAGE_CONTENT) {
             const messageEvent = registerMessageCreateEvent(
                 this.commandLoader,
                 this.commandHandler,

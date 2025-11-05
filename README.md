@@ -109,22 +109,23 @@ cp .env.template .env
 Edita `.env` con tus credenciales:
 
 ```env
-# Token del bot (obtenido desde Discord Developer Portal)
-BOT_TOKEN=tu_token_aqui
+# Variables OBLIGATORIAS
+BOT_TOKEN=tu_token_aqui        # Token del bot
+CLIENT_ID=tu_client_id_aqui    # ID de la aplicación
 
-# ID de la aplicación del bot
-CLIENT_ID=tu_client_id_aqui
-
-# Habilitar comandos de texto (opcional)
-# Valores aceptados: yes, Yes, YES, yés, yês (insensible a mayúsculas y acentos)
-USE_MESSAGE_CONTENT=yes
+# Variables OPCIONALES
+USE_MESSAGE_CONTENT=true       # true = habilitar comandos de texto | false/vacío = solo slash commands
+COMMAND_PREFIX=!               # Prefijo para comandos de texto (default: !)
+INTENTS=                       # Intents personalizados (dejar vacío para automático)
 ```
+
+**Validación automática:** El bot valida todas las variables al iniciar y muestra errores claros si falta algo obligatorio.
 
 ### 4. Configurar Discord Developer Portal
 
 #### Habilitar Intents Privilegiados
 
-Si configuraste `USE_MESSAGE_CONTENT=yes`:
+Si configuraste `USE_MESSAGE_CONTENT=true`:
 
 1. Ve a [Discord Developer Portal](https://discord.com/developers/applications)
 2. Selecciona tu aplicación

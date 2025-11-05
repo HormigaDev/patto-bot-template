@@ -2,6 +2,7 @@ import { Client, REST, Routes, ApplicationCommandOptionType } from 'discord.js';
 import { CommandLoader } from './command.loader';
 import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command.decorator';
 import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
+import { Env } from '@/utils/Env';
 
 export class SlashCommandLoader {
     constructor(private client: Client, private commandLoader: CommandLoader) {}
@@ -10,9 +11,10 @@ export class SlashCommandLoader {
      * Registra todos los slash commands en Discord
      */
     async registerSlashCommands(): Promise<void> {
+        const config = Env.get();
         console.log('🔄 Registrando comandos Slash...');
 
-        const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN!);
+        const rest = new REST({ version: '10' }).setToken(config.BOT_TOKEN);
         const slashCommandsJSON: any[] = [];
 
         for (const commandClass of this.commandLoader.getAllCommands().values()) {

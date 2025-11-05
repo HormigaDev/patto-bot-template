@@ -9,8 +9,194 @@ Esta carpeta contiene **utilidades y helpers** reutilizables en todo el proyecto
 ```
 utils/
 ├── CommandCategories.ts    # Definiciones de categorías de comandos
-└── Times.ts               # Utilidad para conversión de tiempo
+├── Times.ts               # Utilidad para conversión de tiempo
+└── Env.ts                 # Validación y carga segura de variables de entorno
 ```
+
+---
+
+## 📂 Env.ts
+
+### Descripción
+
+Utilidad para **validar y cargar variables de entorno** de forma segura y centralizada. Valida tipos, valores obligatorios y proporciona valores por defecto para variables opcionales.
+
+### Ubicación
+
+```typescript
+// src/utils/Env.ts
+```
+
+### Exportaciones
+
+#### `Env` (Singleton)
+
+```typescript
+import { Env } from '@/utils/Env';
+
+// Cargar y validar configuración (una sola vez al inicio)
+const config = Env.load();
+
+// Obtener configuración ya validada
+const config = Env.get();
+```
+
+### Interface de Configuración
+
+```typescript
+interface EnvConfig {
+    BOT_TOKEN: string; // Token del bot (obligatorio)
+    CLIENT_ID: string; // ID del cliente (obligatorio)
+    USE_MESSAGE_CONTENT: boolean; // Habilitar comandos de texto (default: false)
+    COMMAND_PREFIX: string; // Prefijo de comandos (default: '!')
+    INTENTS?: number; // Intents personalizados (opcional)
+}
+```
+
+### Métodos
+
+#### `Env.load()`
+
+Valida y carga todas las variables de entorno. **Debe llamarse una sola vez al inicio** del bot (en `index.ts`).
+
+```typescript
+import { Env } from '@/utils/Env';
+
+// Validar y cargar configuración
+Env.load(); // ✅ Valida y muestra logs
+
+// Si falta alguna variable obligatoria, termina el proceso con exit(1)
+```
+
+**Comportamiento:**
+
+-   ✅ Valida variables obligatorias (`BOT_TOKEN`, `CLIENT_ID`)
+-   ✅ Asigna valores por defecto a variables opcionales
+-   ✅ Convierte tipos (strings a boolean/number)
+-   ✅ Muestra configuración cargada (con token enmascarado)
+-   ❌ Termina el proceso si falta alguna variable obligatoria
+
+#### `Env.get()`
+
+Obtiene la configuración ya validada. Se puede llamar desde cualquier parte del código después de `Env.load()`.
+
+```typescript
+import { Env } from '@/utils/Env';
+
+// En bot.ts, comandos, handlers, etc.
+const config = Env.get();
+
+console.log(config.BOT_TOKEN); // string
+console.log(config.USE_MESSAGE_CONTENT); // boolean
+console.log(config.COMMAND_PREFIX); // string (default: '!')
+```
+
+### Reglas de Validación
+
+#### Variables Obligatorias
+
+-   `BOT_TOKEN`: Debe existir y no estar vacío
+-   `CLIENT_ID`: Debe existir y no estar vacío
+
+#### Variables Opcionales con Defaults
+
+| Variable              | Tipo      | Default | Validación                                               |
+| --------------------- | --------- | ------- | -------------------------------------------------------- |
+| `USE_MESSAGE_CONTENT` | `boolean` | `false` | Solo `'true'` (case insensitive) es `true`               |
+| `COMMAND_PREFIX`      | `string`  | `'!'`   | No puede estar vacío                                     |
+| `INTENTS`             | `number`  | `auto`  | Debe ser número válido o se usa configuración automática |
+
+### Ejemplo Completo
+
+#### En `src/index.ts` (inicialización)
+
+```typescript
+import 'reflect-metadata';
+import * as dotenv from 'dotenv';
+import { Bot } from './bot';
+import { Env } from '@/utils/Env';
+
+dotenv.config();
+
+// Validar y cargar configuración
+Env.load();
+
+// Iniciar el bot
+const bot = new Bot();
+bot.start();
+```
+
+#### En `src/bot.ts` (uso)
+
+```typescript
+import { Env } from '@/utils/Env';
+
+export class Bot {
+    constructor() {
+        const config = Env.get();
+
+        // Usar configuración validada
+        if (config.USE_MESSAGE_CONTENT) {
+            console.log(`Comandos de texto habilitados con prefijo: ${config.COMMAND_PREFIX}`);
+        }
+    }
+
+    async start(): Promise<void> {
+        const config = Env.get();
+        await this.client.login(config.BOT_TOKEN);
+    }
+}
+```
+
+#### En cualquier archivo
+
+```typescript
+import { Env } from '@/utils/Env';
+
+export function getPrefix(): string {
+    return Env.get().COMMAND_PREFIX;
+}
+```
+
+### Mensajes de Error
+
+Si falta una variable obligatoria, el bot muestra un mensaje claro y termina:
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║  ❌ ERROR DE CONFIGURACIÓN                                     ║
+╚════════════════════════════════════════════════════════════════╝
+
+  ❌ Variable obligatoria faltante o vacía: BOT_TOKEN
+  ❌ Variable obligatoria faltante o vacía: CLIENT_ID
+
+📋 Solución:
+  1. Copia el archivo .env.template a .env
+  2. Completa las variables obligatorias
+  3. Reinicia el bot
+```
+
+### Logs de Éxito
+
+Cuando la configuración se carga correctamente:
+
+```
+✅ Configuración cargada correctamente:
+   • BOT_TOKEN: MTEy...xNzg=
+   • CLIENT_ID: 1234567890
+   • USE_MESSAGE_CONTENT: true
+   • COMMAND_PREFIX: "!"
+   • INTENTS: automático
+```
+
+### Ventajas
+
+-   ✅ **Tipo seguro**: TypeScript conoce los tipos de cada variable
+-   ✅ **Centralizado**: Una sola fuente de verdad para la configuración
+-   ✅ **Validación temprana**: Errores detectados al inicio, no en runtime
+-   ✅ **Mensajes claros**: Errores descriptivos en español
+-   ✅ **Sin accesos directos**: No más `process.env.VAR || 'default'` esparcidos
+-   ✅ **Seguridad**: Tokens enmascarados en logs
 
 ---
 
