@@ -4,7 +4,7 @@ import { CommandCategories, CommandCategoryTag } from '@/utils/CommandCategories
 import { Times } from '@/utils/Times';
 import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command.decorator';
 import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
-import { EmbedBuilder, Message, TextChannel } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 
 export class HelpCommand extends HelpDefinition {
     async run(): Promise<void> {

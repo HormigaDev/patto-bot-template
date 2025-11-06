@@ -23,64 +23,64 @@
 
 ### 🎯 Sistema de Comandos Avanzado
 
--   ✅ **Decoradores TypeScript** para definición declarativa de comandos
--   ✅ **Slash Commands** (/comando) - Siempre disponibles
--   ✅ **Text Commands** (!comando) - Opcionales y configurables
--   ✅ **Resolución automática** de argumentos con validación
--   ✅ **Raw Text Capture** - Captura texto completo sin comillas (ej: `!say Hola mundo`)
--   ✅ **Options/Choices** - Argumentos con valores predefinidos y dropdown en slash commands
--   ✅ **Aliases** para comandos de texto
--   ✅ **Tipos Discord** (User, Role, Channel, Member) resueltos automáticamente
--   ✅ **Custom Type Parsers** para tipos personalizados (ej: MinecraftPlayer, CustomDate)
--   ✅ **Sistema de Plugins** extensible con decoradores y scopes
--   ✅ **Plugin Scopes** - Aplica plugins por carpeta, comando, o globalmente
--   ✅ **Sistema de Permisos** - Decorador `@RequirePermissions` con validación automática
+- ✅ **Decoradores TypeScript** para definición declarativa de comandos
+- ✅ **Slash Commands** (/comando) - Siempre disponibles
+- ✅ **Text Commands** (!comando) - Opcionales y configurables
+- ✅ **Resolución automática** de argumentos con validación
+- ✅ **Raw Text Capture** - Captura texto completo sin comillas (ej: `!say Hola mundo`)
+- ✅ **Options/Choices** - Argumentos con valores predefinidos y dropdown en slash commands
+- ✅ **Aliases** para comandos de texto
+- ✅ **Tipos Discord** (User, Role, Channel, Member) resueltos automáticamente
+- ✅ **Custom Type Parsers** para tipos personalizados (ej: MinecraftPlayer, CustomDate)
+- ✅ **Sistema de Plugins** extensible con decoradores y scopes
+- ✅ **Plugin Scopes** - Aplica plugins por carpeta, comando, o globalmente
+- ✅ **Sistema de Permisos** - Decorador `@RequirePermissions` con validación automática
 
 ### 🎨 Componentes Interactivos
 
--   ✅ **Button Wrapper** - Crea botones con callbacks inline (Primary, Success, Danger, Secondary)
--   ✅ **Select Wrapper** - Crea select menus con onChange inline
--   ✅ **Modal Wrapper** - Crea formularios (modales) con onSubmit inline
--   ✅ **RichMessage** - Gestión centralizada de componentes con timeout global único
--   ✅ **Registry Global** - Almacena componentes automáticamente (sin archivos separados)
--   ✅ **Timeout Automático** - Componentes se limpian automáticamente (20 segundos por defecto)
--   ✅ **Type-Safe** - Callbacks con tipos completos de Discord.js
--   ✅ **Sin boilerplate** - No necesitas crear archivos `.button.ts` o `.select.ts`
--   ✅ **Mejor performance** - RichMessage usa 1 timeout para N componentes
+- ✅ **Button Wrapper** - Crea botones con callbacks inline (Primary, Success, Danger, Secondary)
+- ✅ **Select Wrapper** - Crea select menus con onChange inline
+- ✅ **Modal Wrapper** - Crea formularios (modales) con onSubmit inline
+- ✅ **RichMessage** - Gestión centralizada de componentes con timeout global único
+- ✅ **Registry Global** - Almacena componentes automáticamente (sin archivos separados)
+- ✅ **Timeout Automático** - Componentes se limpian automáticamente (20 segundos por defecto)
+- ✅ **Type-Safe** - Callbacks con tipos completos de Discord.js
+- ✅ **Sin boilerplate** - No necesitas crear archivos `.button.ts` o `.select.ts`
+- ✅ **Mejor performance** - RichMessage usa 1 timeout para N componentes
 
 ### 🏗️ Arquitectura Limpia
 
--   ✅ **Principios SOLID** aplicados
--   ✅ **Separación de responsabilidades** (Loaders, Handlers, Resolvers, Plugins)
--   ✅ **Código modular** y fácil de testear
--   ✅ **Decoradores reutilizables** (@Command, @Arg, @UsePlugins)
--   ✅ **Context unificado** para Messages e Interactions
--   ✅ **Plugins reutilizables** (Cooldowns, Permisos, Logging, etc.)
+- ✅ **Principios SOLID** aplicados
+- ✅ **Separación de responsabilidades** (Loaders, Handlers, Resolvers, Plugins)
+- ✅ **Código modular** y fácil de testear
+- ✅ **Decoradores reutilizables** (@Command, @Arg, @UsePlugins)
+- ✅ **Context unificado** para Messages e Interactions
+- ✅ **Plugins reutilizables** (Cooldowns, Permisos, Logging, etc.)
 
 ### 🛠️ Developer Experience
 
--   ✅ **TypeScript** con strict mode
--   ✅ **Path aliases** (@/core, @/commands, etc.)
--   ✅ **Hot reload** en desarrollo (ts-node)
--   ✅ **Testing completo** (Unit, Integration, E2E con Jest)
--   ✅ **Mocks incluidos** para Discord.js
--   ✅ **Documentación completa** por carpeta
--   ✅ **Ejemplos listos para usar**
+- ✅ **TypeScript** con strict mode
+- ✅ **Path aliases** (@/core, @/commands, etc.)
+- ✅ **Hot reload** en desarrollo (ts-node)
+- ✅ **Testing completo** (Unit, Integration, E2E con Jest)
+- ✅ **Mocks incluidos** para Discord.js
+- ✅ **Documentación completa** por carpeta
+- ✅ **Ejemplos listos para usar**
 
 ### ⚙️ Configuración Flexible
 
--   ✅ **Variables de entorno** para configuración
--   ✅ **Intents automáticos** según características usadas
--   ✅ **Presencias personalizables** con templates
--   ✅ **Manejo robusto de errores**
+- ✅ **Variables de entorno** para configuración
+- ✅ **Intents automáticos** según características usadas
+- ✅ **Presencias personalizables** con templates
+- ✅ **Manejo robusto de errores**
 
 ---
 
 ## 📋 Requisitos Previos
 
--   **Node.js** v18 o superior
--   **npm** o **yarn**
--   **Bot de Discord** creado en [Discord Developer Portal](https://discord.com/developers/applications)
+- **Node.js** v18 o superior
+- **npm** o **yarn**
+- **Bot de Discord** creado en [Discord Developer Portal](https://discord.com/developers/applications)
 
 ---
 
@@ -186,14 +186,31 @@ npm run test:integration   # Solo tests de integración
 npm run test:e2e          # Solo tests end-to-end
 ```
 
+### Linting y Formateo
+
+Mantén el código limpio y consistente:
+
+```bash
+# Ejecutar linter (ESLint)
+npm run lint
+
+# Auto-fix de problemas de linting
+npm run lint -- --fix
+
+# Formatear código con Prettier
+npm run format
+```
+
+**💡 Tip**: Ejecuta `npm run lint` y `npm run format` antes de hacer commits para asegurar calidad de código.
+
 #### 🧪 Infraestructura de Testing
 
--   **Jest 29** con soporte completo para TypeScript
--   **Mocks de Discord.js** pre-configurados (User, Guild, Message, Interaction, etc.)
--   **Path aliases** (`@/`, `@tests/*`) funcionando en tests
--   **Coverage reports** con umbrales configurables
--   **CI/CD** con GitHub Actions (tests automáticos en cada push/PR)
--   **Debug en VSCode** configurado para tests
+- **Jest 29** con soporte completo para TypeScript
+- **Mocks de Discord.js** pre-configurados (User, Guild, Message, Interaction, etc.)
+- **Path aliases** (`@/`, `@tests/*`) funcionando en tests
+- **Coverage reports** con umbrales configurables
+- **CI/CD** con GitHub Actions (tests automáticos en cada push/PR)
+- **Debug en VSCode** configurado para tests
 
 #### 📂 Estructura de Tests
 
@@ -261,8 +278,8 @@ export class PingCommand extends PingDefinition {
 
 El comando se carga automáticamente. Reinicia el bot y prueba:
 
--   Slash: `/ping`
--   Texto: `!ping`, `!latencia`, `!pong`
+- Slash: `/ping`
+- Texto: `!ping`, `!latencia`, `!pong`
 
 ---
 
@@ -316,11 +333,11 @@ export class BanCommand extends BaseCommand {
 
 **Características:**
 
--   ✅ El comando **solo aparece** para usuarios con el permiso `BanMembers`
--   ✅ Validación **doble**: en Discord (registro) y en ejecución (runtime)
--   ✅ **Sin boilerplate**: No necesitas validar manualmente
--   ✅ Funciona con el **PermissionsPlugin** incluido (inmutable, no modifica JSON original)
--   ✅ **20 tests** completos (unit + integration) garantizan su correcto funcionamiento
+- ✅ El comando **solo aparece** para usuarios con el permiso `BanMembers`
+- ✅ Validación **doble**: en Discord (registro) y en ejecución (runtime)
+- ✅ **Sin boilerplate**: No necesitas validar manualmente
+- ✅ Funciona con el **PermissionsPlugin** incluido (inmutable, no modifica JSON original)
+- ✅ **20 tests** completos (unit + integration) garantizan su correcto funcionamiento
 
 **Más información**: Ver [`/src/plugins/permissions.plugin.README.md`](src/plugins/permissions.plugin.README.md)
 
@@ -332,27 +349,27 @@ export class BanCommand extends BaseCommand {
 
 Cada carpeta importante tiene su propio README con documentación detallada:
 
--   📁 [`/src/commands/`](src/commands/README.md) - Implementaciones de comandos
--   📁 [`/src/definition/`](src/definition/README.md) - Definiciones de comandos (opcional)
--   📁 [`/src/plugins/`](src/plugins/README.md) - Plugins extensibles (Cooldowns, Permisos, etc.)
--   📁 [`/src/utils/`](src/utils/README.md) - Utilidades y helpers reutilizables
--   📁 [`/src/error/`](src/error/README.md) - Manejo de errores (ValidationError, ReplyError)
--   📁 [`/tests/`](tests/README.md) - **Infraestructura de testing completa**
--   📁 [`/src/core/`](src/core/README.md) - Núcleo del framework
-    -   📁 [`/decorators/`](src/core/decorators/README.md) - Decoradores @Command y @Arg
-    -   📁 [`/handlers/`](src/core/handlers/README.md) - CommandHandler
-    -   📁 [`/loaders/`](src/core/loaders/README.md) - Cargadores de comandos
-    -   📁 [`/resolvers/`](src/core/resolvers/README.md) - Resolvedores de tipos
-    -   📁 [`/structures/`](src/core/structures/README.md) - BaseCommand, CommandContext, BasePlugin
-    -   📁 [`/components/`](src/core/components/README.md) - Button, Select, Modal, RichMessage
--   📁 [`/src/error/`](src/error/README.md) - Errores personalizados
--   📁 [`/src/events/`](src/events/README.md) - Eventos de Discord
--   📁 [`/tests/`](tests/README.md) - Sistema de testing completo (Unit, Integration, E2E)
+- 📁 [`/src/commands/`](src/commands/README.md) - Implementaciones de comandos
+- 📁 [`/src/definition/`](src/definition/README.md) - Definiciones de comandos (opcional)
+- 📁 [`/src/plugins/`](src/plugins/README.md) - Plugins extensibles (Cooldowns, Permisos, etc.)
+- 📁 [`/src/utils/`](src/utils/README.md) - Utilidades y helpers reutilizables
+- 📁 [`/src/error/`](src/error/README.md) - Manejo de errores (ValidationError, ReplyError)
+- 📁 [`/tests/`](tests/README.md) - **Infraestructura de testing completa**
+- 📁 [`/src/core/`](src/core/README.md) - Núcleo del framework
+    - 📁 [`/decorators/`](src/core/decorators/README.md) - Decoradores @Command y @Arg
+    - 📁 [`/handlers/`](src/core/handlers/README.md) - CommandHandler
+    - 📁 [`/loaders/`](src/core/loaders/README.md) - Cargadores de comandos
+    - 📁 [`/resolvers/`](src/core/resolvers/README.md) - Resolvedores de tipos
+    - 📁 [`/structures/`](src/core/structures/README.md) - BaseCommand, CommandContext, BasePlugin
+    - 📁 [`/components/`](src/core/components/README.md) - Button, Select, Modal, RichMessage
+- 📁 [`/src/error/`](src/error/README.md) - Errores personalizados
+- 📁 [`/src/events/`](src/events/README.md) - Eventos de Discord
+- 📁 [`/tests/`](tests/README.md) - Sistema de testing completo (Unit, Integration, E2E)
 
 ### Guías
 
--   📄 [`ARCHITECTURE.md`](ARCHITECTURE.md) - Arquitectura completa del sistema
--   📄 [`docs/MESSAGE_CONTENT_CONFIG.md`](docs/MESSAGE_CONTENT_CONFIG.md) - Configuración de comandos de texto
+- 📄 [`ARCHITECTURE.md`](ARCHITECTURE.md) - Arquitectura completa del sistema
+- 📄 [`docs/MESSAGE_CONTENT_CONFIG.md`](docs/MESSAGE_CONTENT_CONFIG.md) - Configuración de comandos de texto
 
 ---
 
@@ -589,11 +606,11 @@ export class PanelCommand extends PanelDefinition {
 
 **Ventajas:**
 
--   ✅ Callbacks inline (sin archivos separados)
--   ✅ RichMessage gestiona un timeout global único
--   ✅ Limpieza automática del registry
--   ✅ Método `edit()` para actualizar mensajes dinámicamente
--   ✅ Type-safe con Discord.js
+- ✅ Callbacks inline (sin archivos separados)
+- ✅ RichMessage gestiona un timeout global único
+- ✅ Limpieza automática del registry
+- ✅ Método `edit()` para actualizar mensajes dinámicamente
+- ✅ Type-safe con Discord.js
 
 Ver más en [`src/core/components/README.md`](src/core/components/README.md)
 
@@ -685,20 +702,39 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE`](./.licences
 
 **HormigaDev**
 
--   GitHub: [@HormigaDev](https://github.com/HormigaDev)
--   Servidor de Discord: [Próximamente]()
+- GitHub: [@HormigaDev](https://github.com/HormigaDev)
+- Servidor de Discord: [Próximamente]()
 
 ---
 
 ## 🙏 Agradecimientos
 
--   [Discord.js](https://discord.js.org/) - Librería de Discord para Node.js
--   [TypeScript](https://www.typescriptlang.org/) - Superset de JavaScript
--   [Jest](https://jestjs.io/) - Framework de testing delightful
--   [GitHub Actions](https://github.com/features/actions) - CI/CD para tests automáticos
--   [dotenv](https://github.com/motdotla/dotenv) - Carga variables de entorno desde .env
--   [nanoid](https://github.com/ai/nanoid) - Generador de IDs únicos pequeños y seguros
--   [reflect-metadata](https://github.com/rbuckton/reflect-metadata) - Metadata Reflection API
+### 📚 Librerías Principales
+
+- [Discord.js](https://discord.js.org/) - Librería de Discord para Node.js
+- [TypeScript](https://www.typescriptlang.org/) - Superset de JavaScript con tipos estáticos
+
+### 🧪 Testing y Calidad
+
+- [Jest](https://jestjs.io/) - Framework de testing delightful
+- [ESLint](https://eslint.org/) - Linter para identificar y reportar patrones en código
+- [Prettier](https://prettier.io/) - Formateador de código automático
+- [typescript-eslint](https://typescript-eslint.io/) - Parser y plugin de ESLint para TypeScript
+
+### 🛠️ Desarrollo
+
+- [ts-node-dev](https://github.com/wclr/ts-node-dev) - Compilador TypeScript con hot reload para desarrollo
+- [tsconfig-paths](https://github.com/dividab/tsconfig-paths) - Soporte para path aliases en runtime
+- [reflect-metadata](https://github.com/rbuckton/reflect-metadata) - Metadata Reflection API para decoradores
+
+### ⚙️ Utilidades
+
+- [dotenv](https://github.com/motdotla/dotenv) - Carga variables de entorno desde .env
+- [nanoid](https://github.com/ai/nanoid) - Generador de IDs únicos pequeños y seguros
+
+### 🚀 CI/CD
+
+- [GitHub Actions](https://github.com/features/actions) - CI/CD para tests automáticos
 
 ---
 

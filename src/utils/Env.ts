@@ -39,7 +39,7 @@ class EnvValidator {
         let COMMAND_PREFIX: string;
         try {
             COMMAND_PREFIX = this.parseCommandPrefix(process.env.COMMAND_PREFIX);
-        } catch (error) {
+        } catch (_error) {
             errors.push('❌ COMMAND_PREFIX no puede estar vacío. Use un prefijo válido (ej: !)');
             COMMAND_PREFIX = '!'; // Temporal para evitar undefined
         }

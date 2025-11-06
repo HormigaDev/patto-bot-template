@@ -8,7 +8,10 @@ import { BasePlugin } from '@/core/structures/BasePlugin';
 import { Env } from '@/utils/Env';
 
 export class SlashCommandLoader {
-    constructor(private client: Client, private commandLoader: CommandLoader) {}
+    constructor(
+        private client: Client,
+        private commandLoader: CommandLoader,
+    ) {}
 
     /**
      * Registra todos los slash commands en Discord

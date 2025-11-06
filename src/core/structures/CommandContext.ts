@@ -69,7 +69,7 @@ export class CommandContext {
         if (this.isInteraction) {
             return await this.sourceCommand.reply(payload);
         } else {
-            const { flags, ...messageOptions } = payload;
+            const { flags: _flags, ...messageOptions } = payload;
             if (send) {
                 return await this.channel?.send(messageOptions);
             } else {
@@ -91,7 +91,7 @@ export class CommandContext {
     async ephemeral(
         options: ReplyOptions | string,
     ): Promise<Message | InteractionResponse | undefined> {
-        let payload = typeof options === 'string' ? { content: options } : options;
+        const payload = typeof options === 'string' ? { content: options } : options;
 
         if (this.isInteraction) {
             return await this.sourceCommand.reply({ ...payload, flags: [MessageFlags.Ephemeral] });

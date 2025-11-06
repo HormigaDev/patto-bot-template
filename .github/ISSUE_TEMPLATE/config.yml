@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+    - name: 💬 Discord Community
+      url: https://discord.gg/x79VjB37vQ
+      about: Únete a nuestro servidor de Discord para soporte en tiempo real y discusiones
+    - name: 📖 Documentation
+      url: https://github.com/HormigaDev/patto-bot-template#readme
+      about: Lee la documentación completa del proyecto
+    - name: 🔒 Security Issue
+      url: https://github.com/HormigaDev/patto-bot-template/security/advisories/new
+      about: Reportar vulnerabilidades de seguridad (privado)

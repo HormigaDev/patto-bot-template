@@ -1,10 +1,4 @@
-import {
-    ModalBuilder,
-    TextInputBuilder,
-    TextInputStyle,
-    ActionRowBuilder,
-    type ModalSubmitInteraction,
-} from 'discord.js';
+import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
 import { ComponentRegistry, type ModalCallback } from '@/core/registry/component.registry';
 import { nanoid } from 'nanoid';
 

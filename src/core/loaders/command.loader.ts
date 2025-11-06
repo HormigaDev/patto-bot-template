@@ -170,7 +170,7 @@ export class CommandLoader {
 
     getCommandsByCategory(category: CommandCategoryTag): CommandClass[] {
         const result: CommandClass[] = [];
-        for (const [name, entry] of this.commands) {
+        for (const [_name, entry] of this.commands) {
             if (entry.category === category) {
                 result.push(entry.class);
             }

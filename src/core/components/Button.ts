@@ -1,9 +1,4 @@
-import {
-    ButtonBuilder,
-    ButtonStyle,
-    type ButtonInteraction,
-    type APIButtonComponent,
-} from 'discord.js';
+import { ButtonBuilder, ButtonStyle, type APIButtonComponent } from 'discord.js';
 import { ComponentRegistry, type ButtonCallback } from '@/core/registry/component.registry';
 import { nanoid } from 'nanoid';
 

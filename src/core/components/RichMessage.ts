@@ -277,7 +277,7 @@ export class RichMessage {
 
                 // Actualizar mensaje
                 await messageToEdit.edit(updatePayload);
-            } catch (error: any) {
+            } catch (_error: any) {
                 // Silenciosamente ignorar errores comunes de Discord
                 // (mensaje eliminado, sin permisos, etc.)
                 // Solo errores críticos serían re-lanzados si fuera necesario

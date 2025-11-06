@@ -23,11 +23,6 @@ export type SelectCallback = (
 export type ModalCallback = (interaction: ModalSubmitInteraction) => Promise<void> | void;
 
 /**
- * Tipo de componente registrado
- */
-type ComponentCallback = ButtonCallback | SelectCallback | ModalCallback;
-
-/**
  * Registry global para almacenar componentes interactivos y sus callbacks
  */
 export class ComponentRegistry {
