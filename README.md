@@ -725,6 +725,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE`](./.licences
 
 - [ts-node-dev](https://github.com/wclr/ts-node-dev) - Compilador TypeScript con hot reload para desarrollo
 - [tsconfig-paths](https://github.com/dividab/tsconfig-paths) - Soporte para path aliases en runtime
+- [tsc-alias](https://github.com/justkey007/tsc-alias) - Resuelve path aliases de TypeScript después de compilar
 - [reflect-metadata](https://github.com/rbuckton/reflect-metadata) - Metadata Reflection API para decoradores
 
 ### ⚙️ Utilidades
