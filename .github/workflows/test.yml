@@ -16,10 +16,12 @@ jobs:
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 2
 
             - name: Setup Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v3
+              uses: actions/setup-node@v4
               with:
                   node-version: ${{ matrix.node-version }}
                   cache: 'npm'
@@ -39,10 +41,11 @@ jobs:
             # Optional: Upload coverage to Codecov
             # Requires CODECOV_TOKEN secret to be configured in repository settings
             - name: Upload coverage to Codecov (optional)
-              uses: codecov/codecov-action@v3
+              uses: codecov/codecov-action@v5
               if: matrix.node-version == '20.x'
               continue-on-error: true
               with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
                   files: ./coverage/coverage-final.json
                   flags: unittests
                   name: codecov-umbrella
