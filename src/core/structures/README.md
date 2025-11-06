@@ -284,12 +284,26 @@ async onAfterExecute?(command: BaseCommand): Promise<void>;
 
 #### onBeforeRegisterCommand
 
-| Retorno            | Resultado                      | JSON Usado      |
-| ------------------ | ------------------------------ | --------------- |
-| `return objeto`    | ✅ Registra con modificaciones | JSON modificado |
-| `return false`     | ❌ No registra el comando      | -               |
-| `return null`      | ✅ Registra sin modificaciones | JSON original   |
-| `return undefined` | ✅ Registra sin modificaciones | JSON original   |
+| Retorno            | Resultado                      | JSON Usado      | Notas                                   |
+| ------------------ | ------------------------------ | --------------- | --------------------------------------- |
+| `return objeto`    | ✅ Registra con modificaciones | JSON modificado | **Debe retornar nuevo objeto (spread)** |
+| `return false`     | ❌ No registra el comando      | -               | -                                       |
+| `return null`      | ✅ Registra sin modificaciones | JSON original   | -                                       |
+| `return undefined` | ✅ Registra sin modificaciones | JSON original   | -                                       |
+
+**⚠️ IMPORTANTE - Inmutabilidad**: El plugin NO debe mutar `commandJson`. Siempre retornar un nuevo objeto:
+
+```typescript
+// ❌ MAL - Muta el original
+commandJson.default_member_permissions = '123';
+return commandJson;
+
+// ✅ BIEN - Retorna nuevo objeto
+return {
+    ...commandJson,
+    default_member_permissions: '123',
+};
+```
 
 #### onBeforeExecute
 

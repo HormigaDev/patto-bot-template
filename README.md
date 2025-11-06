@@ -317,9 +317,10 @@ export class BanCommand extends BaseCommand {
 **Características:**
 
 -   ✅ El comando **solo aparece** para usuarios con el permiso `BanMembers`
--   ✅ Validación **doble**: en Discord y en ejecución
+-   ✅ Validación **doble**: en Discord (registro) y en ejecución (runtime)
 -   ✅ **Sin boilerplate**: No necesitas validar manualmente
--   ✅ Funciona con el **PermissionsPlugin** incluido
+-   ✅ Funciona con el **PermissionsPlugin** incluido (inmutable, no modifica JSON original)
+-   ✅ **20 tests** completos (unit + integration) garantizan su correcto funcionamiento
 
 **Más información**: Ver [`/src/plugins/permissions.plugin.README.md`](src/plugins/permissions.plugin.README.md)
 

@@ -2,20 +2,27 @@ import { REQUIRE_PERMISSIONS_METADATA_KEY } from '@/core/decorators/permission.d
 import { BaseCommand } from '@/core/structures/BaseCommand';
 import { BasePlugin } from '@/core/structures/BasePlugin';
 
+/**
+ * @docs docs/plugins/permissions.plugin.README.md
+ */
 export class PermissionsPlugin extends BasePlugin {
     async onBeforeRegisterCommand(
         commandClass: new (...args: any[]) => BaseCommand,
         commandJson: any,
     ): Promise<any | false | null | undefined> {
-        const metadata = Reflect.getMetadata(REQUIRE_PERMISSIONS_METADATA_KEY, commandClass) as
-            | bigint[]
-            | undefined;
-        if (metadata) {
-            commandJson.default_member_permissions = metadata
-                .reduce((a, b) => a | b, BigInt(0))
-                .toString();
+        const requiredPermissions = Reflect.getMetadata(
+            REQUIRE_PERMISSIONS_METADATA_KEY,
+            commandClass,
+        ) as bigint[] | undefined;
+        if (requiredPermissions) {
+            const modifiedJson = {
+                ...commandJson,
+                default_member_permissions: requiredPermissions
+                    .reduce((a, b) => a | b, BigInt(0))
+                    .toString(),
+            };
 
-            return commandJson;
+            return modifiedJson;
         }
     }
 
@@ -26,10 +33,6 @@ export class PermissionsPlugin extends BasePlugin {
         ) as bigint[] | undefined;
         if (requiredPermissions) {
             const member = command.ctx.member;
-
-            if (member) {
-                console.log('Miembro encontrado');
-            }
 
             for (const permission of requiredPermissions) {
                 if (!member.permissions.has(permission)) {

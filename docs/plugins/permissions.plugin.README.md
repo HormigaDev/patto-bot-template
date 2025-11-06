@@ -168,15 +168,18 @@ async onBeforeRegisterCommand(
         // 3. Combinar permisos con OR bitwise
         const combinedPerms = metadata.reduce((a, b) => a | b, BigInt(0));
 
-        // 4. Agregar al JSON como string
-        commandJson.default_member_permissions = combinedPerms.toString();
+        // 4. Crear NUEVO objeto con permisos agregados (inmutabilidad)
+        const modifiedJson = {
+            ...commandJson,
+            default_member_permissions: combinedPerms.toString(),
+        };
 
-        // 5. Retornar JSON modificado
-        return commandJson;
+        // 5. Retornar JSON modificado (el original NO es mutado)
+        return modifiedJson;
     }
 
     // Sin metadata = no modificar
-    return null;
+    return undefined;
 }
 ```
 
@@ -307,6 +310,89 @@ export class CustomPermissionsPlugin extends PermissionsPlugin {
 -   **BasePlugin**: [`BasePlugin`](/src/core/structures/README.md#-baseplugin)
 -   **Discord Permissions**: [Discord.js Permissions Guide](https://discord.js.org/#/docs/discord.js/main/class/PermissionsBitField)
 
+## 🧪 Testing
+
+El plugin incluye tests completos que verifican su correcto funcionamiento:
+
+### Tests Unitarios
+
+Ubicación: `/tests/unit/plugins/permissions.plugin.test.ts`
+
+Cobertura:
+
+-   ✅ Registro sin permisos (no modifica JSON)
+-   ✅ Registro con un permiso
+-   ✅ Registro con múltiples permisos (combinación bitwise)
+-   ✅ Permiso de administrador
+-   ✅ Inmutabilidad del commandJson original
+-   ✅ Ejecución sin permisos requeridos
+-   ✅ Ejecución con permisos válidos
+-   ✅ Denegación cuando faltan permisos
+-   ✅ Validación de todos los permisos requeridos
+-   ✅ Early exit en primer permiso faltante
+
+### Tests de Integración
+
+Ubicación: `/tests/integration/plugins/permissions.plugin.test.ts`
+
+Escenarios:
+
+-   ✅ Flujo completo: registro → ejecución
+-   ✅ Cambio de permisos entre registro y ejecución
+-   ✅ Comandos con múltiples permisos (lockdown)
+-   ✅ Comandos sin decorador @RequirePermissions
+-   ✅ Comandos solo para administradores
+-   ✅ Suite de moderación completa (ban/kick/timeout)
+
+### Ejecutar Tests
+
+```bash
+# Todos los tests del plugin
+npm test -- permissions.plugin.test.ts
+
+# Solo tests unitarios
+npm test -- tests/unit/plugins/permissions.plugin.test.ts
+
+# Solo tests de integración
+npm test -- tests/integration/plugins/permissions.plugin.test.ts
+```
+
+### Ejemplo de Test
+
+```typescript
+it('should deny execution when user lacks required permission', async () => {
+    @Command({ name: 'ban', description: 'Ban user' })
+    @RequirePermissions(Permissions.BanMembers)
+    class BanCommand extends BaseCommand {
+        async run(): Promise<void> {}
+    }
+
+    const plugin = new PermissionsPlugin();
+
+    // Mock member sin permisos
+    const mockCommand = {
+        constructor: BanCommand,
+        ctx: {
+            member: {
+                permissions: {
+                    has: jest.fn().mockReturnValue(false),
+                },
+            },
+        },
+        getEmbed: jest.fn().mockReturnValue({
+            setTitle: jest.fn().mockReturnThis(),
+            setDescription: jest.fn().mockReturnThis(),
+        }),
+        reply: jest.fn(),
+    };
+
+    const canExecute = await plugin.onBeforeExecute(mockCommand as any);
+
+    expect(canExecute).toBe(false);
+    expect(mockCommand.reply).toHaveBeenCalled();
+});
+```
+
 ## 💡 Tips
 
 1. **Siempre registra el plugin globalmente** para que funcione en todos los comandos
@@ -314,6 +400,7 @@ export class CustomPermissionsPlugin extends PermissionsPlugin {
 3. **Combina con otros plugins** para validaciones adicionales (roles, cooldowns, etc.)
 4. **Verifica permisos del bot** antes de ejecutar acciones que los requieran
 5. **Testea comandos** con diferentes roles para verificar funcionamiento
+6. **El plugin NO muta el commandJson original** - retorna una copia modificada
 
 ---
 

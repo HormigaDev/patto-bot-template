@@ -250,7 +250,9 @@ export function getPrefix(): string {
 -   `onBeforeRegisterCommand(commandClass, commandJson)`: Antes de registrar en Discord API
     -   Recibe clase del comando (sin instanciar) y copia del JSON del comando
     -   Retorna: JSON modificado | `false` (cancelar) | `null`/`undefined` (original)
+    -   **⚠️ IMPORTANTE**: Debe retornar un NUEVO objeto (inmutabilidad) - El JSON original NO se modifica
     -   Útil para: modificar comandos, traducciones, filtros por ambiente, acceso a metadata
+    -   Ejemplo: `PermissionsPlugin` lee metadata de `@RequirePermissions` y agrega `default_member_permissions`
 -   `onAfterRegisterCommand(commandClass, registeredCommandJson)`: Después de registrar en Discord API
     -   Recibe clase del comando y JSON con ID de Discord
     -   Útil para: logging, analytics, guardar IDs en BD, mapear clases a IDs
@@ -260,11 +262,12 @@ export function getPrefix(): string {
 -   `onBeforeExecute(command)`: Antes del comando
     -   Retorna `true` para continuar, `false` para cancelar silenciosamente
     -   Útil para: cooldowns, permisos, validaciones, rate limiting
+    -   Ejemplo: `PermissionsPlugin` valida que el miembro tenga los permisos requeridos
 -   `onAfterExecute(command)`: Después del comando
     -   Solo se ejecuta si no hubo errores
     -   Útil para: logging, analytics, recompensas
 
-**Nuevo**: Sistema de plugins con 4 eventos cubriendo registro y ejecución
+**Nuevo**: Sistema de plugins con 4 eventos cubriendo registro y ejecución. **PermissionsPlugin** incluido con 20 tests (unit + integration).
 
 ### **9. BaseCommand (`core/structures/BaseCommand.ts`)**
 

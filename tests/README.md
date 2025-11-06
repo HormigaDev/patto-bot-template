@@ -8,18 +8,47 @@ Sistema de testing completo para el bot de Discord. Incluye tests unitarios, de 
 
 ```
 tests/
-├── unit/               # Tests unitarios (funciones individuales)
-│   ├── utils/         # Tests de utilidades
-│   ├── error/         # Tests de errores personalizados
-│   └── core/          # Tests de componentes core
-├── integration/        # Tests de integración (múltiples componentes)
-│   └── core/          # Tests de integración del core
-├── e2e/               # Tests end-to-end (flujo completo del bot)
-├── mocks/             # Mocks reutilizables (Discord.js, etc)
-├── fixtures/          # Datos de prueba predefinidos
-├── setup.ts           # Configuración global de tests
-└── README.md          # Este archivo
+├── unit/                  # Tests unitarios (funciones individuales)
+│   ├── utils/            # Tests de utilidades
+│   ├── error/            # Tests de errores personalizados
+│   ├── core/             # Tests de componentes core
+│   └── plugins/          # Tests de plugins (ej: permissions.plugin.test.ts)
+├── integration/           # Tests de integración (múltiples componentes)
+│   ├── core/             # Tests de integración del core
+│   └── plugins/          # Tests de flujo completo de plugins
+├── e2e/                  # Tests end-to-end (flujo completo del bot)
+├── mocks/                # Mocks reutilizables (Discord.js, etc)
+├── fixtures/             # Datos de prueba predefinidos
+├── setup.ts              # Configuración global de tests
+└── README.md             # Este archivo
 ```
+
+## 🎯 Tests Incluidos
+
+El template incluye tests completos para componentes críticos:
+
+### ✅ PermissionsPlugin (20 tests)
+
+-   **Ubicación**:
+
+    -   `tests/unit/plugins/permissions.plugin.test.ts` (13 tests)
+    -   `tests/integration/plugins/permissions.plugin.test.ts` (7 tests)
+
+-   **Cobertura**:
+
+    -   ✅ Fase de registro (onBeforeRegisterCommand)
+    -   ✅ Fase de ejecución (onBeforeExecute)
+    -   ✅ Inmutabilidad del commandJson
+    -   ✅ Combinación de permisos múltiples (bitwise OR)
+    -   ✅ Validación con/sin permisos
+    -   ✅ Integración con decorador @RequirePermissions
+    -   ✅ Flujos completos de registro → ejecución
+    -   ✅ Escenarios del mundo real (moderación)
+
+-   **Ejecutar**:
+    ```bash
+    npm test -- permissions.plugin.test.ts
+    ```
 
 ## 🚀 Comandos Disponibles
 

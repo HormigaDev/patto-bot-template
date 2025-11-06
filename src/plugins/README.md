@@ -181,12 +181,13 @@ export class PermissionsPlugin extends BasePlugin {
             | undefined;
 
         if (metadata) {
-            // Combinar permisos con OR bitwise
-            commandJson.default_member_permissions = metadata
-                .reduce((a, b) => a | b, BigInt(0))
-                .toString();
+            // ⚠️ IMPORTANTE: Retornar un NUEVO objeto (inmutabilidad)
+            const modifiedJson = {
+                ...commandJson,
+                default_member_permissions: metadata.reduce((a, b) => a | b, BigInt(0)).toString(),
+            };
 
-            return commandJson;
+            return modifiedJson; // JSON original NO modificado
         }
     }
 
@@ -232,6 +233,12 @@ export class BanCommand extends BaseCommand {
     }
 }
 ```
+
+**Características clave:**
+
+-   ✅ Inmutable: NO modifica el `commandJson` original
+-   ✅ Dual validation: En registro (Discord API) y ejecución (runtime)
+-   ✅ 20 tests completos garantizando correcto funcionamiento
 
 **Documentación completa**: Ver [`permissions.plugin.README.md`](./permissions.plugin.README.md)
 
