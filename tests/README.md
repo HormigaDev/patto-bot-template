@@ -29,23 +29,21 @@ El template incluye tests completos para componentes críticos:
 
 ### ✅ PermissionsPlugin (20 tests)
 
--   **Ubicación**:
+- **Ubicación**:
+    - `tests/unit/plugins/permissions.plugin.test.ts` (13 tests)
+    - `tests/integration/plugins/permissions.plugin.test.ts` (7 tests)
 
-    -   `tests/unit/plugins/permissions.plugin.test.ts` (13 tests)
-    -   `tests/integration/plugins/permissions.plugin.test.ts` (7 tests)
+- **Cobertura**:
+    - ✅ Fase de registro (onBeforeRegisterCommand)
+    - ✅ Fase de ejecución (onBeforeExecute)
+    - ✅ Inmutabilidad del commandJson
+    - ✅ Combinación de permisos múltiples (bitwise OR)
+    - ✅ Validación con/sin permisos
+    - ✅ Integración con decorador @RequirePermissions
+    - ✅ Flujos completos de registro → ejecución
+    - ✅ Escenarios del mundo real (moderación)
 
--   **Cobertura**:
-
-    -   ✅ Fase de registro (onBeforeRegisterCommand)
-    -   ✅ Fase de ejecución (onBeforeExecute)
-    -   ✅ Inmutabilidad del commandJson
-    -   ✅ Combinación de permisos múltiples (bitwise OR)
-    -   ✅ Validación con/sin permisos
-    -   ✅ Integración con decorador @RequirePermissions
-    -   ✅ Flujos completos de registro → ejecución
-    -   ✅ Escenarios del mundo real (moderación)
-
--   **Ejecutar**:
+- **Ejecutar**:
     ```bash
     npm test -- permissions.plugin.test.ts
     ```
@@ -108,24 +106,24 @@ npm test tests/unit/utils/
 
 **Características:**
 
--   ✅ Rápidos (< 100ms por test)
--   ✅ Sin dependencias externas
--   ✅ Sin llamadas a APIs o base de datos
--   ✅ Usan mocks para dependencias
+- ✅ Rápidos (< 100ms por test)
+- ✅ Sin dependencias externas
+- ✅ Sin llamadas a APIs o base de datos
+- ✅ Usan mocks para dependencias
 
 **Ejemplos:**
 
--   Utilidades (`Times`, `CommandCategories`)
--   Errores personalizados (`ValidationError`, `ReplyError`)
--   Funciones puras y helpers
+- Utilidades (`Times`, `CommandCategories`)
+- Errores personalizados (`ValidationError`, `ReplyError`)
+- Funciones puras y helpers
 
 **Estructura de ejemplo:**
 
 ```typescript
 // tests/unit/utils/Times.test.ts
-describe('Times Utility', () => {
-    describe('seconds', () => {
-        it('should convert seconds to milliseconds', () => {
+describe('Utilidad Times', () => {
+    describe('segundos', () => {
+        it('debería convertir segundos a milisegundos', () => {
             expect(Times.seconds(5)).toBe(5000);
         });
     });
@@ -138,23 +136,23 @@ describe('Times Utility', () => {
 
 **Características:**
 
--   ⏱️ Moderadamente rápidos (< 1s por test)
--   🔗 Múltiples componentes trabajando juntos
--   🎭 Usan mocks solo para servicios externos
--   ✅ Verifican flujo de datos entre componentes
+- ⏱️ Moderadamente rápidos (< 1s por test)
+- 🔗 Múltiples componentes trabajando juntos
+- 🎭 Usan mocks solo para servicios externos
+- ✅ Verifican flujo de datos entre componentes
 
 **Ejemplos:**
 
--   `CommandContext` con diferentes fuentes
--   `CommandHandler` con plugins
--   `RichMessage` con componentes
+- `CommandContext` con diferentes fuentes
+- `CommandHandler` con plugins
+- `RichMessage` con componentes
 
 **Estructura de ejemplo:**
 
 ```typescript
 // tests/integration/core/CommandContext.test.ts
-describe('CommandContext Integration', () => {
-    it('should handle both message and interaction sources', () => {
+describe('Integración CommandContext', () => {
+    it('debería manejar fuentes de message e interaction', () => {
         const message = createMockMessage();
         const interaction = createMockInteraction();
 
@@ -172,23 +170,23 @@ describe('CommandContext Integration', () => {
 
 **Características:**
 
--   🐌 Lentos (varios segundos por test)
--   🌐 Bot real conectado a Discord
--   📊 Verifican comportamiento completo
--   ⚠️ Requieren configuración especial
+- 🐌 Lentos (varios segundos por test)
+- 🌐 Bot real conectado a Discord
+- 📊 Verifican comportamiento completo
+- ⚠️ Requieren configuración especial
 
 **Ejemplos:**
 
--   Bot inicia y se conecta a Discord
--   Usuario envía comando y recibe respuesta
--   Flujo completo de plugins + comando + respuesta
+- Bot inicia y se conecta a Discord
+- Usuario envía comando y recibe respuesta
+- Flujo completo de plugins + comando + respuesta
 
 **Estructura de ejemplo:**
 
 ```typescript
 // tests/e2e/bot.e2e.test.ts
-describe('E2E: Command Execution', () => {
-    it.skip('should execute command end-to-end', async () => {
+describe('E2E: Ejecución de comandos', () => {
+    it.skip('debería ejecutar comando end-to-end', async () => {
         // 1. Usuario envía !ping
         // 2. Bot procesa comando
         // 3. Plugins se ejecutan
@@ -199,9 +197,9 @@ describe('E2E: Command Execution', () => {
 
 **⚠️ Nota:** Los tests e2e están como `.skip` por defecto porque requieren:
 
--   Token de Discord de testing
--   Servidor de Discord de pruebas
--   Configuración adicional
+- Token de Discord de testing
+- Servidor de Discord de pruebas
+- Configuración adicional
 
 ## 🎭 Mocks
 
@@ -234,10 +232,10 @@ const interaction = createMockInteraction('test', user);
 
 **Características:**
 
--   ✅ Totalmente tipados con TypeScript
--   ✅ Métodos como `jest.fn()` para espiar llamadas
--   ✅ IDs y nombres personalizables
--   ✅ Relaciones correctas (Guild → Channel → Member)
+- ✅ Totalmente tipados con TypeScript
+- ✅ Métodos como `jest.fn()` para espiar llamadas
+- ✅ IDs y nombres personalizables
+- ✅ Relaciones correctas (Guild → Channel → Member)
 
 ### Fixtures (`/tests/fixtures/`)
 
@@ -265,11 +263,11 @@ const ctx = new CommandContext(createMockMessage(textCommands.help, standardUser
 import { Times } from '@/utils/Times';
 
 // 2. Describe block (suite)
-describe('Times Utility', () => {
+describe('Utilidad Times', () => {
     // 3. Nested describe (opcional, para organizar)
-    describe('seconds', () => {
+    describe('segundos', () => {
         // 4. Individual test
-        it('should convert seconds to milliseconds', () => {
+        it('debería convertir segundos a milisegundos', () => {
             // 5. Arrange (preparar)
             const input = 5;
 
@@ -289,17 +287,17 @@ describe('Times Utility', () => {
 
 ```typescript
 // ✅ Nombres descriptivos
-it('should throw ValidationError when age is negative', () => {
+it('debería lanzar ValidationError cuando la edad es negativa', () => {
     expect(() => validateAge(-1)).toThrow(ValidationError);
 });
 
 // ✅ Un concepto por test
-it('should convert minutes to milliseconds', () => {
+it('debería convertir minutos a milisegundos', () => {
     expect(Times.minutes(1)).toBe(60000);
 });
 
 // ✅ Arrange-Act-Assert pattern
-it('should calculate total correctly', () => {
+it('debería calcular el total correctamente', () => {
     // Arrange
     const a = 5;
     const b = 10;
@@ -312,7 +310,7 @@ it('should calculate total correctly', () => {
 });
 
 // ✅ Usar mocks para dependencias externas
-it('should send message to channel', async () => {
+it('debería enviar mensaje al canal', async () => {
     const message = createMockMessage();
     await sendToChannel(message.channel, 'test');
 
@@ -329,14 +327,14 @@ it('test 1', () => {
 });
 
 // ❌ Múltiples conceptos en un test
-it('should work correctly', () => {
+it('debería funcionar correctamente', () => {
     expect(Times.seconds(1)).toBe(1000);
     expect(Times.minutes(1)).toBe(60000);
     expect(Times.hours(1)).toBe(3600000);
 });
 
 // ❌ Sin Arrange-Act-Assert
-it('converts time', () => {
+it('convierte tiempo', () => {
     expect(Times.seconds(5)).toBe(5000);
     const minutes = Times.minutes(2);
     expect(minutes).toBe(120000);
@@ -345,11 +343,11 @@ it('converts time', () => {
 // ❌ Tests que dependen de otros tests
 let sharedState: any;
 
-it('sets state', () => {
+it('establece estado', () => {
     sharedState = { value: 10 };
 });
 
-it('uses state from previous test', () => {
+it('usa estado del test anterior', () => {
     expect(sharedState.value).toBe(10); // ❌ Depende del orden
 });
 ```
@@ -445,8 +443,8 @@ npm run test:coverage
 
 El reporte se genera en `/coverage/`:
 
--   `coverage/lcov-report/index.html` - Reporte HTML interactivo
--   `coverage/coverage-summary.json` - Resumen en JSON
+- `coverage/lcov-report/index.html` - Reporte HTML interactivo
+- `coverage/coverage-summary.json` - Resumen en JSON
 
 ### Interpretar Resultados
 
@@ -464,16 +462,16 @@ All files           |   85.71 |    66.67 |      80 |   85.71 |
 
 **Métricas:**
 
--   **% Stmts** (Statements): Porcentaje de líneas de código ejecutadas
--   **% Branch**: Porcentaje de ramas de código (`if/else`) probadas
--   **% Funcs**: Porcentaje de funciones ejecutadas
--   **% Lines**: Porcentaje de líneas de código ejecutadas
+- **% Stmts** (Statements): Porcentaje de líneas de código ejecutadas
+- **% Branch**: Porcentaje de ramas de código (`if/else`) probadas
+- **% Funcs**: Porcentaje de funciones ejecutadas
+- **% Lines**: Porcentaje de líneas de código ejecutadas
 
 **Umbrales recomendados:**
 
--   ✅ > 80% - Excelente cobertura
--   ⚠️ 60-80% - Cobertura aceptable
--   ❌ < 60% - Cobertura insuficiente
+- ✅ > 80% - Excelente cobertura
+- ⚠️ 60-80% - Cobertura aceptable
+- ❌ < 60% - Cobertura insuficiente
 
 ## 🔧 Configuración
 
@@ -555,7 +553,7 @@ npm test -- --silent=false
 import { Times } from '@/utils/Times';
 
 describe('Times', () => {
-    it('should convert minutes to milliseconds', () => {
+    it('debería convertir minutos a milisegundos', () => {
         expect(Times.minutes(5)).toBe(300000);
     });
 });
@@ -567,7 +565,7 @@ describe('Times', () => {
 import { createMockMessage } from '@tests/mocks/discord.mock';
 
 describe('CommandHandler', () => {
-    it('should reply to message', async () => {
+    it('debería responder al mensaje', async () => {
         const message = createMockMessage('!ping');
 
         await handleCommand(message);
@@ -584,13 +582,13 @@ describe('CommandHandler', () => {
 ### Test Async/Await
 
 ```typescript
-describe('AsyncFunction', () => {
-    it('should resolve with value', async () => {
+describe('FunciónAsync', () => {
+    it('debería resolver con valor', async () => {
         const result = await fetchData();
         expect(result).toBe('data');
     });
 
-    it('should reject with error', async () => {
+    it('debería rechazar con error', async () => {
         await expect(fetchInvalidData()).rejects.toThrow('Not found');
     });
 });
@@ -601,8 +599,8 @@ describe('AsyncFunction', () => {
 ```typescript
 import { standardUser, textCommands } from '@tests/fixtures/common.fixtures';
 
-describe('Command Parser', () => {
-    it('should parse help command', () => {
+describe('Analizador de Comandos', () => {
+    it('debería analizar comando de ayuda', () => {
         const parsed = parseCommand(textCommands.help, standardUser);
 
         expect(parsed.command).toBe('help');
@@ -662,9 +660,9 @@ testTimeout: 30000;
 
 ## 📚 Recursos
 
--   [Jest Documentation](https://jestjs.io/docs/getting-started)
--   [Testing Best Practices](https://github.com/goldbergyoni/javascript-testing-best-practices)
--   [Discord.js Guide - Testing](https://discordjs.guide/additional-info/testing.html)
+- [Jest Documentation](https://jestjs.io/docs/getting-started)
+- [Testing Best Practices](https://github.com/goldbergyoni/javascript-testing-best-practices)
+- [Discord.js Guide - Testing](https://discordjs.guide/additional-info/testing.html)
 
 ## 🎯 Próximos Pasos
 

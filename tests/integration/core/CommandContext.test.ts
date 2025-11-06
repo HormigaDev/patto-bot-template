@@ -5,9 +5,9 @@
 import { CommandContext } from '@/core/structures/CommandContext';
 import { createMockMessage, createMockInteraction } from '@tests/mocks/discord.mock';
 
-describe('CommandContext Integration', () => {
-    describe('with Message source', () => {
-        it('should create context from message', () => {
+describe('Integración CommandContext', () => {
+    describe('con fuente Message', () => {
+        it('debería crear contexto desde message', () => {
             const message = createMockMessage();
             const ctx = new CommandContext(message);
 
@@ -17,37 +17,37 @@ describe('CommandContext Integration', () => {
             expect(ctx.channel).toBe(message.channel);
         });
 
-        it('should reply to message', async () => {
+        it('debería responder al message', async () => {
             const message = createMockMessage();
             const ctx = new CommandContext(message);
 
-            await ctx.reply('Test reply');
+            await ctx.reply('Respuesta de prueba');
 
             expect(message.reply).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    content: 'Test reply',
+                    content: 'Respuesta de prueba',
                 }),
             );
         });
 
-        it('should send message to channel', async () => {
+        it('debería enviar message al canal', async () => {
             const message = createMockMessage();
             const ctx = new CommandContext(message);
 
-            await ctx.send('Test message');
+            await ctx.send('Mensaje de prueba');
 
             // El channel es TextChannel mock, hacemos cast para acceder al método
             const textChannel = message.channel as any;
             expect(textChannel.send).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    content: 'Test message',
+                    content: 'Mensaje de prueba',
                 }),
             );
         });
     });
 
-    describe('with Interaction source', () => {
-        it('should create context from interaction', () => {
+    describe('con fuente Interaction', () => {
+        it('debería crear contexto desde interaction', () => {
             const interaction = createMockInteraction();
             const ctx = new CommandContext(interaction);
 
@@ -57,36 +57,36 @@ describe('CommandContext Integration', () => {
             expect(ctx.channel).toBe(interaction.channel);
         });
 
-        it('should reply to interaction', async () => {
+        it('debería responder a la interaction', async () => {
             const interaction = createMockInteraction();
             const ctx = new CommandContext(interaction);
 
-            await ctx.reply('Test reply');
+            await ctx.reply('Respuesta de prueba');
 
             expect(interaction.reply).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    content: 'Test reply',
+                    content: 'Respuesta de prueba',
                 }),
             );
         });
 
-        it('should send message for interaction', async () => {
+        it('debería enviar mensaje para la interaction', async () => {
             const interaction = createMockInteraction();
             const ctx = new CommandContext(interaction);
 
-            await ctx.send('Test message');
+            await ctx.send('Mensaje de prueba');
 
             // send() en interaction llama a reply() internamente
             expect(interaction.reply).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    content: 'Test message',
+                    content: 'Mensaje de prueba',
                 }),
             );
         });
     });
 
-    describe('cross-source compatibility', () => {
-        it('should have same interface for both message and interaction', () => {
+    describe('compatibilidad entre fuentes', () => {
+        it('debería tener la misma interfaz para message e interaction', () => {
             const message = createMockMessage();
             const interaction = createMockInteraction();
 

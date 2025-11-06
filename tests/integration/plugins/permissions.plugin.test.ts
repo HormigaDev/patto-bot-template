@@ -12,15 +12,15 @@ import { CommandContext } from '@/core/structures/CommandContext';
 import { createMockInteraction, createMockMember } from '@tests/mocks/discord.mock';
 import 'reflect-metadata';
 
-describe('PermissionsPlugin Integration', () => {
+describe('Integración PermissionsPlugin', () => {
     let plugin: PermissionsPlugin;
 
     beforeEach(() => {
         plugin = new PermissionsPlugin();
     });
 
-    describe('Complete flow: register + execute', () => {
-        it('should register command with permissions and validate on execution', async () => {
+    describe('Flujo completo: registro + ejecución', () => {
+        it('debería registrar comando con permisos y validar en la ejecución', async () => {
             // 1. Definir comando con decoradores
             @Command({
                 name: 'ban',
@@ -67,7 +67,7 @@ describe('PermissionsPlugin Integration', () => {
             expect(canExecute).toBe(true);
         });
 
-        it('should deny execution even if registered when permissions change', async () => {
+        it('debería denegar la ejecución incluso si está registrado cuando los permisos cambian', async () => {
             @Command({
                 name: 'kick',
                 description: 'Kick a user',
@@ -119,8 +119,8 @@ describe('PermissionsPlugin Integration', () => {
         });
     });
 
-    describe('Multiple permissions scenario', () => {
-        it('should handle lockdown command with multiple permissions', async () => {
+    describe('Escenario de múltiples permisos', () => {
+        it('debería manejar comando de bloqueo con múltiples permisos', async () => {
             @Command({
                 name: 'lockdown',
                 description: 'Lock all channels',
@@ -175,8 +175,8 @@ describe('PermissionsPlugin Integration', () => {
         });
     });
 
-    describe('Command without permissions', () => {
-        it('should allow commands without @RequirePermissions to execute freely', async () => {
+    describe('Comando sin permisos', () => {
+        it('debería permitir que comandos sin @RequirePermissions se ejecuten libremente', async () => {
             @Command({
                 name: 'ping',
                 description: 'Check bot latency',
@@ -221,8 +221,8 @@ describe('PermissionsPlugin Integration', () => {
         });
     });
 
-    describe('Administrator permission', () => {
-        it('should handle administrator-only commands', async () => {
+    describe('Permiso de administrador', () => {
+        it('debería manejar comandos solo para administradores', async () => {
             @Command({
                 name: 'config',
                 description: 'Configure bot settings',
@@ -269,7 +269,7 @@ describe('PermissionsPlugin Integration', () => {
             expect(canExecute).toBe(true);
         });
 
-        it('should deny non-administrators from admin commands', async () => {
+        it('debería denegar a no-administradores los comandos de admin', async () => {
             @Command({
                 name: 'dangerous',
                 description: 'Dangerous command',
@@ -311,8 +311,8 @@ describe('PermissionsPlugin Integration', () => {
         });
     });
 
-    describe('Real-world scenarios', () => {
-        it('should handle moderation command suite', async () => {
+    describe('Escenarios del mundo real', () => {
+        it('debería manejar una suite de comandos de moderación', async () => {
             @Command({ name: 'ban', description: 'Ban user' })
             @RequirePermissions(Permissions.BanMembers)
             class BanCommand extends BaseCommand {

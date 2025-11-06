@@ -16,7 +16,7 @@ describe('PermissionsPlugin', () => {
     });
 
     describe('onBeforeRegisterCommand', () => {
-        it('should not modify command JSON when no permissions are defined', async () => {
+        it('no debería modificar el JSON del comando cuando no hay permisos definidos', async () => {
             class TestCommand extends BaseCommand {
                 async run() {}
             }
@@ -31,7 +31,7 @@ describe('PermissionsPlugin', () => {
             expect(result).toBeUndefined();
         });
 
-        it('should add default_member_permissions for single permission', async () => {
+        it('debería agregar default_member_permissions para un solo permiso', async () => {
             class TestCommand extends BaseCommand {
                 async run() {}
             }
@@ -56,7 +56,7 @@ describe('PermissionsPlugin', () => {
             expect(result.description).toBe('Ban a user');
         });
 
-        it('should combine multiple permissions with bitwise OR', async () => {
+        it('debería combinar múltiples permisos con OR bit a bit', async () => {
             class TestCommand extends BaseCommand {
                 async run() {}
             }
@@ -77,7 +77,7 @@ describe('PermissionsPlugin', () => {
             expect(result.default_member_permissions).toBe(expected);
         });
 
-        it('should handle Administrator permission correctly', async () => {
+        it('debería manejar el permiso Administrator correctamente', async () => {
             class TestCommand extends BaseCommand {
                 async run() {}
             }
@@ -99,7 +99,7 @@ describe('PermissionsPlugin', () => {
             expect(result.default_member_permissions).toBe(Permissions.Administrator.toString());
         });
 
-        it('should not mutate original commandJson', async () => {
+        it('no debería mutar el commandJson original', async () => {
             class TestCommand extends BaseCommand {
                 async run() {}
             }
@@ -125,7 +125,7 @@ describe('PermissionsPlugin', () => {
     });
 
     describe('onBeforeExecute', () => {
-        it('should allow execution when no permissions are required', async () => {
+        it('debería permitir la ejecución cuando no se requieren permisos', async () => {
             class TestCommand extends BaseCommand {
                 async run() {}
             }
@@ -148,7 +148,7 @@ describe('PermissionsPlugin', () => {
             expect(result).toBe(true);
         });
 
-        it('should allow execution when user has required permission', async () => {
+        it('debería permitir la ejecución cuando el usuario tiene el permiso requerido', async () => {
             class TestCommand extends BaseCommand {
                 async run() {}
             }
@@ -180,7 +180,7 @@ describe('PermissionsPlugin', () => {
             );
         });
 
-        it('should deny execution when user lacks required permission', async () => {
+        it('debería denegar la ejecución cuando el usuario no tiene el permiso requerido', async () => {
             class TestCommand extends BaseCommand {
                 async run() {}
             }
@@ -220,7 +220,7 @@ describe('PermissionsPlugin', () => {
             expect(mockCommand.reply).toHaveBeenCalledWith({ embeds: [mockEmbed] });
         });
 
-        it('should deny execution if user lacks ANY of multiple required permissions', async () => {
+        it('debería denegar la ejecución si al usuario le falta CUALQUIERA de los múltiples permisos requeridos', async () => {
             class TestCommand extends BaseCommand {
                 async run() {}
             }
@@ -256,7 +256,7 @@ describe('PermissionsPlugin', () => {
             expect(mockCommand.reply).toHaveBeenCalled();
         });
 
-        it('should allow execution when user has ALL required permissions', async () => {
+        it('debería permitir la ejecución cuando el usuario tiene TODOS los permisos requeridos', async () => {
             class TestCommand extends BaseCommand {
                 async run() {}
             }
@@ -288,7 +288,7 @@ describe('PermissionsPlugin', () => {
             expect(mockCommand.reply).not.toHaveBeenCalled();
         });
 
-        it('should stop checking permissions after first missing permission', async () => {
+        it('debería dejar de verificar permisos después del primer permiso faltante', async () => {
             class TestCommand extends BaseCommand {
                 async run() {}
             }
@@ -330,8 +330,8 @@ describe('PermissionsPlugin', () => {
         });
     });
 
-    describe('integration with @RequirePermissions decorator', () => {
-        it('should read metadata set by decorator', async () => {
+    describe('integración con el decorador @RequirePermissions', () => {
+        it('debería leer los metadatos establecidos por el decorador', async () => {
             class DecoratedCommand extends BaseCommand {
                 async run() {}
             }
@@ -351,7 +351,7 @@ describe('PermissionsPlugin', () => {
             expect(result.default_member_permissions).toBe(Permissions.Administrator.toString());
         });
 
-        it('should handle commands without decorator', async () => {
+        it('debería manejar comandos sin decorador', async () => {
             class NormalCommand extends BaseCommand {
                 async run() {}
             }

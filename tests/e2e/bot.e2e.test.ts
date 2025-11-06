@@ -5,8 +5,8 @@
  * Este es un placeholder para mostrar la estructura.
  */
 
-describe('E2E: Bot Lifecycle', () => {
-    it.skip('should start bot successfully', async () => {
+describe('E2E: Ciclo de vida del Bot', () => {
+    it.skip('debería iniciar el bot exitosamente', async () => {
         // Este test requiere credenciales reales de Discord
         // y debe ejecutarse en un entorno de testing aislado
 
@@ -19,7 +19,7 @@ describe('E2E: Bot Lifecycle', () => {
         expect(true).toBe(true);
     });
 
-    it.skip('should respond to slash commands', async () => {
+    it.skip('debería responder a slash commands', async () => {
         // Ejemplo de flujo:
         // 1. Bot conectado
         // 2. Simular slash command real desde Discord
@@ -29,7 +29,7 @@ describe('E2E: Bot Lifecycle', () => {
         expect(true).toBe(true);
     });
 
-    it.skip('should handle text commands', async () => {
+    it.skip('debería manejar comandos de texto', async () => {
         // Ejemplo de flujo:
         // 1. Bot conectado
         // 2. Enviar mensaje de texto con comando
@@ -40,8 +40,8 @@ describe('E2E: Bot Lifecycle', () => {
     });
 });
 
-describe('E2E: Command Execution Flow', () => {
-    it.skip('should execute full command lifecycle', async () => {
+describe('E2E: Flujo de ejecución de comandos', () => {
+    it.skip('debería ejecutar el ciclo de vida completo de un comando', async () => {
         // Ejemplo de flujo completo:
         // 1. Usuario envía comando
         // 2. CommandHandler recibe y parsea
@@ -53,7 +53,7 @@ describe('E2E: Command Execution Flow', () => {
         expect(true).toBe(true);
     });
 
-    it.skip('should handle errors gracefully', async () => {
+    it.skip('debería manejar errores de forma elegante', async () => {
         // Ejemplo de manejo de errores:
         // 1. Comando que lanza ValidationError
         // 2. Verificar que se muestre embed de error apropiado

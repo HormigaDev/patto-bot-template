@@ -1,10 +1,10 @@
 /**
- * Test unitario para Env utility
+ * Test unitario para utilidad Env
  */
 
 import { Env } from '@/utils/Env';
 
-describe('Env Utility', () => {
+describe('Utilidad Env', () => {
     // Guardar env original
     const originalEnv = process.env;
 
@@ -39,7 +39,7 @@ describe('Env Utility', () => {
     });
 
     describe('load() - validación de variables obligatorias', () => {
-        it('should load config successfully with all required vars', () => {
+        it('debería cargar la configuración exitosamente con todas las variables requeridas', () => {
             process.env.BOT_TOKEN = 'test-token-123';
             process.env.CLIENT_ID = '123456789';
 
@@ -52,7 +52,7 @@ describe('Env Utility', () => {
             expect(config.INTENTS).toBeUndefined(); // default
         });
 
-        it('should throw error if BOT_TOKEN is missing', () => {
+        it('debería lanzar error si BOT_TOKEN no está presente', () => {
             process.env.CLIENT_ID = '123456789';
             delete process.env.BOT_TOKEN;
 
@@ -67,7 +67,7 @@ describe('Env Utility', () => {
             exitSpy.mockRestore();
         });
 
-        it('should throw error if CLIENT_ID is missing', () => {
+        it('debería lanzar error si CLIENT_ID no está presente', () => {
             process.env.BOT_TOKEN = 'test-token';
             delete process.env.CLIENT_ID;
 
@@ -81,7 +81,7 @@ describe('Env Utility', () => {
             exitSpy.mockRestore();
         });
 
-        it('should throw error if BOT_TOKEN is empty string', () => {
+        it('debería lanzar error si BOT_TOKEN es una cadena vacía', () => {
             process.env.BOT_TOKEN = '   ';
             process.env.CLIENT_ID = '123456789';
 
@@ -102,43 +102,43 @@ describe('Env Utility', () => {
             process.env.CLIENT_ID = '123456789';
         });
 
-        it('should parse USE_MESSAGE_CONTENT as true when set to "true"', () => {
+        it('debería parsear USE_MESSAGE_CONTENT como true cuando se establece en "true"', () => {
             process.env.USE_MESSAGE_CONTENT = 'true';
             const config = Env.load();
             expect(config.USE_MESSAGE_CONTENT).toBe(true);
         });
 
-        it('should parse USE_MESSAGE_CONTENT as true (case insensitive)', () => {
+        it('debería parsear USE_MESSAGE_CONTENT como true (sin distinguir mayúsculas)', () => {
             process.env.USE_MESSAGE_CONTENT = 'TRUE';
             const config = Env.load();
             expect(config.USE_MESSAGE_CONTENT).toBe(true);
         });
 
-        it('should parse USE_MESSAGE_CONTENT as false for any other value', () => {
+        it('debería parsear USE_MESSAGE_CONTENT como false para cualquier otro valor', () => {
             process.env.USE_MESSAGE_CONTENT = 'yes';
             const config = Env.load();
             expect(config.USE_MESSAGE_CONTENT).toBe(false);
         });
 
-        it('should parse USE_MESSAGE_CONTENT as false when empty', () => {
+        it('debería parsear USE_MESSAGE_CONTENT como false cuando está vacío', () => {
             delete process.env.USE_MESSAGE_CONTENT;
             const config = Env.load();
             expect(config.USE_MESSAGE_CONTENT).toBe(false);
         });
 
-        it('should use custom COMMAND_PREFIX', () => {
+        it('debería usar COMMAND_PREFIX personalizado', () => {
             process.env.COMMAND_PREFIX = '>';
             const config = Env.load();
             expect(config.COMMAND_PREFIX).toBe('>');
         });
 
-        it('should use default COMMAND_PREFIX when not set', () => {
+        it('debería usar COMMAND_PREFIX por defecto cuando no está establecido', () => {
             delete process.env.COMMAND_PREFIX;
             const config = Env.load();
             expect(config.COMMAND_PREFIX).toBe('!');
         });
 
-        it('should throw error if COMMAND_PREFIX is empty', () => {
+        it('debería lanzar error si COMMAND_PREFIX está vacío', () => {
             process.env.COMMAND_PREFIX = '   ';
 
             const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
@@ -151,19 +151,19 @@ describe('Env Utility', () => {
             exitSpy.mockRestore();
         });
 
-        it('should parse INTENTS as number', () => {
+        it('debería parsear INTENTS como número', () => {
             process.env.INTENTS = '3276799';
             const config = Env.load();
             expect(config.INTENTS).toBe(3276799);
         });
 
-        it('should return undefined for invalid INTENTS', () => {
+        it('debería retornar undefined para INTENTS inválido', () => {
             process.env.INTENTS = 'invalid';
             const config = Env.load();
             expect(config.INTENTS).toBeUndefined();
         });
 
-        it('should trim whitespace from all values', () => {
+        it('debería eliminar espacios en blanco de todos los valores', () => {
             process.env.BOT_TOKEN = '  test-token  ';
             process.env.CLIENT_ID = '  123456789  ';
             process.env.COMMAND_PREFIX = '  >  ';
@@ -177,7 +177,7 @@ describe('Env Utility', () => {
     });
 
     describe('get() - obtener configuración', () => {
-        it('should return loaded config', () => {
+        it('debería retornar la configuración cargada', () => {
             process.env.BOT_TOKEN = 'test-token';
             process.env.CLIENT_ID = '123456789';
 
@@ -188,13 +188,13 @@ describe('Env Utility', () => {
             expect(config.CLIENT_ID).toBe('123456789');
         });
 
-        it('should throw error if config not loaded', () => {
+        it('debería lanzar error si la configuración no está cargada', () => {
             expect(() => Env.get()).toThrow(
                 '❌ Configuración no cargada. Llama a Env.load() antes de usar Env.get()',
             );
         });
 
-        it('should return same instance on multiple get() calls', () => {
+        it('debería retornar la misma instancia en múltiples llamadas a get()', () => {
             process.env.BOT_TOKEN = 'test-token';
             process.env.CLIENT_ID = '123456789';
 
@@ -206,8 +206,8 @@ describe('Env Utility', () => {
         });
     });
 
-    describe('singleton behavior', () => {
-        it('should load config only once', () => {
+    describe('comportamiento singleton', () => {
+        it('debería cargar la configuración solo una vez', () => {
             process.env.BOT_TOKEN = 'test-token';
             process.env.CLIENT_ID = '123456789';
 

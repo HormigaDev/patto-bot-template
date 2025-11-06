@@ -6,64 +6,64 @@ import { ReplyError } from '@/error/ReplyError';
 
 describe('ReplyError', () => {
     describe('constructor', () => {
-        it('should create error with message', () => {
-            const error = new ReplyError('Permission denied');
+        it('debería crear un error con mensaje', () => {
+            const error = new ReplyError('Permiso denegado');
 
             expect(error).toBeInstanceOf(ReplyError);
             expect(error).toBeInstanceOf(Error);
-            expect(error.message).toBe('Permission denied');
+            expect(error.message).toBe('Permiso denegado');
             expect(error.name).toBe('ReplyError');
         });
 
-        it('should preserve stack trace', () => {
-            const error = new ReplyError('Test error');
+        it('debería preservar la traza de pila', () => {
+            const error = new ReplyError('Error de prueba');
 
             expect(error.stack).toBeDefined();
             expect(error.stack).toContain('ReplyError');
         });
     });
 
-    describe('error type detection', () => {
-        it('should be caught as ReplyError', () => {
+    describe('detección de tipo de error', () => {
+        it('debería ser capturado como ReplyError', () => {
             try {
-                throw new ReplyError('Test reply error');
+                throw new ReplyError('Error de respuesta de prueba');
             } catch (error) {
                 expect(error instanceof ReplyError).toBe(true);
                 expect(error instanceof Error).toBe(true);
             }
         });
 
-        it('should be distinguishable from ValidationError', () => {
-            const replyError = new ReplyError('Reply error');
-            const regularError = new Error('Regular error');
+        it('debería ser distinguible de ValidationError', () => {
+            const replyError = new ReplyError('Error de respuesta');
+            const regularError = new Error('Error regular');
 
             expect(replyError instanceof ReplyError).toBe(true);
             expect(regularError instanceof ReplyError).toBe(false);
         });
     });
 
-    describe('use cases', () => {
-        it('should be used for expected errors', () => {
-            const checkPermission = (hasPermission: boolean) => {
-                if (!hasPermission) {
-                    throw new ReplyError('You do not have permission to use this command');
+    describe('casos de uso', () => {
+        it('debería usarse para errores esperados', () => {
+            const verificarPermiso = (tienePermiso: boolean) => {
+                if (!tienePermiso) {
+                    throw new ReplyError('No tienes permiso para usar este comando');
                 }
             };
 
-            expect(() => checkPermission(false)).toThrow(ReplyError);
-            expect(() => checkPermission(true)).not.toThrow();
+            expect(() => verificarPermiso(false)).toThrow(ReplyError);
+            expect(() => verificarPermiso(true)).not.toThrow();
         });
 
-        it('should contain user-friendly messages', () => {
-            const messages = [
-                'You need to be in a voice channel',
-                'This command is only available in servers',
-                'Cooldown active. Please wait before using this command again',
+        it('debería contener mensajes amigables para el usuario', () => {
+            const mensajes = [
+                'Necesitas estar en un canal de voz',
+                'Este comando solo está disponible en servidores',
+                'Cooldown activo. Por favor espera antes de usar este comando nuevamente',
             ];
 
-            messages.forEach((message) => {
-                const error = new ReplyError(message);
-                expect(error.message).toBe(message);
+            mensajes.forEach((mensaje) => {
+                const error = new ReplyError(mensaje);
+                expect(error.message).toBe(mensaje);
             });
         });
     });
