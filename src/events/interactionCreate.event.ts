@@ -2,6 +2,7 @@ import { Events, Interaction } from 'discord.js';
 import { CommandLoader } from '@/core/loaders/command.loader';
 import { CommandHandler } from '@/core/handlers/command.handler';
 import { ComponentRegistry } from '@/core/registry/component.registry';
+import { Permissions } from '@/utils/Permissions';
 
 export function registerInteractionCreateEvent(
     commandLoader: CommandLoader,
@@ -10,6 +11,10 @@ export function registerInteractionCreateEvent(
     return {
         name: Events.InteractionCreate,
         async execute(interaction: Interaction) {
+            const guild = interaction.guild;
+            if (!guild) return;
+            if (!guild.members.me?.permissions.has(Permissions.SendMessages)) return;
+
             try {
                 // Manejar slash commands
                 if (interaction.isChatInputCommand()) {

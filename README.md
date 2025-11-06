@@ -34,6 +34,7 @@
 -   ✅ **Custom Type Parsers** para tipos personalizados (ej: MinecraftPlayer, CustomDate)
 -   ✅ **Sistema de Plugins** extensible con decoradores y scopes
 -   ✅ **Plugin Scopes** - Aplica plugins por carpeta, comando, o globalmente
+-   ✅ **Sistema de Permisos** - Decorador `@RequirePermissions` con validación automática
 
 ### 🎨 Componentes Interactivos
 
@@ -265,7 +266,66 @@ El comando se carga automáticamente. Reinicia el bot y prueba:
 
 ---
 
-## 📚 Documentación
+## � Ejemplo: Comando con Permisos
+
+El template incluye un **sistema de permisos** integrado. Usa el decorador `@RequirePermissions`:
+
+```typescript
+import { Command } from '@/core/decorators/command.decorator';
+import { RequirePermissions } from '@/core/decorators/permission.decorator';
+import { Permissions } from '@/utils/Permissions';
+import { Arg } from '@/core/decorators/argument.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+import { User } from 'discord.js';
+
+@Command({
+    name: 'ban',
+    description: 'Banea un usuario del servidor',
+})
+@RequirePermissions(Permissions.BanMembers)
+export class BanCommand extends BaseCommand {
+    @Arg({
+        name: 'usuario',
+        description: 'Usuario a banear',
+        index: 0,
+        required: true,
+    })
+    public usuario!: User;
+
+    @Arg({
+        name: 'razon',
+        description: 'Razón del baneo',
+        index: 1,
+        required: false,
+    })
+    public razon?: string;
+
+    public async run(): Promise<void> {
+        // Usuario ya validado con permisos
+        await this.usuario.ban({ reason: this.razon || 'No especificada' });
+
+        const embed = this.getEmbed('success')
+            .setTitle('✅ Usuario Baneado')
+            .setDescription(`${this.usuario.tag} ha sido baneado`)
+            .addFields({ name: 'Razón', value: this.razon || 'No especificada' });
+
+        await this.reply({ embeds: [embed] });
+    }
+}
+```
+
+**Características:**
+
+-   ✅ El comando **solo aparece** para usuarios con el permiso `BanMembers`
+-   ✅ Validación **doble**: en Discord y en ejecución
+-   ✅ **Sin boilerplate**: No necesitas validar manualmente
+-   ✅ Funciona con el **PermissionsPlugin** incluido
+
+**Más información**: Ver [`/src/plugins/permissions.plugin.README.md`](src/plugins/permissions.plugin.README.md)
+
+---
+
+## �📚 Documentación
 
 ### Por Carpeta
 
@@ -625,7 +685,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE`](./.licences
 **HormigaDev**
 
 -   GitHub: [@HormigaDev](https://github.com/HormigaDev)
--   Discord: [BBEL Studios](https://discord.gg/x79VjB37vQ)
+-   Servidor de Discord: [Próximamente]()
 
 ---
 

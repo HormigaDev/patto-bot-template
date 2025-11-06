@@ -243,12 +243,28 @@ export function getPrefix(): string {
 
 **Responsabilidad**: Clase base para plugins extensibles
 
--   Métodos opcionales:
--   `onBeforeExecute(command)`: Antes del comando
--   `onAfterExecute(command)`: Después del comando
--   Permite crear plugins reutilizables (cooldown, permisos, logging, etc.)
+-   **4 métodos opcionales** que cubren el ciclo de vida completo:
 
-**Nuevo**: Sistema de plugins extensibles
+**🟦 Fase de Registro** (al iniciar el bot):
+
+-   `onBeforeRegisterCommand(commandClass, commandJson)`: Antes de registrar en Discord API
+    -   Recibe clase del comando (sin instanciar) y copia del JSON del comando
+    -   Retorna: JSON modificado | `false` (cancelar) | `null`/`undefined` (original)
+    -   Útil para: modificar comandos, traducciones, filtros por ambiente, acceso a metadata
+-   `onAfterRegisterCommand(commandClass, registeredCommandJson)`: Después de registrar en Discord API
+    -   Recibe clase del comando y JSON con ID de Discord
+    -   Útil para: logging, analytics, guardar IDs en BD, mapear clases a IDs
+
+**🔵 Fase de Ejecución** (cuando un usuario ejecuta el comando):
+
+-   `onBeforeExecute(command)`: Antes del comando
+    -   Retorna `true` para continuar, `false` para cancelar silenciosamente
+    -   Útil para: cooldowns, permisos, validaciones, rate limiting
+-   `onAfterExecute(command)`: Después del comando
+    -   Solo se ejecuta si no hubo errores
+    -   Útil para: logging, analytics, recompensas
+
+**Nuevo**: Sistema de plugins con 4 eventos cubriendo registro y ejecución
 
 ### **9. BaseCommand (`core/structures/BaseCommand.ts`)**
 
@@ -276,7 +292,34 @@ export function getPrefix(): string {
 
 ## 🔄 Flujo de Ejecución
 
-### Slash Command:
+### Inicio del Bot (Registro de Comandos):
+
+```
+Bot.start()
+    ↓
+SlashCommandLoader.registerSlashCommands()
+    ↓
+Para cada comando:
+    ↓
+    CommandLoader.getCommandEntry() [incluye ruta]
+    ↓
+    Obtener plugins:
+        ├─ @UsePlugins (decorador) [PRIORIDAD 1]
+        └─ PluginRegistry (scope)  [PRIORIDAD 2]
+    ↓
+    🟦 onBeforeRegisterCommand (todos los plugins)
+        ├─ Recibe copia del JSON del comando
+        ├─ Puede modificar (retorna objeto)
+        ├─ Puede cancelar (retorna false)
+        └─ Puede dejar original (retorna null/undefined)
+    ↓
+    Discord API: Registrar comando (si no fue cancelado)
+    ↓
+    🟦 onAfterRegisterCommand (todos los plugins)
+        └─ Recibe JSON registrado con ID de Discord
+```
+
+### Slash Command (Ejecución):
 
 ```
 InteractionCreate Event
@@ -295,14 +338,14 @@ Obtener plugins:
     ├─ @UsePlugins (decorador) [PRIORIDAD 1]
     └─ PluginRegistry (scope)  [PRIORIDAD 2]
     ↓
-Ejecutar onBeforeExecute (orden normal)
+🔵 Ejecutar onBeforeExecute (orden normal)
     ↓
 Command.run()
     ↓
-Ejecutar onAfterExecute (orden INVERSO)
+🟢 Ejecutar onAfterExecute (orden INVERSO)
 ```
 
-### Text Command:
+### Text Command (Ejecución):
 
 ```
 MessageCreate Event
@@ -325,14 +368,36 @@ Obtener plugins:
     ├─ @UsePlugins (decorador) [PRIORIDAD 1]
     └─ PluginRegistry (scope)  [PRIORIDAD 2]
     ↓
-Ejecutar onBeforeExecute (orden normal)
+🔵 Ejecutar onBeforeExecute (orden normal)
     ↓
 Command.run()
     ↓
-Ejecutar onAfterExecute (orden INVERSO)
+🟢 Ejecutar onAfterExecute (orden INVERSO)
 ```
 
 ### Flujo de Plugins (Detallado):
+
+#### 🟦 Fase de Registro (Al iniciar el bot):
+
+```
+Comando: BanCommand en /src/commands/admin/ban.command.ts
+
+Configuración:
+  - @UsePlugins(TranslationPlugin)
+  - Registry: EnvironmentFilterPlugin (global)
+  - Registry: CommandLoggerPlugin (carpeta admin)
+
+Registro:
+  1. TranslationPlugin.onBeforeRegisterCommand()     ← Decorador
+  2. EnvironmentFilterPlugin.onBeforeRegisterCommand() ← Scope global
+  3. CommandLoggerPlugin.onBeforeRegisterCommand()   ← Scope folder
+  4. Discord API registra el comando (si no fue cancelado)
+  5. TranslationPlugin.onAfterRegisterCommand()      ← Decorador
+  6. EnvironmentFilterPlugin.onAfterRegisterCommand() ← Scope global
+  7. CommandLoggerPlugin.onAfterRegisterCommand()    ← Scope folder
+```
+
+#### 🔵🟢 Fase de Ejecución (Cuando un usuario usa el comando):
 
 ```
 Comando: BanCommand en /src/commands/admin/ban.command.ts
@@ -385,11 +450,16 @@ Ejecución:
 
 Permite extender la funcionalidad de comandos sin modificar su código:
 
--   **BasePlugin**: Clase base con `onBeforeExecute` y `onAfterExecute`
+-   **BasePlugin**: Clase base con 4 métodos opcionales:
+    -   🟦 `onBeforeRegisterCommand`: Modificar/cancelar comandos antes de registrar en Discord
+    -   🟦 `onAfterRegisterCommand`: Logging/analytics después de registrar en Discord
+    -   🔵 `onBeforeExecute`: Validaciones antes de ejecutar el comando
+    -   🟢 `onAfterExecute`: Acciones después de ejecutar el comando
 -   **@UsePlugins**: Decorador para plugins específicos por comando
 -   **PluginRegistry**: Sistema de scopes (Folder, DeepFolder, Specified)
--   **Prioridad**: Decorador primero, luego scope
+-   **Prioridad**: Decorador primero, luego scope (aplica en registro y ejecución)
 -   **Orden inverso**: `onAfterExecute` se ejecuta en orden inverso
+-   **Ciclo completo**: Plugins ahora cubren desde el registro hasta la ejecución
 
 ### 2. **Raw Text Capture**
 

@@ -9,6 +9,7 @@ import {
     Guild,
     Client,
     InteractionResponse,
+    GuildMember,
 } from 'discord.js';
 
 type ReplyOptions = InteractionReplyOptions & MessageReplyOptions;
@@ -49,6 +50,14 @@ export class CommandContext {
             return this.source.channel as TextChannel;
         }
         return null;
+    }
+
+    get member(): GuildMember {
+        if (this.isInteraction) {
+            return this.sourceCommand.member as GuildMember;
+        } else {
+            return this.sourceMessage.member!;
+        }
     }
 
     private async _reply(

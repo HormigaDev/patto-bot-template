@@ -10,7 +10,8 @@ Esta carpeta contiene los **decoradores TypeScript** que se utilizan para defini
 decorators/
 ├── command.decorator.ts     # Decorador @Command
 ├── argument.decorator.ts    # Decorador @Arg
-└── plugin.decorator.ts      # Decorador @UsePlugins
+├── plugin.decorator.ts      # Decorador @UsePlugins
+└── permission.decorator.ts  # Decorador @RequirePermissions
 ```
 
 ## 🎨 Decorador @Command
@@ -1183,7 +1184,7 @@ export abstract class TransferDefinition extends BaseCommand {
 
 ## 🔌 Decorador @UsePlugins
 
-Define plugins específicos que se ejecutan para un comando.
+Define plugins específicos que se ejecutan para un comando en **ambas fases del ciclo de vida**: registro y ejecución.
 
 ### Ubicación
 
@@ -1218,9 +1219,28 @@ export class BanCommand extends BaseCommand {
 export const PLUGIN_METADATA_KEY = Symbol('commandPlugins');
 ```
 
-### Orden de Ejecución
+### Ciclo de Vida Completo
 
-Los plugins se ejecutan en el orden especificado:
+Los plugins decorados con `@UsePlugins` participan en **dos fases**:
+
+#### 🟦 Fase de Registro (Al iniciar el bot)
+
+**onBeforeRegisterCommand** (orden normal):
+
+```
+1. CooldownPlugin.onBeforeRegisterCommand()
+2. RolePermissionPlugin.onBeforeRegisterCommand()
+3. Discord API registra el comando (si no fue cancelado)
+```
+
+**onAfterRegisterCommand** (orden normal):
+
+```
+4. CooldownPlugin.onAfterRegisterCommand()
+5. RolePermissionPlugin.onAfterRegisterCommand()
+```
+
+#### 🔵🟢 Fase de Ejecución (Cuando un usuario ejecuta el comando)
 
 **onBeforeExecute** (orden normal):
 
@@ -1239,7 +1259,7 @@ Los plugins se ejecutan en el orden especificado:
 
 ### Prioridad
 
-`@UsePlugins` tiene **máxima prioridad**:
+`@UsePlugins` tiene **máxima prioridad** en ambas fases:
 
 1. ✅ Primero se ejecutan plugins de `@UsePlugins`
 2. ✅ Luego se ejecutan plugins de scope (registry)
@@ -1259,13 +1279,25 @@ export class MyCommand extends BaseCommand {
 }
 ```
 
-**Orden:**
+**Orden en Registro:**
 
-1. `CooldownPlugin.onBeforeExecute()` (B - decorador)
-2. `LoggerPlugin.onBeforeExecute()` (A - scope)
-3. `MyCommand.run()`
-4. `LoggerPlugin.onAfterExecute()` (inverso)
-5. `CooldownPlugin.onAfterExecute()` (inverso)
+```
+1. CooldownPlugin.onBeforeRegisterCommand() (B - decorador)
+2. LoggerPlugin.onBeforeRegisterCommand() (A - scope)
+3. Discord API registra
+4. CooldownPlugin.onAfterRegisterCommand() (B - decorador)
+5. LoggerPlugin.onAfterRegisterCommand() (A - scope)
+```
+
+**Orden en Ejecución:**
+
+```
+1. CooldownPlugin.onBeforeExecute() (B - decorador)
+2. LoggerPlugin.onBeforeExecute() (A - scope)
+3. MyCommand.run()
+4. LoggerPlugin.onAfterExecute() (inverso)
+5. CooldownPlugin.onAfterExecute() (inverso)
+```
 
 ### Ejemplo Completo
 
@@ -1328,7 +1360,197 @@ export class BanCommand extends BaseCommand {
 | **Alcance**      | Solo el comando decorado     | Múltiples comandos              |
 | **Prioridad**    | ✅ Primera (máxima)          | Segunda                         |
 | **Centralizado** | ❌ No                        | ✅ Sí                           |
+| **Ciclo**        | Registro + Ejecución         | Registro + Ejecución            |
 | **Cuándo usar**  | Plugins únicos de un comando | Plugins comunes/globales        |
+
+---
+
+---
+
+## 🔒 Decorador @RequirePermissions
+
+Define permisos requeridos para ejecutar un comando. Se aplica **solo a clases**.
+
+### Ubicación
+
+```typescript
+// src/core/decorators/permission.decorator.ts
+```
+
+### Uso
+
+```typescript
+import { Command } from '@/core/decorators/command.decorator';
+import { RequirePermissions } from '@/core/decorators/permission.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+import { Permissions } from '@/utils/Permissions';
+
+@Command({
+    name: 'ban',
+    description: 'Banea un usuario del servidor',
+})
+@RequirePermissions(Permissions.BanMembers, Permissions.ModerateMembers)
+export class BanCommand extends BaseCommand {
+    async run(): Promise<void> {
+        // El usuario ya fue validado que tiene permisos
+        // ...
+    }
+}
+```
+
+### Metadata Key
+
+```typescript
+export const REQUIRE_PERMISSIONS_METADATA_KEY = Symbol('REQUIRE_PERMISSIONS_METADATA_KEY');
+```
+
+### Funcionamiento
+
+El decorador `@RequirePermissions` trabaja en conjunto con el **PermissionsPlugin** para:
+
+1. **Fase de Registro** (`onBeforeRegisterCommand`):
+
+    - Modifica el JSON del comando antes de enviarlo a Discord
+    - Agrega el campo `default_member_permissions` con los permisos requeridos
+    - Discord automáticamente oculta el comando a usuarios sin permisos
+
+2. **Fase de Ejecución** (`onBeforeExecute`):
+    - Valida que el usuario tenga los permisos necesarios
+    - Si no tiene permisos, muestra un embed de error y cancela la ejecución
+    - Si tiene permisos, continúa con la ejecución normal
+
+### Características
+
+✅ **Validación en Discord**: Los comandos solo aparecen para usuarios con permisos suficientes
+✅ **Validación en ejecución**: Doble verificación por seguridad
+✅ **Múltiples permisos**: Puedes requerir varios permisos al mismo tiempo
+✅ **Bitwise OR**: Los permisos se combinan automáticamente con operador OR
+✅ **Embed de error**: Mensaje visual cuando un usuario no tiene permisos
+
+### Permisos Disponibles
+
+Todos los permisos de Discord están disponibles en `@/utils/Permissions`:
+
+```typescript
+import { Permissions } from '@/utils/Permissions';
+
+// Ejemplos comunes
+Permissions.Administrator;
+Permissions.ManageGuild;
+Permissions.ManageRoles;
+Permissions.ManageChannels;
+Permissions.KickMembers;
+Permissions.BanMembers;
+Permissions.ModerateMembers;
+Permissions.ManageMessages;
+Permissions.ManageNicknames;
+Permissions.ViewChannel;
+Permissions.SendMessages;
+Permissions.AttachFiles;
+Permissions.MentionEveryone;
+// ... y muchos más
+```
+
+### Ejemplos
+
+#### Ejemplo 1: Comando de Moderación
+
+```typescript
+@Command({
+    name: 'kick',
+    description: 'Expulsa un usuario del servidor',
+})
+@RequirePermissions(Permissions.KickMembers)
+export class KickCommand extends BaseCommand {
+    @Arg({
+        name: 'usuario',
+        description: 'Usuario a expulsar',
+        index: 0,
+        required: true,
+    })
+    public usuario!: User;
+
+    async run(): Promise<void> {
+        const member = await this.guild!.members.fetch(this.usuario.id);
+        await member.kick();
+
+        const embed = this.getEmbed('success')
+            .setTitle('✅ Usuario Expulsado')
+            .setDescription(`${this.usuario.tag} ha sido expulsado del servidor`);
+
+        await this.reply({ embeds: [embed] });
+    }
+}
+```
+
+#### Ejemplo 2: Múltiples Permisos
+
+```typescript
+@Command({
+    name: 'lockdown',
+    description: 'Bloquea todos los canales del servidor',
+})
+@RequirePermissions(Permissions.ManageChannels, Permissions.ManageRoles, Permissions.Administrator)
+export class LockdownCommand extends BaseCommand {
+    async run(): Promise<void> {
+        // Solo administradores con permisos de gestión de canales y roles pueden usar esto
+        // ...
+    }
+}
+```
+
+#### Ejemplo 3: Comando Administrativo
+
+```typescript
+@Command({
+    name: 'setup',
+    description: 'Configura el bot en el servidor',
+})
+@RequirePermissions(Permissions.Administrator)
+export class SetupCommand extends BaseCommand {
+    async run(): Promise<void> {
+        // Solo administradores pueden usar esto
+        // ...
+    }
+}
+```
+
+### Configuración Requerida
+
+Para que funcione, debes registrar el **PermissionsPlugin** en `/src/config/plugins.config.ts`:
+
+```typescript
+import { PluginRegistry, PluginScope } from './plugin.registry';
+import { PermissionsPlugin } from '@/plugins/permissions.plugin';
+
+// Aplicar a todos los comandos
+PluginRegistry.register({
+    plugin: new PermissionsPlugin(),
+    scope: PluginScope.DeepFolder,
+    folderPath: '', // Todos los comandos
+});
+```
+
+### Ventajas
+
+| Característica            | Beneficio                                                |
+| ------------------------- | -------------------------------------------------------- |
+| **Validación en Discord** | Los comandos no aparecen si el usuario no tiene permisos |
+| **Validación doble**      | Por seguridad, también valida en ejecución               |
+| **Embeds visuales**       | Mensajes claros cuando no hay permisos                   |
+| **Type-safe**             | Autocompletado de permisos con TypeScript                |
+| **Flexible**              | Aplica a comandos individuales o grupos                  |
+| **Sin boilerplate**       | No necesitas validar manualmente en cada comando         |
+
+### Diferencia con @UsePlugins
+
+| Característica    | `@RequirePermissions`        | `@UsePlugins(PermissionsPlugin)` |
+| ----------------- | ---------------------------- | -------------------------------- |
+| **Propósito**     | Declarar permisos requeridos | Aplicar plugin específico        |
+| **Metadata**      | Sí (permisos)                | No                               |
+| **Simplicidad**   | ✅ Más simple                | Más verboso                      |
+| **Configuración** | Plugin en registry           | Plugin en decorador              |
+| **Uso típico**    | Permisos de Discord          | Plugins custom                   |
 
 ---
 
@@ -1359,6 +1581,12 @@ COMMAND_METADATA_KEY = Symbol('commandMetadata');
 // Metadata de argumentos
 ARGUMENT_METADATA_KEY = Symbol('commandArguments');
 
+// Metadata de plugins
+PLUGIN_METADATA_KEY = Symbol('commandPlugins');
+
+// Metadata de permisos
+REQUIRE_PERMISSIONS_METADATA_KEY = Symbol('REQUIRE_PERMISSIONS_METADATA_KEY');
+
 // Metadata de tipos de diseño (automático de TypeScript)
 ('design:type');
 ```
@@ -1370,11 +1598,18 @@ Definición con Decoradores
          ↓
    @Command(...) → Reflect.defineMetadata(COMMAND_METADATA_KEY, ...)
    @Arg(...) → Reflect.defineMetadata(ARGUMENT_METADATA_KEY, ...)
+   @UsePlugins(...) → Reflect.defineMetadata(PLUGIN_METADATA_KEY, ...)
+   @RequirePermissions(...) → Reflect.defineMetadata(REQUIRE_PERMISSIONS_METADATA_KEY, ...)
          ↓
    CommandLoader lee metadata
          ↓
    Reflect.getMetadata(COMMAND_METADATA_KEY, ...)
    Reflect.getMetadata(ARGUMENT_METADATA_KEY, ...)
+         ↓
+   Plugins leen metadata
+         ↓
+   Reflect.getMetadata(PLUGIN_METADATA_KEY, ...)
+   Reflect.getMetadata(REQUIRE_PERMISSIONS_METADATA_KEY, ...)
          ↓
    Sistema usa la información
 ```

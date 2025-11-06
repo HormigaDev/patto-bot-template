@@ -202,7 +202,10 @@ Esto nunca debería ocurrir en uso normal, pero protege contra mal uso.
 
 ### Descripción
 
-Clase **abstracta** base para crear plugins extensibles que se ejecutan antes o después de los comandos.
+Clase **abstracta** base para crear plugins extensibles que se ejecutan en diferentes momentos del ciclo de vida de los comandos:
+
+-   🟦 **Fase de Registro**: Antes/después de registrar comandos en Discord API
+-   🔵 **Fase de Ejecución**: Antes/después de ejecutar comandos
 
 ### Ubicación
 
@@ -212,24 +215,83 @@ Clase **abstracta** base para crear plugins extensibles que se ejecutan antes o 
 
 ### Métodos Opcionales
 
+Un plugin puede implementar uno o más de los siguientes 4 métodos:
+
+#### 🟦 Eventos de Registro
+
+```typescript
+async onBeforeRegisterCommand?(
+    commandClass: new (...args: any[]) => BaseCommand,
+    commandJson: any
+): Promise<any | false | null | undefined>;
+
+async onAfterRegisterCommand?(
+    commandClass: new (...args: any[]) => BaseCommand,
+    registeredCommandJson: any
+): Promise<void>;
+```
+
+-   **`onBeforeRegisterCommand`**: Se ejecuta **antes** de registrar el comando en Discord API
+
+    -   Recibe la **clase del comando** (sin instanciar) y una **copia** del JSON del comando
+    -   ✅ Retorna objeto → Usa el JSON modificado para registrar
+    -   ❌ Retorna `false` → Cancela el registro del comando
+    -   ⚪ Retorna `null` o `undefined` → Usa el JSON original
+    -   Útil para: modificar comandos, traducciones, filtrar por ambiente, acceder a metadata del comando
+
+-   **`onAfterRegisterCommand`**: Se ejecuta **después** de registrar en Discord API
+    -   Recibe la **clase del comando** y el JSON del comando registrado (incluye ID de Discord)
+    -   Útil para: logging, analytics, guardar IDs en BD, mapear clases a IDs
+
+#### 🔵 Eventos de Ejecución
+
 ```typescript
 async onBeforeExecute?(command: BaseCommand): Promise<boolean>;
 async onAfterExecute?(command: BaseCommand): Promise<void>;
 ```
 
-**Características:**
+-   **`onBeforeExecute`**: Se ejecuta **antes** de `command.run()`
 
--   Ambos métodos son **opcionales** (puedes implementar uno o ambos)
--   Reciben la instancia completa del comando
--   `onBeforeExecute` se ejecuta **antes** de `command.run()`
     -   ✅ `return true` → Continúa con la ejecución del comando
     -   ❌ `return false` → Cancela la ejecución silenciosamente (sin mensaje)
     -   💥 `throw Error` → Cancela la ejecución y muestra mensaje de error
--   `onAfterExecute` se ejecuta **después** de `command.run()` (solo si no hubo errores)
+    -   Útil para: cooldowns, permisos, validaciones, rate limiting
 
-### Comportamiento de onBeforeExecute
+-   **`onAfterExecute`**: Se ejecuta **después** de `command.run()` (solo si no hubo errores)
+    -   Útil para: logging, analytics, cooldowns, recompensas
 
-El método `onBeforeExecute` debe retornar un booleano que indica si el comando debe ejecutarse:
+### Orden de Ejecución del Ciclo de Vida
+
+```
+1. onBeforeRegisterCommand (todos los plugins)
+   ↓
+2. Discord API: Registrar comando
+   ↓
+3. onAfterRegisterCommand (todos los plugins)
+
+   ... (bot en ejecución) ...
+
+4. Usuario ejecuta comando
+   ↓
+5. onBeforeExecute (todos los plugins)
+   ↓
+6. command.run() (si todos retornaron true)
+   ↓
+7. onAfterExecute (solo si no hubo errores)
+```
+
+### Comportamiento de Retornos
+
+#### onBeforeRegisterCommand
+
+| Retorno            | Resultado                      | JSON Usado      |
+| ------------------ | ------------------------------ | --------------- |
+| `return objeto`    | ✅ Registra con modificaciones | JSON modificado |
+| `return false`     | ❌ No registra el comando      | -               |
+| `return null`      | ✅ Registra sin modificaciones | JSON original   |
+| `return undefined` | ✅ Registra sin modificaciones | JSON original   |
+
+#### onBeforeExecute
 
 | Retorno/Acción                   | Resultado             | Mensaje al usuario       |
 | -------------------------------- | --------------------- | ------------------------ |
@@ -238,7 +300,48 @@ El método `onBeforeExecute` debe retornar un booleano que indica si el comando 
 | `throw new ReplyError(...)`      | ❌ Comando se cancela | Sí (embed de error)      |
 | `throw new ValidationError(...)` | ❌ Comando se cancela | Sí (embed de validación) |
 
-### Ejemplo de Uso
+### Ejemplo 1: Plugin de Registro
+
+```typescript
+import { BasePlugin } from '@/core/structures/BasePlugin';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+
+export class EnvironmentFilterPlugin extends BasePlugin {
+    async onBeforeRegisterCommand(
+        commandClass: new (...args: any[]) => BaseCommand,
+        commandJson: any,
+    ): Promise<any | false> {
+        // No registrar comandos de debug en producción
+        if (process.env.NODE_ENV === 'production' && commandClass.name.includes('Debug')) {
+            console.log(`⏭️ Saltando comando de debug: ${commandClass.name}`);
+            return false; // Cancelar registro
+        }
+
+        // Agregar prefijo al nombre en desarrollo
+        if (process.env.NODE_ENV === 'development') {
+            return {
+                ...commandJson,
+                name: `dev-${commandJson.name}`,
+                description: `[DEV] ${commandJson.description}`,
+            };
+        }
+
+        return null; // Usar original
+    }
+
+    async onAfterRegisterCommand(
+        commandClass: new (...args: any[]) => BaseCommand,
+        registeredCommandJson: any,
+    ): Promise<void> {
+        // Logging de comandos registrados
+        console.log(
+            `✅ ${commandClass.name} registrado como "${registeredCommandJson.name}" (ID: ${registeredCommandJson.id})`,
+        );
+    }
+}
+```
+
+### Ejemplo 2: Plugin de Ejecución (Cooldown)
 
 ```typescript
 import { BasePlugin } from '@/core/structures/BasePlugin';
@@ -268,24 +371,36 @@ export class CooldownPlugin extends BasePlugin {
 }
 ```
 
-### Ejemplo de Cancelación Silenciosa
+### Ejemplo 3: Plugin Completo (4 eventos)
 
 ```typescript
-export class SilentCooldownPlugin extends BasePlugin {
-    private cooldowns = new Map<string, number>();
+export class CompletePlugin extends BasePlugin {
+    // Fase de Registro
+    async onBeforeRegisterCommand(
+        commandClass: new (...args: any[]) => BaseCommand,
+        commandJson: any,
+    ): Promise<any> {
+        console.log(`📝 Pre-registro: ${commandClass.name} -> "${commandJson.name}"`);
+        return commandJson; // Sin modificaciones
+    }
 
+    async onAfterRegisterCommand(
+        commandClass: new (...args: any[]) => BaseCommand,
+        registeredCommandJson: any,
+    ): Promise<void> {
+        console.log(
+            `✅ ${commandClass.name} registrado como "${registeredCommandJson.name}" (ID: ${registeredCommandJson.id})`,
+        );
+    }
+
+    // Fase de Ejecución
     async onBeforeExecute(command: BaseCommand): Promise<boolean> {
-        const key = `${command.user.id}-${command.constructor.name}`;
-        const now = Date.now();
-        const cooldownEnd = this.cooldowns.get(key);
+        console.log(`🚀 Pre-ejecución: ${command.constructor.name}`);
+        return true;
+    }
 
-        // Cancelar silenciosamente si está en cooldown
-        if (cooldownEnd && now < cooldownEnd) {
-            return false; // No muestra ningún mensaje
-        }
-
-        this.cooldowns.set(key, now + 3000);
-        return true; // Continuar
+    async onAfterExecute(command: BaseCommand): Promise<void> {
+        console.log(`🏁 Post-ejecución: ${command.constructor.name}`);
     }
 }
 ```

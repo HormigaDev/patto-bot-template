@@ -10,6 +10,7 @@ Esta carpeta contiene **utilidades y helpers** reutilizables en todo el proyecto
 utils/
 ├── CommandCategories.ts    # Definiciones de categorías de comandos
 ├── Times.ts               # Utilidad para conversión de tiempo
+├── Permissions.ts         # Re-exportación de permisos de Discord
 └── Env.ts                 # Validación y carga segura de variables de entorno
 ```
 
@@ -197,6 +198,205 @@ Cuando la configuración se carga correctamente:
 -   ✅ **Mensajes claros**: Errores descriptivos en español
 -   ✅ **Sin accesos directos**: No más `process.env.VAR || 'default'` esparcidos
 -   ✅ **Seguridad**: Tokens enmascarados en logs
+
+---
+
+## 📂 Permissions.ts
+
+### Descripción
+
+Re-exportación simplificada de **todos los permisos de Discord.js** para uso conveniente en el bot. Proporciona acceso directo a las banderas (flags) de permisos sin necesidad de importar desde Discord.js.
+
+### Ubicación
+
+```typescript
+// src/utils/Permissions.ts
+```
+
+### Exportación
+
+```typescript
+import { PermissionsBitField as p } from 'discord.js';
+
+export const Permissions = p.Flags;
+```
+
+### Uso
+
+```typescript
+import { Permissions } from '@/utils/Permissions';
+
+// Usar en decoradores
+@RequirePermissions(Permissions.BanMembers, Permissions.KickMembers)
+export class ModerateCommand extends BaseCommand {}
+
+// Verificar permisos manualmente
+if (member.permissions.has(Permissions.Administrator)) {
+    // Usuario es administrador
+}
+
+// Verificar múltiples permisos
+const hasModPerms = member.permissions.has([
+    Permissions.KickMembers,
+    Permissions.BanMembers,
+    Permissions.ModerateMembers,
+]);
+```
+
+### Permisos Disponibles
+
+Todos los permisos de Discord están disponibles. Los más comunes:
+
+#### 🔨 Permisos Administrativos
+
+```typescript
+Permissions.Administrator; // Control total del servidor
+Permissions.ManageGuild; // Gestionar servidor
+Permissions.ManageRoles; // Gestionar roles
+Permissions.ManageChannels; // Gestionar canales
+Permissions.ManageWebhooks; // Gestionar webhooks
+Permissions.ManageEmojisAndStickers; // Gestionar emojis y stickers
+```
+
+#### 👥 Permisos de Moderación
+
+```typescript
+Permissions.KickMembers; // Expulsar miembros
+Permissions.BanMembers; // Banear miembros
+Permissions.ModerateMembers; // Timeout a miembros
+Permissions.ManageMessages; // Gestionar mensajes
+Permissions.ManageNicknames; // Gestionar apodos
+Permissions.ViewAuditLog; // Ver registro de auditoría
+```
+
+#### 💬 Permisos de Chat
+
+```typescript
+Permissions.ViewChannel; // Ver canales
+Permissions.SendMessages; // Enviar mensajes
+Permissions.SendMessagesInThreads; // Enviar mensajes en hilos
+Permissions.CreatePublicThreads; // Crear hilos públicos
+Permissions.CreatePrivateThreads; // Crear hilos privados
+Permissions.EmbedLinks; // Insertar enlaces
+Permissions.AttachFiles; // Adjuntar archivos
+Permissions.AddReactions; // Añadir reacciones
+Permissions.UseExternalEmojis; // Usar emojis externos
+Permissions.MentionEveryone; // Mencionar @everyone y @here
+Permissions.ManageMessages; // Gestionar mensajes
+Permissions.ManageThreads; // Gestionar hilos
+Permissions.ReadMessageHistory; // Leer historial de mensajes
+```
+
+#### 🔊 Permisos de Voz
+
+```typescript
+Permissions.Connect; // Conectar a voz
+Permissions.Speak; // Hablar en voz
+Permissions.Stream; // Transmitir pantalla
+Permissions.UseVAD; // Usar detección de voz
+Permissions.MuteMembers; // Silenciar miembros
+Permissions.DeafenMembers; // Ensordecer miembros
+Permissions.MoveMembers; // Mover miembros entre canales
+Permissions.PrioritySpeaker; // Hablar con prioridad
+```
+
+#### 🎭 Permisos Especiales
+
+```typescript
+Permissions.ChangeNickname; // Cambiar propio apodo
+Permissions.ManageNicknames; // Cambiar apodos de otros
+Permissions.UseApplicationCommands; // Usar comandos de aplicación
+Permissions.RequestToSpeak; // Solicitar hablar (stage)
+Permissions.CreateEvents; // Crear eventos
+Permissions.ManageEvents; // Gestionar eventos
+```
+
+### Uso con @RequirePermissions
+
+El uso principal de `Permissions` es con el decorador `@RequirePermissions`:
+
+```typescript
+import { Permissions } from '@/utils/Permissions';
+import { RequirePermissions } from '@/core/decorators/permission.decorator';
+
+// Comando solo para administradores
+@RequirePermissions(Permissions.Administrator)
+export class SetupCommand extends BaseCommand {}
+
+// Comando con múltiples permisos
+@RequirePermissions(Permissions.ManageChannels, Permissions.ManageRoles)
+export class LockdownCommand extends BaseCommand {}
+
+// Comando de moderación
+@RequirePermissions(Permissions.BanMembers, Permissions.ViewAuditLog)
+export class BanCommand extends BaseCommand {}
+```
+
+### Verificación Manual de Permisos
+
+También puedes verificar permisos manualmente en tus comandos:
+
+```typescript
+export class CustomCommand extends BaseCommand {
+    async run(): Promise<void> {
+        const member = this.ctx.member;
+
+        // Verificar un permiso
+        if (!member.permissions.has(Permissions.ManageMessages)) {
+            const embed = this.getEmbed('error')
+                .setTitle('❌ Sin Permisos')
+                .setDescription('Necesitas el permiso de "Gestionar Mensajes"');
+            await this.reply({ embeds: [embed] });
+            return;
+        }
+
+        // Verificar múltiples permisos (requiere TODOS)
+        const hasAllPerms = member.permissions.has([
+            Permissions.ManageMessages,
+            Permissions.ManageChannels,
+        ]);
+
+        // Verificar si tiene AL MENOS UNO
+        const hasAnyPerm = member.permissions.any([
+            Permissions.Administrator,
+            Permissions.ManageGuild,
+        ]);
+
+        // Tu lógica aquí...
+    }
+}
+```
+
+### Verificar Permisos del Bot
+
+```typescript
+export class MyCommand extends BaseCommand {
+    async run(): Promise<void> {
+        const botMember = this.guild!.members.me;
+
+        // Verificar si el bot tiene permisos
+        if (!botMember?.permissions.has(Permissions.ManageChannels)) {
+            const embed = this.getEmbed('error')
+                .setTitle('❌ Bot sin Permisos')
+                .setDescription('El bot necesita el permiso "Gestionar Canales"');
+            await this.reply({ embeds: [embed] });
+            return;
+        }
+
+        // Tu lógica aquí...
+    }
+}
+```
+
+### Ventajas
+
+| Característica          | Beneficio                              |
+| ----------------------- | -------------------------------------- |
+| **Import simplificado** | No necesitas importar desde discord.js |
+| **Autocompletado**      | TypeScript sugiere todos los permisos  |
+| **Consistencia**        | Mismo import en toda la aplicación     |
+| **Type-safe**           | Banderas tipadas correctamente         |
+| **Legibilidad**         | Nombres claros y descriptivos          |
 
 ---
 

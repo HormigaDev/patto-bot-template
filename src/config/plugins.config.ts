@@ -1,4 +1,5 @@
 import { PluginRegistry, PluginScope } from './plugin.registry';
+import { PermissionsPlugin } from '@/plugins/permissions.plugin';
 
 // Aquí defines tus plugins con sus scopes
 
@@ -53,3 +54,9 @@ import { PluginRegistry, PluginScope } from './plugin.registry';
 
 // Registra tus plugins aquí:
 // PluginRegistry.register({ ... });
+
+PluginRegistry.register({
+    plugin: new PermissionsPlugin(),
+    scope: PluginScope.DeepFolder,
+    folderPath: '',
+});

@@ -149,43 +149,89 @@ Cuando un comando tiene múltiples plugins (de scope y de decorador), el orden e
 1. **Plugins de `@UsePlugins`** (decorador)
 2. **Plugins de scope** (registry, en orden de registro)
 
+**Nota:** Este orden aplica tanto para eventos de **registro** como de **ejecución**.
+
+### Ciclo de Vida Completo
+
+Los plugins se ejecutan en **dos fases** del ciclo de vida:
+
+#### 🟦 Fase de Registro (Inicio del Bot)
+
+```
+1. SlashCommandLoader.registerSlashCommands()
+   ↓
+2. Para cada comando:
+   - Ejecuta onBeforeRegisterCommand (decorador → scope)
+   - Registra en Discord API (si no fue cancelado)
+   - Ejecuta onAfterRegisterCommand (decorador → scope)
+```
+
+#### 🔵 Fase de Ejecución (Cuando un Usuario Usa el Comando)
+
+```
+1. Usuario ejecuta comando
+   ↓
+2. CommandHandler detecta el comando
+   ↓
+3. Ejecuta onBeforeExecute (decorador → scope)
+   ↓
+4. Ejecuta command.run() (si todos retornaron true)
+   ↓
+5. Ejecuta onAfterExecute (scope → decorador, inverso)
+```
+
 ### Ejemplo Completo
 
 ```typescript
 // En plugins.config.ts
 PluginRegistry.register({
-    plugin: new CooldownPlugin(),      // [A]
+    plugin: new EnvironmentFilterPlugin(),  // [A]
     scope: PluginScope.DeepFolder,
     folderPath: '',
 });
 
 PluginRegistry.register({
-    plugin: new LoggerPlugin(),        // [B]
+    plugin: new CommandLoggerPlugin(),      // [B]
     scope: PluginScope.Folder,
     folderPath: 'admin',
 });
 
 // En el comando
 @Command({ name: 'ban' })
-@UsePlugins(PermissionPlugin)          // [C]
+@UsePlugins(TranslationPlugin)              // [C]
 export class BanCommand extends BaseCommand {
     async run() { ... }
 }
 ```
 
-**Orden de ejecución:**
+**Orden de ejecución en REGISTRO:**
+
+```
+onBeforeRegisterCommand:
+  1. TranslationPlugin (C) - Decorador
+  2. EnvironmentFilterPlugin (A) - Scope global
+  3. CommandLoggerPlugin (B) - Scope folder
+  → Discord API registra el comando
+
+onAfterRegisterCommand:
+  4. TranslationPlugin (C)
+  5. EnvironmentFilterPlugin (A)
+  6. CommandLoggerPlugin (B)
+```
+
+**Orden de ejecución en EJECUCIÓN:**
 
 ```
 onBeforeExecute:
-  1. PermissionPlugin (C) - Decorador
-  2. CooldownPlugin (A) - Scope global
-  3. LoggerPlugin (B) - Scope folder
+  1. TranslationPlugin (C) - Decorador
+  2. EnvironmentFilterPlugin (A) - Scope global
+  3. CommandLoggerPlugin (B) - Scope folder
   4. BanCommand.run() ← Comando
 
 onAfterExecute (inverso):
-  5. LoggerPlugin (B)
-  6. CooldownPlugin (A)
-  7. PermissionPlugin (C)
+  5. CommandLoggerPlugin (B)
+  6. EnvironmentFilterPlugin (A)
+  7. TranslationPlugin (C)
 ```
 
 ## 🔍 Rutas de Carpetas

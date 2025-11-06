@@ -15,21 +15,21 @@ export abstract class BaseCommand {
 
     public abstract run(): Promise<void>;
 
-    protected async reply(options: ReplyOptions | string) {
+    public async reply(options: ReplyOptions | string) {
         if (!this.ctx) {
             throw new Error('El contexto no fue definido');
         }
         await this.ctx.reply(options);
     }
 
-    protected async send(options: ReplyOptions | string) {
+    public async send(options: ReplyOptions | string) {
         if (!this.ctx) {
             throw new Error('El contexto no fue definido');
         }
         await this.ctx.send(options);
     }
 
-    protected getEmbed(
+    public getEmbed(
         type: 'error' | 'success' | 'warning' | 'info',
         noTimestamp: boolean = false,
     ): EmbedBuilder {

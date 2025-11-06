@@ -2,21 +2,50 @@
 
 ## 📖 Descripción
 
-Esta carpeta contiene **plugins** que extienden la funcionalidad de los comandos sin modificar su código. Los plugins se ejecutan **antes** (`onBeforeExecute`) o **después** (`onAfterExecute`) de la ejecución de un comando.
+Esta carpeta contiene **plugins** que extienden la funcionalidad de los comandos sin modificar su código. Los plugins se ejecutan en diferentes momentos del ciclo de vida de los comandos:
+
+-   🟦 **`onBeforeRegisterCommand`**: Antes de registrar el comando en Discord API
+-   🟦 **`onAfterRegisterCommand`**: Después de registrar el comando en Discord API
+-   🔵 **`onBeforeExecute`**: Antes de ejecutar el comando
+-   🟢 **`onAfterExecute`**: Después de ejecutar el comando
 
 ## 🎯 ¿Qué es un Plugin?
 
-Un plugin es una clase que hereda de `BasePlugin` e implementa uno o ambos métodos:
+Un plugin es una clase que hereda de `BasePlugin` e implementa uno o más de los siguientes métodos opcionales:
 
--   🔵 **`onBeforeExecute`**: Se ejecuta **antes** del comando y retorna un booleano
+### 🟦 Eventos de Registro
+
+-   **`onBeforeRegisterCommand(commandClass, commandJson)`**: Se ejecuta **antes** de enviar el comando a Discord API
+    -   Recibe la **clase del comando** (sin instanciar) y una **copia** del JSON del comando
+    -   Retorna: JSON modificado | `false` (cancelar registro) | `null`/`undefined` (usar original)
+    -   Útil para: modificar comandos dinámicamente, agregar opciones, traducciones, cancelar registro basado en la clase
+-   **`onAfterRegisterCommand(commandClass, registeredCommandJson)`**: Se ejecuta **después** de registrar en Discord API
+    -   Recibe la **clase del comando** y el JSON del comando registrado (con ID de Discord)
+    -   Útil para: logging, analytics, caché, sincronización con BD
+
+### 🔵 Eventos de Ejecución
+
+-   **`onBeforeExecute(command)`**: Se ejecuta **antes** del comando
     -   `return true`: Continúa con la ejecución del comando
     -   `return false`: Cancela la ejecución silenciosamente (sin mensaje de error)
     -   `throw Error`: Cancela la ejecución y muestra un mensaje de error
--   🟢 **`onAfterExecute`**: Se ejecuta **después** del comando (solo si no hubo errores)
+-   **`onAfterExecute(command)`**: Se ejecuta **después** del comando (solo si no hubo errores)
+    -   Útil para: logging, analytics, cooldowns, recompensas
 
 ## 🚀 Casos de Uso
 
-### 🔵 Plugins `onBeforeExecute`
+### 🟦 Plugins de Registro (`onBeforeRegisterCommand` / `onAfterRegisterCommand`)
+
+Modificaciones y seguimiento durante el registro de comandos:
+
+-   ✅ **Modificar comandos**: Agregar prefijos, sufijos, opciones dinámicas
+-   ✅ **Traducciones**: Cambiar descripciones según idioma
+-   ✅ **Ambiente**: Ocultar comandos de debug en producción
+-   ✅ **Logging**: Registrar qué comandos se registraron
+-   ✅ **Analytics**: Seguimiento de comandos disponibles
+-   ✅ **Sincronización**: Guardar IDs de comandos en BD
+
+### 🔵 Plugins de Ejecución (`onBeforeExecute`)
 
 Validaciones y verificaciones **antes** de ejecutar el comando:
 
@@ -27,7 +56,7 @@ Validaciones y verificaciones **antes** de ejecutar el comando:
 -   ✅ **Blacklist**: Prevenir uso de usuarios/servidores bloqueados
 -   ✅ **Validaciones custom**: Cualquier validación previa
 
-### 🟢 Plugins `onAfterExecute`
+### 🟢 Plugins de Post-Ejecución (`onAfterExecute`)
 
 Acciones **después** de ejecutar exitosamente el comando:
 
@@ -45,7 +74,28 @@ import { BasePlugin } from '@/core/structures/BasePlugin';
 import { BaseCommand } from '@/core/structures/BaseCommand';
 
 export class MiPlugin extends BasePlugin {
-    // Ejecutar ANTES del comando
+    // Ejecutar ANTES de registrar en Discord API (opcional)
+    async onBeforeRegisterCommand(
+        commandClass: new (...args: any[]) => BaseCommand,
+        commandJson: any,
+    ): Promise<any | false | null | undefined> {
+        // Acceder a la clase del comando
+        console.log(`Registrando: ${commandClass.name}`);
+
+        // Modificar, cancelar o dejar pasar el comando
+        return commandJson; // o false, null, undefined
+    }
+
+    // Ejecutar DESPUÉS de registrar en Discord API (opcional)
+    async onAfterRegisterCommand(
+        commandClass: new (...args: any[]) => BaseCommand,
+        registeredCommandJson: any,
+    ): Promise<void> {
+        // Logging, analytics, etc.
+        console.log(`${commandClass.name} registrado con ID: ${registeredCommandJson.id}`);
+    }
+
+    // Ejecutar ANTES del comando (opcional)
     async onBeforeExecute(command: BaseCommand): Promise<boolean> {
         // Validaciones aquí
 
@@ -110,38 +160,82 @@ export class CooldownPlugin extends BasePlugin {
 }
 ```
 
-## 📝 Ejemplo 2: Plugin de Permisos por Rol
+## 📝 Ejemplo 2: Plugin de Permisos (PermissionsPlugin)
+
+**El plugin de permisos está incluido en el template** y es uno de los más útiles. Gestiona permisos de Discord automáticamente.
 
 ```typescript
-// src/plugins/role-permission.plugin.ts
-import { BasePlugin } from '@/core/structures/BasePlugin';
+// src/plugins/permissions.plugin.ts
+import { REQUIRE_PERMISSIONS_METADATA_KEY } from '@/core/decorators/permission.decorator';
 import { BaseCommand } from '@/core/structures/BaseCommand';
-import { ReplyError } from '@/error/ReplyError';
+import { BasePlugin } from '@/core/structures/BasePlugin';
 
-export class RolePermissionPlugin extends BasePlugin {
-    private requiredRoles = ['Admin', 'Moderador'];
+export class PermissionsPlugin extends BasePlugin {
+    // 🟦 Fase de Registro: Agrega default_member_permissions al comando
+    async onBeforeRegisterCommand(
+        commandClass: new (...args: any[]) => BaseCommand,
+        commandJson: any,
+    ): Promise<any | false | null | undefined> {
+        const metadata = Reflect.getMetadata(REQUIRE_PERMISSIONS_METADATA_KEY, commandClass) as
+            | bigint[]
+            | undefined;
 
+        if (metadata) {
+            // Combinar permisos con OR bitwise
+            commandJson.default_member_permissions = metadata
+                .reduce((a, b) => a | b, BigInt(0))
+                .toString();
+
+            return commandJson;
+        }
+    }
+
+    // 🔵 Fase de Ejecución: Valida permisos del usuario
     async onBeforeExecute(command: BaseCommand): Promise<boolean> {
-        const member = command.ctx.member;
+        const requiredPermissions = Reflect.getMetadata(
+            REQUIRE_PERMISSIONS_METADATA_KEY,
+            command.constructor,
+        ) as bigint[] | undefined;
 
-        if (!member) {
-            throw new ReplyError('Este comando solo funciona en servidores');
+        if (requiredPermissions) {
+            const member = command.ctx.member;
+
+            for (const permission of requiredPermissions) {
+                if (!member.permissions.has(permission)) {
+                    const embed = command.getEmbed('error');
+                    embed.setTitle('Permisos insuficientes');
+                    embed.setDescription(
+                        'No tienes los permisos necesarios para ejecutar este comando.',
+                    );
+
+                    await command.reply({ embeds: [embed] });
+                    return false;
+                }
+            }
         }
-
-        const hasRole = this.requiredRoles.some((roleName) =>
-            member.roles.cache.some((role) => role.name === roleName),
-        );
-
-        if (!hasRole) {
-            throw new ReplyError(
-                `⛔ Necesitas uno de estos roles: ${this.requiredRoles.join(', ')}`,
-            );
-        }
-
-        return true; // Continuar con la ejecución
+        return true;
     }
 }
 ```
+
+**Uso con decorador:**
+
+```typescript
+import { RequirePermissions } from '@/core/decorators/permission.decorator';
+import { Permissions } from '@/utils/Permissions';
+
+@Command({ name: 'ban', description: 'Banea un usuario' })
+@RequirePermissions(Permissions.BanMembers)
+export class BanCommand extends BaseCommand {
+    async run(): Promise<void> {
+        // Usuario ya validado con permisos
+    }
+}
+```
+
+**Documentación completa**: Ver [`permissions.plugin.README.md`](./permissions.plugin.README.md)
+
+## 📝 Ejemplo 3: Plugin de Logging
 
 ## 📝 Ejemplo 3: Plugin de Logging
 

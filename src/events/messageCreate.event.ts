@@ -2,6 +2,7 @@ import { Events, Message } from 'discord.js';
 import { CommandLoader } from '@/core/loaders/command.loader';
 import { CommandHandler } from '@/core/handlers/command.handler';
 import { getPrefix } from '@/core/resolvers/prefix.resolver';
+import { Permissions } from '@/utils/Permissions';
 
 const PREFIX = getPrefix();
 
@@ -14,9 +15,10 @@ export function registerMessageCreateEvent(
         async execute(message: Message) {
             // Ignorar bots y mensajes fuera de servidores
             if (message.author.bot || !message.guild) return;
-
             // Verificar prefijo
             if (!message.content.startsWith(PREFIX)) return;
+            const guild = message.guild;
+            if (!guild.members.me?.permissions.has(Permissions.SendMessages)) return;
 
             // Parsear comando y argumentos
             let args: (string | number)[] = message.content

@@ -2,6 +2,9 @@ import { Client, REST, Routes, ApplicationCommandOptionType } from 'discord.js';
 import { CommandLoader } from './command.loader';
 import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command.decorator';
 import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
+import { PLUGIN_METADATA_KEY } from '@/core/decorators/plugin.decorator';
+import { PluginRegistry } from '@/config/plugin.registry';
+import { BasePlugin } from '@/core/structures/BasePlugin';
 import { Env } from '@/utils/Env';
 
 export class SlashCommandLoader {
@@ -17,7 +20,7 @@ export class SlashCommandLoader {
         const rest = new REST({ version: '10' }).setToken(config.BOT_TOKEN);
         const slashCommandsJSON: any[] = [];
 
-        for (const commandClass of this.commandLoader.getAllCommands().values()) {
+        for (const [commandName, commandClass] of this.commandLoader.getAllCommands()) {
             const cmdMeta: ICommandOptions = Reflect.getMetadata(
                 COMMAND_METADATA_KEY,
                 commandClass,
@@ -52,22 +55,91 @@ export class SlashCommandLoader {
                 return option;
             });
 
-            slashCommandsJSON.push({
+            let commandJson = {
                 name: cmdMeta.name,
                 description: cmdMeta.description,
                 options,
-            });
+            };
+
+            // Ejecutar onBeforeRegisterCommand de plugins aplicables
+            const commandPath = this.commandLoader.getCommandPath(commandName) || '';
+            const plugins = this.getPluginsForCommand(commandClass, commandPath);
+
+            let shouldRegister = true;
+
+            for (const plugin of plugins) {
+                if (plugin.onBeforeRegisterCommand) {
+                    // Pasar una COPIA del JSON
+                    const jsonCopy = JSON.parse(JSON.stringify(commandJson));
+                    const result = await plugin.onBeforeRegisterCommand(commandClass, jsonCopy);
+
+                    if (result === false) {
+                        // Cancelar registro de este comando
+                        shouldRegister = false;
+                        console.log(`⏭️  Comando "${cmdMeta.name}" omitido por plugin`);
+                        break;
+                    } else if (result && typeof result === 'object') {
+                        // Usar JSON modificado
+                        commandJson = result;
+                    }
+                    // null/undefined = usar el original (no hacer nada)
+                }
+            }
+
+            if (shouldRegister) {
+                slashCommandsJSON.push(commandJson);
+            }
         }
 
         try {
-            await rest.put(Routes.applicationCommands(this.client.user!.id), {
-                body: slashCommandsJSON,
-            });
+            const registeredCommands: any = await rest.put(
+                Routes.applicationCommands(this.client.user!.id),
+                {
+                    body: slashCommandsJSON,
+                },
+            );
 
             console.log('✅ Comandos Slash registrados.');
+
+            // Ejecutar onAfterRegisterCommand para cada comando registrado
+            for (const registeredCommand of registeredCommands) {
+                const commandClass = this.commandLoader.getCommand(registeredCommand.name);
+                if (!commandClass) continue;
+
+                const commandPath = this.commandLoader.getCommandPath(registeredCommand.name) || '';
+                const plugins = this.getPluginsForCommand(commandClass, commandPath);
+
+                for (const plugin of plugins) {
+                    if (plugin.onAfterRegisterCommand) {
+                        await plugin.onAfterRegisterCommand(commandClass, registeredCommand);
+                    }
+                }
+            }
         } catch (error) {
             console.error('❌ Error al registrar comandos Slash:', error);
         }
+    }
+
+    /**
+     * Obtiene todos los plugins aplicables a un comando
+     * Prioridad: @UsePlugins primero, luego plugins de scope
+     */
+    private getPluginsForCommand(
+        commandClass: new (...args: any[]) => any,
+        commandPath: string,
+    ): BasePlugin[] {
+        const plugins: BasePlugin[] = [];
+
+        // 1. Plugins de @UsePlugins (máxima prioridad)
+        const decoratorPlugins: BasePlugin[] =
+            Reflect.getMetadata(PLUGIN_METADATA_KEY, commandClass) || [];
+        plugins.push(...decoratorPlugins);
+
+        // 2. Plugins de scope (registry)
+        const scopePlugins = PluginRegistry.getPluginsForCommand(commandClass, commandPath);
+        plugins.push(...scopePlugins);
+
+        return plugins;
     }
 
     /**
