@@ -18,7 +18,16 @@ export function registerInteractionCreateEvent(
             try {
                 // Manejar slash commands
                 if (interaction.isChatInputCommand()) {
-                    const commandEntry = commandLoader.getCommandEntry(interaction.commandName);
+                    let commandName = interaction.commandName;
+
+                    // Detectar si tiene subcomando
+                    const subcommand = interaction.options.getSubcommand(false);
+                    if (subcommand) {
+                        // Construir nombre completo: "user info"
+                        commandName = `${commandName} ${subcommand}`;
+                    }
+
+                    const commandEntry = commandLoader.getCommandEntry(commandName);
                     if (!commandEntry) return;
 
                     await commandHandler.executeCommand(

@@ -88,8 +88,8 @@ Este símbolo se usa para almacenar y recuperar los metadatos del comando usando
 
 El decorador NO valida los datos. Las validaciones se hacen en:
 
--   **CommandLoader**: Al cargar el comando
--   **SlashCommandLoader**: Al registrar en Discord
+- **CommandLoader**: Al cargar el comando
+- **SlashCommandLoader**: Al registrar en Discord
 
 ### Ejemplo Completo
 
@@ -135,6 +135,7 @@ interface IArgumentOptions {
     parser?: (val: any) => any; // Parser personalizado - Obligatorio para tipos no primitivos/Discord
     rawText?: boolean; // Captura todo el texto después del comando (solo text commands)
     options?: IArgumentOption[]; // Opciones predefinidas (choices en Discord)
+    subcommands?: string[]; // Subcomandos a los que pertenece este argumento (solo para comandos unificados)
     propertyName?: string | symbol; // Nombre de la propiedad (auto)
     designType?: any; // Tipo de diseño (auto)
 }
@@ -142,10 +143,10 @@ interface IArgumentOptions {
 
 **Notas importantes:**
 
--   ✅ **El `name` se mantiene intacto** para mostrar en ayudas y mensajes de error
--   ✅ **`normalizedName` se genera automáticamente** al cargar el comando: lowercase, sin acentos, sin espacios, solo alfanumérico
--   ✅ **Ejemplo:** `name: "Usuario Objetivo"` → `normalizedName: "usuarioobjetivo"`
--   ✅ **El CommandLoader normaliza automáticamente** todos los nombres al cargar comandos
+- ✅ **El `name` se mantiene intacto** para mostrar en ayudas y mensajes de error
+- ✅ **`normalizedName` se genera automáticamente** al cargar el comando: lowercase, sin acentos, sin espacios, solo alfanumérico
+- ✅ **Ejemplo:** `name: "Usuario Objetivo"` → `normalizedName: "usuarioobjetivo"`
+- ✅ **El CommandLoader normaliza automáticamente** todos los nombres al cargar comandos
 
 **Propiedades importantes:**
 
@@ -261,9 +262,9 @@ public edad!: number;
 
 **Reglas:**
 
--   Retorna `true` si la validación es exitosa
--   Retorna un `string` con el mensaje de error si falla
--   Retorna `false` para usar mensaje de error genérico
+- Retorna `true` si la validación es exitosa
+- Retorna un `string` con el mensaje de error si falla
+- Retorna `false` para usar mensaje de error genérico
 
 ### Parser Personalizado para Tipos Complejos
 
@@ -272,7 +273,10 @@ Para tipos que **no son primitivos** (string, number, boolean) **ni Discord** (U
 ```typescript
 // Clase personalizada
 class MinecraftPlayer {
-    constructor(public username: string, public uuid: string) {}
+    constructor(
+        public username: string,
+        public uuid: string,
+    ) {}
 
     static fromString(input: string): MinecraftPlayer {
         // Validar formato: "username:uuid"
@@ -359,22 +363,22 @@ La propiedad `rawText` permite capturar **todo el texto restante** después del 
 
 #### ✅ Cuándo usar `rawText`
 
--   Comandos que replican texto: `!say`, `!announce`, `!embed`
--   Descripciones largas: `!setstatus`, `!bio`
--   Mensajes personalizados sin formato estricto
+- Comandos que replican texto: `!say`, `!announce`, `!embed`
+- Descripciones largas: `!setstatus`, `!bio`
+- Mensajes personalizados sin formato estricto
 
 #### 🔧 Comportamiento
 
 **Text Commands (`!comando`):**
 
--   ✅ Captura todo el texto después del comando (o después de argumentos previos)
--   ✅ No requiere comillas
--   ✅ Puede combinarse con otros argumentos
+- ✅ Captura todo el texto después del comando (o después de argumentos previos)
+- ✅ No requiere comillas
+- ✅ Puede combinarse con otros argumentos
 
 **Slash Commands (`/comando`):**
 
--   ⚠️ Se comporta como un argumento de texto normal
--   ⚠️ No captura "todo el texto", solo su propio valor
+- ⚠️ Se comporta como un argumento de texto normal
+- ⚠️ No captura "todo el texto", solo su propio valor
 
 #### 📖 Ejemplo Básico: Comando Say
 
@@ -528,10 +532,10 @@ export class SetStatusCommand extends SetStatusDefinition {
                 activityType === 'playing'
                     ? 0
                     : activityType === 'watching'
-                    ? 3
-                    : activityType === 'listening'
-                    ? 2
-                    : 5,
+                      ? 3
+                      : activityType === 'listening'
+                        ? 2
+                        : 5,
         });
 
         await this.reply(`✅ Estado cambiado: ${this.tipo} ${this.texto}`);
@@ -566,25 +570,25 @@ interface IArgumentOption {
 
 #### ✅ Cuándo usar `options`
 
--   Comandos con valores predefinidos (idiomas, modos, tipos)
--   Prevenir valores inválidos
--   Mejorar UX con autocompletado en slash commands
--   Validación automática de valores (tanto text como slash commands)
+- Comandos con valores predefinidos (idiomas, modos, tipos)
+- Prevenir valores inválidos
+- Mejorar UX con autocompletado en slash commands
+- Validación automática de valores (tanto text como slash commands)
 
 #### 🔧 Comportamiento
 
 **Text Commands (`!comando`):**
 
--   ✅ Valida que el valor ingresado coincida con uno de los `value` definidos
--   ✅ Lanza `ValidationError` si el valor no es válido
--   ✅ Case-sensitive por defecto
+- ✅ Valida que el valor ingresado coincida con uno de los `value` definidos
+- ✅ Lanza `ValidationError` si el valor no es válido
+- ✅ Case-sensitive por defecto
 
 **Slash Commands (`/comando`):**
 
--   ✅ Se convierte automáticamente en **choices** de Discord
--   ✅ El usuario ve un dropdown con las opciones
--   ✅ Discord previene valores inválidos automáticamente
--   ✅ Muestra `label` al usuario pero envía `value` al bot
+- ✅ Se convierte automáticamente en **choices** de Discord
+- ✅ El usuario ve un dropdown con las opciones
+- ✅ Discord previene valores inválidos automáticamente
+- ✅ Muestra `label` al usuario pero envía `value` al bot
 
 #### 📖 Ejemplo Básico: Comando Language
 
@@ -847,6 +851,203 @@ public nivel!: number;
 public modo!: string;
 ```
 
+---
+
+### 🎯 Subcommands (Especificar Argumentos por Subcomando)
+
+La propiedad `subcommands` en `@Arg` permite especificar a qué subcomandos pertenece un argumento cuando usas el patrón de **archivo unificado**.
+
+#### 📋 ¿Cuándo usar `subcommands` en @Arg?
+
+**Úsalo cuando:**
+
+- ✅ Tienes un comando con subcomandos en un **archivo unificado**
+- ✅ Un argumento NO se usa en **todos** los subcomandos
+- ✅ Quieres evitar registrar argumentos innecesarios en Discord
+
+**NO lo uses cuando:**
+
+- ❌ El argumento se usa en **todos** los subcomandos (déjalo sin `subcommands`)
+- ❌ Usas el patrón de **archivos separados** (cada archivo tiene sus propios argumentos)
+
+#### 🎨 Ejemplo: Comando Config
+
+**❌ Problema sin `subcommands`:**
+
+```typescript
+@Command({
+    name: 'config',
+    subcommands: ['get', 'set', 'list'],
+})
+export abstract class ConfigDefinition extends BaseCommand {
+    @Arg({ name: 'clave', index: 0 })
+    key!: string; // ❌ Se registra en get, set Y list (pero list no lo usa)
+
+    @Arg({ name: 'valor', index: 1 })
+    value?: string; // ❌ Se registra en get, set Y list (pero solo se usa en set)
+}
+```
+
+**Resultado en Discord:**
+
+```
+/config get [clave] [valor?]     ← valor es innecesario aquí
+/config set [clave] [valor?]     ← correcto
+/config list [clave?] [valor?]   ← ambos son innecesarios aquí
+```
+
+**✅ Solución con `subcommands`:**
+
+```typescript
+@Command({
+    name: 'config',
+    subcommands: ['get', 'set', 'list'],
+})
+export abstract class ConfigDefinition extends BaseCommand {
+    @Arg({
+        name: 'clave',
+        index: 0,
+        required: true,
+        subcommands: ['get', 'set'], // ✅ Solo en get y set
+    })
+    key!: string;
+
+    @Arg({
+        name: 'valor',
+        index: 1,
+        subcommands: ['set'], // ✅ Solo en set
+    })
+    value?: string;
+}
+```
+
+**Resultado en Discord:**
+
+```
+/config get [clave]              ← correcto
+/config set [clave] [valor?]     ← correcto
+/config list                     ← correcto (sin argumentos)
+```
+
+#### 🎯 Ejemplo Completo
+
+```typescript
+// src/definition/admin.definition.ts
+import { Command } from '@/core/decorators/command.decorator';
+import { Arg } from '@/core/decorators/argument.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+import { User, Role } from 'discord.js';
+
+@Command({
+    name: 'admin',
+    description: 'Comandos de administración',
+    subcommands: ['ban', 'kick', 'role', 'clear'],
+})
+export abstract class AdminDefinition extends BaseCommand {
+    @Arg({
+        name: 'usuario',
+        description: 'El usuario objetivo',
+        index: 0,
+        required: true,
+        subcommands: ['ban', 'kick', 'role'], // ✅ Solo en ban, kick, role
+    })
+    targetUser!: User;
+
+    @Arg({
+        name: 'razon',
+        description: 'Razón de la acción',
+        index: 1,
+        subcommands: ['ban', 'kick'], // ✅ Solo en ban y kick
+    })
+    reason?: string;
+
+    @Arg({
+        name: 'rol',
+        description: 'El rol a asignar/remover',
+        index: 1,
+        required: true,
+        subcommands: ['role'], // ✅ Solo en role
+    })
+    role!: Role;
+
+    @Arg({
+        name: 'cantidad',
+        description: 'Cantidad de mensajes a eliminar',
+        index: 0,
+        required: true,
+        subcommands: ['clear'], // ✅ Solo en clear
+    })
+    amount!: number;
+
+    async run(): Promise<void> {}
+
+    abstract subcommandBan(): Promise<void>;
+    abstract subcommandKick(): Promise<void>;
+    abstract subcommandRole(): Promise<void>;
+    abstract subcommandClear(): Promise<void>;
+}
+```
+
+**Resultado en Discord:**
+
+```
+/admin ban [usuario] [razon?]
+/admin kick [usuario] [razon?]
+/admin role [usuario] [rol]
+/admin clear [cantidad]
+```
+
+#### ⚙️ Reglas Importantes
+
+1. **Array de strings**: `subcommands` debe ser un array de nombres de subcomandos
+2. **Nombres exactos**: Deben coincidir con los declarados en `@Command({ subcommands: [...] })`
+3. **Sin `subcommands`**: Si no especificas `subcommands`, el argumento se registra en **todos** los subcomandos
+4. **Solo archivos unificados**: Esta propiedad NO tiene efecto en archivos separados
+5. **Validación automática**: El sistema filtra automáticamente los argumentos al registrar en Discord
+
+#### ❌ Errores Comunes
+
+```typescript
+// ❌ MAL: Subcomando que no existe
+@Command({ subcommands: ['get', 'set'] })
+export abstract class ConfigDefinition extends BaseCommand {
+    @Arg({
+        name: 'valor',
+        index: 0,
+        subcommands: ['list'], // ❌ 'list' no está declarado en @Command
+    })
+    value!: string;
+}
+
+// ❌ MAL: Typo en el nombre del subcomando
+@Command({ subcommands: ['get', 'set'] })
+export abstract class ConfigDefinition extends BaseCommand {
+    @Arg({
+        name: 'valor',
+        index: 0,
+        subcommands: ['Set'], // ❌ Debe ser 'set' (lowercase)
+    })
+    value!: string;
+}
+
+// ✅ BIEN: Nombres correctos
+@Command({ subcommands: ['get', 'set'] })
+export abstract class ConfigDefinition extends BaseCommand {
+    @Arg({
+        name: 'valor',
+        index: 0,
+        subcommands: ['set'], // ✅ Correcto
+    })
+    value!: string;
+}
+```
+
+#### 📚 Más Información
+
+Para una guía completa sobre subcomandos, consulta [`/docs/SUBCOMMANDS.md`](../../../docs/SUBCOMMANDS.md).
+
+````
+
 #### 🎨 Mejores Prácticas
 
 1. **Labels Descriptivos**: Usa texto claro y comprensible para los usuarios
@@ -875,21 +1076,21 @@ enum GameMode {
     ],
 })
 public modo!: string;
-```
+````
 
 #### 🔧 Comportamiento
 
 **Slash Commands:**
 
--   ✅ Aparecen como menú desplegable (choices)
--   ✅ El usuario solo puede elegir una opción
--   ✅ No puede escribir valores personalizados
+- ✅ Aparecen como menú desplegable (choices)
+- ✅ El usuario solo puede elegir una opción
+- ✅ No puede escribir valores personalizados
 
 **Text Commands:**
 
--   ✅ El usuario escribe el `value` de la opción
--   ✅ Se valida automáticamente contra las opciones
--   ✅ Error si el valor no coincide
+- ✅ El usuario escribe el `value` de la opción
+- ✅ Se valida automáticamente contra las opciones
+- ✅ Error si el valor no coincide
 
 #### 📖 Estructura
 
@@ -900,8 +1101,8 @@ options: [
 ];
 ```
 
--   **`label`**: Texto que ve el usuario (en slash commands)
--   **`value`**: Valor real que recibe el comando (string o number)
+- **`label`**: Texto que ve el usuario (en slash commands)
+- **`value`**: Valor real que recibe el comando (string o number)
 
 #### 📝 Ejemplo Básico: Idioma
 
@@ -1409,7 +1610,6 @@ export const REQUIRE_PERMISSIONS_METADATA_KEY = Symbol('REQUIRE_PERMISSIONS_META
 El decorador `@RequirePermissions` trabaja en conjunto con el **PermissionsPlugin** para:
 
 1. **Fase de Registro** (`onBeforeRegisterCommand`):
-
     - Modifica el JSON del comando antes de enviarlo a Discord
     - Agrega el campo `default_member_permissions` con los permisos requeridos
     - Discord automáticamente oculta el comando a usuarios sin permisos
@@ -1627,12 +1827,12 @@ Para que los decoradores funcionen, necesitas estas opciones en `tsconfig.json`:
 }
 ```
 
--   **experimentalDecorators**: Habilita el uso de decoradores
--   **emitDecoratorMetadata**: Emite metadata de tipos de diseño
+- **experimentalDecorators**: Habilita el uso de decoradores
+- **emitDecoratorMetadata**: Emite metadata de tipos de diseño
 
 ## 📚 Recursos Relacionados
 
--   `/src/definition/` - Uso de los decoradores
--   `/src/core/loaders/command.loader.ts` - Lee metadata de @Command
--   `/src/core/resolvers/argument.resolver.ts` - Usa metadata de @Arg
--   [reflect-metadata](https://github.com/rbuckton/reflect-metadata) - Librería de metadata
+- `/src/definition/` - Uso de los decoradores
+- `/src/core/loaders/command.loader.ts` - Lee metadata de @Command
+- `/src/core/resolvers/argument.resolver.ts` - Usa metadata de @Arg
+- [reflect-metadata](https://github.com/rbuckton/reflect-metadata) - Librería de metadata

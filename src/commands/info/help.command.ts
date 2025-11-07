@@ -163,41 +163,80 @@ export class HelpCommand extends HelpDefinition {
         const argsMeta: IArgumentOptions[] =
             Reflect.getMetadata(ARGUMENT_METADATA_KEY, commandClass) || [];
 
-        // Construir el uso del comando
-        let usage = '';
-        if (this.ctx.isInteraction) {
-            // Slash command: /comando
-            usage = `/${meta.name}`;
-        } else {
-            // Text command: !comando <arg1> <arg2>
-            usage = `${this.loader.prefix}${meta.name}`;
-            if (argsMeta.length > 0) {
-                const argsText = argsMeta
-                    .sort((a, b) => a.index - b.index)
-                    .map((arg) => {
-                        const bracket = arg.required ? '<>' : '[]';
-                        return bracket[0] + arg.name + bracket[1];
-                    })
-                    .join(' ');
-                usage += ` ${argsText}`;
-            }
-        }
+        // Verificar si tiene subcomandos
+        const hasSubcommands = meta.subcommands && meta.subcommands.length > 0;
 
         const embed = this.getEmbed('info')
             .setTitle(`Ayuda: ${meta.name}`)
-            .setDescription(meta.description || '*Sin descripción*')
-            .addFields({ name: 'Uso', value: `\`${usage}\`` });
+            .setDescription(meta.description || '*Sin descripción*');
 
-        // Agregar información de argumentos si existen
-        if (argsMeta.length > 0) {
-            const argsDescription = argsMeta
-                .sort((a, b) => a.index - b.index)
-                .map((arg) => {
-                    return `**${arg.name}**: ${arg.description}`;
+        if (hasSubcommands) {
+            // Mostrar subcomandos
+            const subcommandsText = meta
+                .subcommands!.map((sub) => {
+                    // Buscar si el subcomando está en archivo separado
+                    const subCommandName = `${meta.name} ${sub}`;
+                    const subCommandClass = this.loader.getCommand(subCommandName);
+
+                    let description = `Subcomando ${sub}`;
+                    if (subCommandClass) {
+                        const subMeta: ICommandOptions = Reflect.getMetadata(
+                            COMMAND_METADATA_KEY,
+                            subCommandClass,
+                        );
+                        description = subMeta.description;
+                    }
+
+                    const prefix = this.ctx.isInteraction ? '/' : this.loader.prefix;
+                    return `**${prefix}${meta.name} ${sub}** - ${description}`;
                 })
-                .join('\n\n');
+                .join('\n');
 
-            embed.addFields({ name: 'Argumentos', value: argsDescription });
+            embed.addFields({ name: 'Subcomandos', value: subcommandsText });
+
+            if (!this.ctx.isInteraction) {
+                embed.setFooter({
+                    text: `Usa ${this.loader.prefix}help ${meta.name} <subcomando> para más información`,
+                });
+            }
+        } else {
+            // Comando sin subcomandos - mostrar uso normal
+            let usage = '';
+            if (this.ctx.isInteraction) {
+                // Slash command: /comando
+                usage = `/${meta.name}`;
+            } else {
+                // Text command: !comando <arg1> <arg2>
+                usage = `${this.loader.prefix}${meta.name}`;
+                if (argsMeta.length > 0) {
+                    const argsText = argsMeta
+                        .sort((a, b) => a.index - b.index)
+                        .map((arg) => {
+                            const bracket = arg.required ? '<>' : '[]';
+                            return bracket[0] + arg.name + bracket[1];
+                        })
+                        .join(' ');
+                    usage += ` ${argsText}`;
+                }
+            }
+
+            embed.addFields({ name: 'Uso', value: `\`${usage}\`` });
+
+            // Agregar información de argumentos si existen
+            if (argsMeta.length > 0) {
+                const argsDescription = argsMeta
+                    .sort((a, b) => a.index - b.index)
+                    .map((arg) => {
+                        return `**${arg.name}**: ${arg.description}`;
+                    })
+                    .join('\n\n');
+
+                embed.addFields({ name: 'Argumentos', value: argsDescription });
+            }
+
+            if (!this.ctx.isInteraction) {
+                embed.setFooter({ text: `<> = obligatorio, [] = opcional` });
+            }
         }
 
         // Agregar aliases si existen
@@ -207,9 +246,7 @@ export class HelpCommand extends HelpDefinition {
                 value: meta.aliases.map((a) => `\`${a}\``).join(', '),
             });
         }
-        if (!this.ctx.isInteraction) {
-            embed.setFooter({ text: `<> = obligatorio, [] = opcional` });
-        }
+
         await this.reply({ embeds: [embed] });
     }
 }

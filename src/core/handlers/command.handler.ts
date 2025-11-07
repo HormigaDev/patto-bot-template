@@ -4,6 +4,7 @@ import { BaseCommand } from '@/core/structures/BaseCommand';
 import { BasePlugin } from '@/core/structures/BasePlugin';
 import { CommandContext } from '@/core/structures/CommandContext';
 import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
+import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command.decorator';
 import { PLUGIN_METADATA_KEY } from '@/core/decorators/plugin.decorator';
 import { ValidationError } from '@/error/ValidationError';
 import { ReplyError } from '@/error/ReplyError';
@@ -81,7 +82,49 @@ export class CommandHandler {
             }
 
             // Ejecutar el comando
-            await command.run();
+            // Determinar si tiene subcomandos y cuál ejecutar
+            const cmdMeta: ICommandOptions = Reflect.getMetadata(
+                COMMAND_METADATA_KEY,
+                TCommandClass,
+            );
+
+            // Verificar si el comando tiene subcomandos declarados explícitamente
+            const hasExplicitSubcommands = cmdMeta.subcommands && cmdMeta.subcommands.length > 0;
+
+            let subcommandName: string | undefined;
+
+            if (hasExplicitSubcommands) {
+                // Comando con subcomandos explícitos (ej: config con subcommands: ['get', 'set'])
+                // Para slash commands, Discord.js maneja el subcomando automáticamente
+                if (ctx.isInteraction && (source as ChatInputCommandInteraction).options) {
+                    const interaction = source as ChatInputCommandInteraction;
+                    subcommandName = interaction.options.getSubcommand(false) || undefined;
+                } else if (textArgs && textArgs.length > 0) {
+                    // Para text commands, el primer argumento es el subcomando
+                    subcommandName = textArgs[0];
+                }
+
+                if (subcommandName) {
+                    // Ejecutar método del subcomando
+                    const methodName = `subcommand${subcommandName.charAt(0).toUpperCase() + subcommandName.slice(1)}`;
+
+                    if (typeof (command as any)[methodName] === 'function') {
+                        await (command as any)[methodName]();
+                    } else {
+                        throw new ValidationError(
+                            `Subcomando "${subcommandName}" no encontrado. Subcomandos disponibles: ${cmdMeta.subcommands?.join(', ')}`,
+                        );
+                    }
+                } else {
+                    throw new ValidationError(
+                        `Debes especificar un subcomando. Disponibles: ${cmdMeta.subcommands?.join(', ')}`,
+                    );
+                }
+            } else {
+                // Comando sin subcomandos explícitos o subcomando individual (ej: "user info")
+                // Ejecutar run() normal
+                await command.run();
+            }
 
             // Ejecutar onAfterExecute en orden INVERSO
             for (let i = plugins.length - 1; i >= 0; i--) {

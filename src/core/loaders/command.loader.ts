@@ -57,6 +57,35 @@ export class CommandLoader {
     }
 
     /**
+     * Valida que existan los métodos subcommand<Name> para cada subcomando declarado
+     */
+    private validateSubcommands(commandClass: CommandClass, meta: ICommandOptions): void {
+        if (!meta.subcommands || meta.subcommands.length === 0) {
+            return;
+        }
+
+        const prototype = commandClass.prototype;
+        const missingMethods: string[] = [];
+
+        for (const subcommand of meta.subcommands) {
+            // Capitalizar primera letra: 'get' -> 'Get'
+            const methodName = `subcommand${subcommand.charAt(0).toUpperCase() + subcommand.slice(1)}`;
+
+            if (typeof prototype[methodName] !== 'function') {
+                missingMethods.push(methodName);
+            }
+        }
+
+        if (missingMethods.length > 0) {
+            throw new Error(
+                `❌ El comando "${meta.name}" declara subcomandos pero faltan los siguientes métodos:\n` +
+                    `   ${missingMethods.map((m) => `- ${m}()`).join('\n   ')}\n` +
+                    `   Asegúrate de implementar todos los métodos requeridos en la clase.`,
+            );
+        }
+    }
+
+    /**
      * Carga todos los comandos desde el directorio de comandos
      */
     async loadCommands(): Promise<void> {
@@ -103,6 +132,29 @@ export class CommandLoader {
                     errorCount++;
                     continue;
                 }
+
+                // Detectar si es un subcomando por nombre de archivo (ej: config.get.command.ts)
+                const fileName = path.basename(filePath, extension);
+                const fileNameParts = fileName.split('.');
+
+                // Si el archivo tiene formato comando.sub.command, extraer subcomando
+                if (
+                    fileNameParts.length >= 3 &&
+                    fileNameParts[fileNameParts.length - 1] === 'command'
+                ) {
+                    const subcommandName = fileNameParts[fileNameParts.length - 2];
+
+                    // Validar que el nombre del @Command incluya el subcomando
+                    const expectedName = `${fileNameParts[0]} ${subcommandName}`;
+                    if (meta.name !== expectedName) {
+                        console.warn(
+                            `⚠️  Advertencia: El archivo "${path.basename(filePath)}" debería tener name: "${expectedName}" en @Command`,
+                        );
+                    }
+                }
+
+                // Validar subcomandos declarados explícitamente
+                this.validateSubcommands(commandClass, meta);
 
                 // Normalizar nombres de argumentos
                 const argsMeta: IArgumentOptions[] =

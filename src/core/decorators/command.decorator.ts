@@ -6,6 +6,7 @@ export interface ICommandOptions {
     description: string;
     category?: CommandCategoryTag; // Categoría opcional del comando (default: Other)
     aliases?: string[];
+    subcommands?: string[]; // Subcomandos opcionales (solo alfanuméricos lowercase sin acentos)
 }
 
 export const COMMAND_METADATA_KEY = Symbol('commandMetadata');

@@ -26,6 +26,7 @@
 - ✅ **Decoradores TypeScript** para definición declarativa de comandos
 - ✅ **Slash Commands** (/comando) - Siempre disponibles
 - ✅ **Text Commands** (!comando) - Opcionales y configurables
+- ✅ **Soporte para Subcomandos** - Agrupa funcionalidades relacionadas (ej: `/config get`, `/user info`) - [📖 Ver docs](./docs/SUBCOMMANDS.md)
 - ✅ **Resolución automática** de argumentos con validación
 - ✅ **Raw Text Capture** - Captura texto completo sin comillas (ej: `!say Hola mundo`)
 - ✅ **Options/Choices** - Argumentos con valores predefinidos y dropdown en slash commands
@@ -61,7 +62,7 @@
 
 - ✅ **TypeScript** con strict mode
 - ✅ **Path aliases** (@/core, @/commands, etc.)
-- ✅ **Hot reload** en desarrollo (ts-node)
+- ✅ **Desarrollo rápido** con ts-node (hot reload opcional con ts-node-dev)
 - ✅ **Testing completo** (Unit, Integration, E2E con Jest)
 - ✅ **Mocks incluidos** para Discord.js
 - ✅ **Documentación completa** por carpeta
@@ -151,11 +152,19 @@ Genera una URL de invitación:
 
 ### Desarrollo
 
-Inicia el bot en modo desarrollo con hot reload:
+Inicia el bot en modo desarrollo:
 
 ```bash
 npm run dev
 ```
+
+**Hot Reload (opcional):** Si prefieres reiniciar automáticamente el bot al hacer cambios, usa:
+
+```bash
+npm run dev:hot
+```
+
+> **⚠️ Nota:** El hot reload puede causar rate limits de Discord si reinicias muy frecuentemente. Se recomienda usar `npm run dev` por defecto.
 
 ### Producción
 
@@ -339,11 +348,102 @@ export class BanCommand extends BaseCommand {
 - ✅ Funciona con el **PermissionsPlugin** incluido (inmutable, no modifica JSON original)
 - ✅ **20 tests** completos (unit + integration) garantizan su correcto funcionamiento
 
-**Más información**: Ver [`/src/plugins/permissions.plugin.README.md`](src/plugins/permissions.plugin.README.md)
+**Más información**: Ver [`/docs/plugins/permissions.plugin.README.md`](docs/plugins/permissions.plugin.README.md)
 
 ---
 
-## �📚 Documentación
+## 🎯 Ejemplo: Comandos con Subcomandos
+
+El template soporta **subcomandos** para agrupar funcionalidades relacionadas. Ejemplo con configuración del bot:
+
+```typescript
+// src/definition/config.definition.ts
+import { Command } from '@/core/decorators/command.decorator';
+import { Arg } from '@/core/decorators/argument.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+
+@Command({
+    name: 'config',
+    description: 'Gestiona la configuración del bot',
+    subcommands: ['get', 'set', 'list'], // ← Declaras los subcomandos
+})
+export abstract class ConfigDefinition extends BaseCommand {
+    @Arg({
+        name: 'clave',
+        description: 'Clave de configuración',
+        index: 0,
+        subcommands: ['get', 'set'], // ← Solo para 'get' y 'set', no para 'list'
+    })
+    public clave!: string;
+
+    @Arg({
+        name: 'valor',
+        description: 'Valor a establecer',
+        index: 1,
+        required: false,
+        subcommands: ['set'], // ← Solo para 'set'
+    })
+    public valor?: string;
+
+    public abstract subcommandGet(): Promise<void>;
+    public abstract subcommandSet(): Promise<void>;
+    public abstract subcommandList(): Promise<void>;
+}
+```
+
+```typescript
+// src/commands/other/config.command.ts
+import { ConfigDefinition } from '@/definition/config.definition';
+
+export class ConfigCommand extends ConfigDefinition {
+    private config = new Map<string, string>(); // Ejemplo simple
+
+    public async subcommandGet(): Promise<void> {
+        const valor = this.config.get(this.clave) || 'No configurado';
+        await this.reply(`**${this.clave}**: ${valor}`);
+    }
+
+    public async subcommandSet(): Promise<void> {
+        if (!this.valor) {
+            await this.reply('❌ Debes proporcionar un valor');
+            return;
+        }
+        this.config.set(this.clave, this.valor);
+        await this.reply(`✅ **${this.clave}** establecido a: ${this.valor}`);
+    }
+
+    public async subcommandList(): Promise<void> {
+        const list =
+            Array.from(this.config.entries())
+                .map(([k, v]) => `• **${k}**: ${v}`)
+                .join('\n') || 'No hay configuraciones';
+        await this.reply(`**Configuraciones:**\n${list}`);
+    }
+
+    public async run(): Promise<void> {
+        // Método obligatorio pero no se usa con subcomandos
+    }
+}
+```
+
+**Uso:**
+
+- Slash: `/config get prefijo`, `/config set prefijo !`, `/config list`
+- Texto: `!config get prefijo`, `!config set prefijo !`, `!config list`
+
+**Características:**
+
+- ✅ Valida que los métodos `subcommand<Name>()` existan en **tiempo de carga**
+- ✅ **Archivos separados** o **unificados** - Tú eliges el patrón
+- ✅ Soporte nativo de **Discord subcommands** en slash commands
+- ✅ Ajuste automático de índices de argumentos en comandos de texto
+- ✅ Errores descriptivos en español si falta un método
+
+**Documentación completa**: Ver [`/docs/SUBCOMMANDS.md`](docs/SUBCOMMANDS.md) para patrones, ejemplos y mejores prácticas
+
+---
+
+## 📚 Documentación
 
 ### Por Carpeta
 
@@ -723,7 +823,8 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE`](./.licences
 
 ### 🛠️ Desarrollo
 
-- [ts-node-dev](https://github.com/wclr/ts-node-dev) - Compilador TypeScript con hot reload para desarrollo
+- [ts-node](https://github.com/TypeStrong/ts-node) - Ejecutor TypeScript para Node.js (desarrollo)
+- [ts-node-dev](https://github.com/wclr/ts-node-dev) - ts-node con hot reload (opcional, puede causar rate limits)
 - [tsconfig-paths](https://github.com/dividab/tsconfig-paths) - Soporte para path aliases en runtime
 - [tsc-alias](https://github.com/justkey007/tsc-alias) - Resuelve path aliases de TypeScript después de compilar
 - [reflect-metadata](https://github.com/rbuckton/reflect-metadata) - Metadata Reflection API para decoradores

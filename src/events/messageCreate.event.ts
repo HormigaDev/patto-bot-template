@@ -26,15 +26,33 @@ export function registerMessageCreateEvent(
                 .trim()
                 .split(/ +/g);
 
-            const commandName = (args.shift() as string)?.toLowerCase();
+            let commandName = (args.shift() as string)?.toLowerCase();
             if (!commandName) return;
+
+            // Intentar detectar comandos con múltiples palabras (ej: "user info")
+            let commandEntry = commandLoader.getCommandEntry(commandName);
+
+            // Si no se encuentra el comando, intentar con 2 palabras
+            if (!commandEntry && args.length > 0) {
+                const secondWord = args[0];
+                if (typeof secondWord === 'string') {
+                    const twoWordCommand = `${commandName} ${secondWord.toLowerCase()}`;
+                    const twoWordEntry = commandLoader.getCommandEntry(twoWordCommand);
+
+                    if (twoWordEntry) {
+                        // Encontrado comando de dos palabras, actualizar y remover segunda palabra de args
+                        commandName = twoWordCommand;
+                        commandEntry = twoWordEntry;
+                        args.shift();
+                    }
+                }
+            }
+
+            // Si aún no se encuentra el comando, salir
+            if (!commandEntry) return;
 
             // Parsear argumentos con soporte para strings entre comillas
             args = parseTextArguments(args.join(' '));
-
-            // Buscar comando
-            const commandEntry = commandLoader.getCommandEntry(commandName);
-            if (!commandEntry) return;
 
             // Ejecutar comando con su ruta
             await commandHandler.executeCommand(

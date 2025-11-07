@@ -6,7 +6,7 @@ Esta carpeta contiene las **implementaciones** de los comandos del bot. Cada arc
 
 ## 🎨 Patrones de Implementación
 
-Existen **dos patrones válidos** para crear comandos, según su complejidad:
+Existen **tres patrones válidos** para crear comandos, según su complejidad:
 
 ### 🔹 Patrón 1: Comando Monolítico (Simple)
 
@@ -31,9 +31,9 @@ export class PingCommand extends BaseCommand {
 
 **Ventajas:**
 
--   ✅ Menos archivos
--   ✅ Ideal para comandos simples
--   ✅ Todo en un solo lugar
+- ✅ Menos archivos
+- ✅ Ideal para comandos simples
+- ✅ Todo en un solo lugar
 
 ### 🔹 Patrón 2: Definición + Implementación (Complejo)
 
@@ -89,21 +89,167 @@ export class BanCommand extends BanDefinition {
 
 **Ventajas:**
 
--   ✅ Separación de responsabilidades
--   ✅ Más fácil de testear
--   ✅ Metadatos reutilizables
--   ✅ Código más limpio
+- ✅ Separación de responsabilidades
+- ✅ Más fácil de testear
+- ✅ Metadatos reutilizables
+- ✅ Código más limpio
+
+### 🔹 Patrón 3: Comandos con Subcomandos
+
+Para agrupar funcionalidades relacionadas bajo un mismo comando padre. Ver [documentación completa de subcomandos](../../docs/SUBCOMMANDS.md).
+
+#### Opción A: Subcomandos en Archivo Unificado
+
+Todos los subcomandos en un mismo archivo:
+
+**Definición:**
+
+```typescript
+// src/definition/config.definition.ts
+import { Command } from '@/core/decorators/command.decorator';
+import { Arg } from '@/core/decorators/argument.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+
+@Command({
+    name: 'config',
+    description: 'Gestiona la configuración del bot',
+    subcommands: ['get', 'set', 'list'], // ✅ Declarar subcomandos
+})
+export abstract class ConfigDefinition extends BaseCommand {
+    @Arg({
+        name: 'clave',
+        description: 'Clave de configuración',
+        index: 0,
+        subcommands: ['get', 'set'], // ✅ Solo en 'get' y 'set', no en 'list'
+    })
+    key!: string;
+
+    @Arg({
+        name: 'valor',
+        description: 'Valor a establecer',
+        index: 1,
+        subcommands: ['set'], // ✅ Solo en 'set'
+    })
+    value?: string;
+
+    async run(): Promise<void> {} // Debe existir pero no se ejecuta
+
+    abstract subcommandGet(): Promise<void>;
+    abstract subcommandSet(): Promise<void>;
+    abstract subcommandList(): Promise<void>;
+}
+```
+
+**Implementación:**
+
+```typescript
+// src/commands/other/config.command.ts
+export class ConfigCommand extends ConfigDefinition {
+    async subcommandGet(): Promise<void> {
+        // Lógica de 'config get'
+    }
+
+    async subcommandSet(): Promise<void> {
+        // Lógica de 'config set'
+    }
+
+    async subcommandList(): Promise<void> {
+        // Lógica de 'config list'
+    }
+}
+```
+
+**Uso:**
+
+```
+/config get clave
+/config set clave valor
+!config list
+```
+
+#### Opción B: Subcomandos en Archivos Separados
+
+Cada subcomando en su propio archivo:
+
+**Definiciones:**
+
+```typescript
+// src/definition/user.info.definition.ts
+@Command({
+    name: 'user info', // ✅ Nombre con espacio
+    description: 'Muestra información de un usuario',
+})
+export abstract class UserInfoDefinition extends BaseCommand {
+    @Arg({ name: 'usuario', description: 'Usuario a consultar', index: 0 })
+    targetUser?: User;
+}
+```
+
+```typescript
+// src/definition/user.avatar.definition.ts
+@Command({
+    name: 'user avatar', // ✅ Nombre con espacio
+    description: 'Muestra el avatar de un usuario',
+})
+export abstract class UserAvatarDefinition extends BaseCommand {
+    // ...
+}
+```
+
+**Implementaciones:**
+
+```typescript
+// src/commands/user/user.info.command.ts
+export class UserInfoCommand extends UserInfoDefinition {
+    async run(): Promise<void> {
+        // Lógica de 'user info'
+    }
+}
+```
+
+```typescript
+// src/commands/user/user.avatar.command.ts
+export class UserAvatarCommand extends UserAvatarDefinition {
+    async run(): Promise<void> {
+        // Lógica de 'user avatar'
+    }
+}
+```
+
+**Uso:**
+
+```
+/user info @usuario
+/user avatar @usuario
+!user info @usuario
+```
+
+**Ventajas de Subcomandos:**
+
+- ✅ Agrupa funcionalidades relacionadas
+- ✅ Organización jerárquica de comandos
+- ✅ Reduce cantidad de comandos en el root
+- ✅ Soporte nativo en Discord
+- ✅ Flexible: archivos unificados o separados
 
 ## 🎯 ¿Cuándo Usar Cada Patrón?
 
-| Característica         | Monolítico        | Definición + Implementación |
-| ---------------------- | ----------------- | --------------------------- |
-| Sin argumentos         | ✅ Recomendado    | ❌ Innecesario              |
-| 1-2 argumentos simples | ✅ Opcional       | ✅ Opcional                 |
-| 3+ argumentos          | ❌ No recomendado | ✅ Recomendado              |
-| Validación compleja    | ❌ No recomendado | ✅ Recomendado              |
-| Lógica muy compleja    | ❌ No recomendado | ✅ Recomendado              |
-| Comando rápido/demo    | ✅ Recomendado    | ❌ Sobrecarga               |
+| Característica            | Monolítico        | Definición + Implementación | Subcomandos          |
+| ------------------------- | ----------------- | --------------------------- | -------------------- |
+| Sin argumentos            | ✅ Recomendado    | ❌ Innecesario              | ❌ Innecesario       |
+| 1-2 argumentos simples    | ✅ Opcional       | ✅ Opcional                 | ❌ Innecesario       |
+| 3+ argumentos             | ❌ No recomendado | ✅ Recomendado              | ✅ Considerar        |
+| Validación compleja       | ❌ No recomendado | ✅ Recomendado              | ✅ Recomendado       |
+| Lógica muy compleja       | ❌ No recomendado | ✅ Recomendado              | ✅ Recomendado       |
+| Comando rápido/demo       | ✅ Recomendado    | ❌ Sobrecarga               | ❌ Sobrecarga        |
+| Funcionalidades agrupadas | ❌ No aplica      | ❌ No aplica                | ✅✅ Muy recomendado |
+
+**Ejemplos de uso de subcomandos:**
+
+- `/config get`, `/config set`, `/config list` - Configuración del bot
+- `/user info`, `/user avatar`, `/user banner` - Información de usuarios
+- `/role add`, `/role remove`, `/role list` - Gestión de roles
+- `/ticket create`, `/ticket close`, `/ticket list` - Sistema de tickets
 
 ## 📦 Propiedades Disponibles
 
@@ -404,10 +550,10 @@ Slash Command:
 
 **Notas sobre `rawText`:**
 
--   ✅ Solo afecta comandos de texto (`!comando`)
--   ✅ En slash commands funciona como argumento normal
--   ✅ Debe ser el **último** argumento o después de todos los fijos
--   ✅ No requiere comillas, todo el texto se captura automáticamente
+- ✅ Solo afecta comandos de texto (`!comando`)
+- ✅ En slash commands funciona como argumento normal
+- ✅ Debe ser el **último** argumento o después de todos los fijos
+- ✅ No requiere comillas, todo el texto se captura automáticamente
 
 ---
 
@@ -511,11 +657,11 @@ Bot: ❌ Valor inválido para tipo. Valores permitidos: 0, 3, 2, 5
 
 **Ventajas de usar `options`:**
 
--   ✅ Validación automática en text commands
--   ✅ Dropdown interactivo en slash commands
--   ✅ Previene valores inválidos
--   ✅ Mejor experiencia de usuario
--   ✅ No necesitas implementar validación manual
+- ✅ Validación automática en text commands
+- ✅ Dropdown interactivo en slash commands
+- ✅ Previene valores inválidos
+- ✅ Mejor experiencia de usuario
+- ✅ No necesitas implementar validación manual
 
 ---
 
@@ -525,11 +671,11 @@ El bot incluye un comando `help` que **automáticamente** genera ayuda para todo
 
 ### Características
 
--   ✅ **Muestra uso con argumentos** en text commands: `!comando <arg1> <arg2>`
--   ✅ **Detecta tipo de comando:** Muestra `/` para slash commands, `!` para text commands
--   ✅ **Argumentos normalizados:** Los nombres se normalizan automáticamente (lowercase, sin acentos)
--   ✅ **Paginación automática:** Si hay más de 10 comandos por categoría
--   ✅ **Información completa:** Descripción, uso, argumentos, aliases
+- ✅ **Muestra uso con argumentos** en text commands: `!comando <arg1> <arg2>`
+- ✅ **Detecta tipo de comando:** Muestra `/` para slash commands, `!` para text commands
+- ✅ **Argumentos normalizados:** Los nombres se normalizan automáticamente (lowercase, sin acentos)
+- ✅ **Paginación automática:** Si hay más de 10 comandos por categoría
+- ✅ **Información completa:** Descripción, uso, argumentos, aliases
 
 ### Ejemplo de Salida
 
@@ -570,18 +716,18 @@ Uso: /ban
 
 El `CommandLoader` normaliza automáticamente los nombres de argumentos:
 
--   **Original:** `name: "Usuario Objetivo"`
--   **Normalizado:** `normalizedName: "usuarioobjetivo"`
--   **Proceso:** lowercase → sin acentos → sin espacios → solo alfanumérico
--   **Uso:** El nombre original se mantiene para mostrar en ayudas
+- **Original:** `name: "Usuario Objetivo"`
+- **Normalizado:** `normalizedName: "usuarioobjetivo"`
+- **Proceso:** lowercase → sin acentos → sin espacios → solo alfanumérico
+- **Uso:** El nombre original se mantiene para mostrar en ayudas
 
 ---
 
 ## �📚 Recursos Relacionados
 
--   `/src/definition/` - Definiciones de comandos
--   `/src/core/structures/BaseCommand.ts` - Clase base
--   `/src/core/decorators/` - Decoradores disponibles (@Command, @Arg, @UsePlugins)
--   `/src/plugins/` - Plugins disponibles
--   `/src/config/` - Configuración de plugins por scope
--   `ARCHITECTURE.md` - Arquitectura completa del sistema
+- `/src/definition/` - Definiciones de comandos
+- `/src/core/structures/BaseCommand.ts` - Clase base
+- `/src/core/decorators/` - Decoradores disponibles (@Command, @Arg, @UsePlugins)
+- `/src/plugins/` - Plugins disponibles
+- `/src/config/` - Configuración de plugins por scope
+- `ARCHITECTURE.md` - Arquitectura completa del sistema

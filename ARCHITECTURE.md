@@ -72,13 +72,13 @@ src/
 
 **Responsabilidad**: Inicialización y orquestación del bot
 
--   Crea el cliente de Discord con intents configurados
--   Usa `Env.get()` para obtener configuración validada
--   Determina intents automáticamente según `USE_MESSAGE_CONTENT`
--   Inicializa todos los componentes (CommandLoader, CommandHandler, etc.)
--   Importa configuración de plugins (`/src/config/plugins.config.ts`)
--   Registra eventos
--   Coordina el flujo de inicio
+- Crea el cliente de Discord con intents configurados
+- Usa `Env.get()` para obtener configuración validada
+- Determina intents automáticamente según `USE_MESSAGE_CONTENT`
+- Inicializa todos los componentes (CommandLoader, CommandHandler, etc.)
+- Importa configuración de plugins (`/src/config/plugins.config.ts`)
+- Registra eventos
+- Coordina el flujo de inicio
 
 **Imports importantes**:
 
@@ -91,11 +91,11 @@ import { Env } from '@/utils/Env'; // Configuración validada
 
 **Responsabilidad**: Punto de entrada con validación de entorno
 
--   Carga `reflect-metadata` (necesario para decoradores)
--   Carga `dotenv` para variables de entorno
--   **Valida configuración con `Env.load()`** (fail-fast)
--   Importa `Bot` después de validar
--   Inicia el bot
+- Carga `reflect-metadata` (necesario para decoradores)
+- Carga `dotenv` para variables de entorno
+- **Valida configuración con `Env.load()`** (fail-fast)
+- Importa `Bot` después de validar
+- Inicia el bot
 
 **Orden crítico de ejecución**:
 
@@ -117,12 +117,12 @@ bot.start();
 
 **Responsabilidad**: Validación y carga segura de variables de entorno
 
--   Valida variables obligatorias (`BOT_TOKEN`, `CLIENT_ID`)
--   Proporciona defaults para opcionales (`COMMAND_PREFIX`, `USE_MESSAGE_CONTENT`)
--   Convierte tipos (string → boolean/number)
--   Muestra mensajes de error claros en español
--   Enmascara tokens en logs
--   Singleton para una única instancia
+- Valida variables obligatorias (`BOT_TOKEN`, `CLIENT_ID`)
+- Proporciona defaults para opcionales (`COMMAND_PREFIX`, `USE_MESSAGE_CONTENT`)
+- Convierte tipos (string → boolean/number)
+- Muestra mensajes de error claros en español
+- Enmascara tokens en logs
+- Singleton para una única instancia
 
 **API**:
 
@@ -152,12 +152,12 @@ config.INTENTS; // number | undefined
 
 **Responsabilidad**: Cargar comandos desde el sistema de archivos
 
--   Escanea el directorio `commands/` recursivamente (usando `fs` nativo)
--   Carga las clases de comandos
--   **Almacena rutas relativas** de cada comando (para plugin scopes)
--   Gestiona aliases
--   Busca metadata en clase y padres (herencia)
--   Proporciona acceso: `getCommand()`, `getCommandPath()`, `getCommandEntry()`
+- Escanea el directorio `commands/` recursivamente (usando `fs` nativo)
+- Carga las clases de comandos
+- **Almacena rutas relativas** de cada comando (para plugin scopes)
+- Gestiona aliases
+- Busca metadata en clase y padres (herencia)
+- Proporciona acceso: `getCommand()`, `getCommandPath()`, `getCommandEntry()`
 
 **Nuevo**: Almacena `CommandEntry` con clase + ruta
 
@@ -165,26 +165,26 @@ config.INTENTS; // number | undefined
 
 **Responsabilidad**: Registrar comandos slash en Discord API
 
--   Convierte metadata de comandos a formato Discord
--   Mapea tipos TypeScript a tipos de Discord
--   Registra comandos en la API de Discord
+- Convierte metadata de comandos a formato Discord
+- Mapea tipos TypeScript a tipos de Discord
+- Registra comandos en la API de Discord
 
 ### **4. CommandHandler (`core/handlers/command.handler.ts`)**
 
 **Responsabilidad**: Ejecutar comandos con plugins y argumentos
 
--   Instancia el comando
--   Inyecta contexto y argumentos
--   **Obtiene plugins** de dos fuentes:
+- Instancia el comando
+- Inyecta contexto y argumentos
+- **Obtiene plugins** de dos fuentes:
 
 1. Plugins de `@UsePlugins` (decorador) - Máxima prioridad
 2. Plugins de scope (PluginRegistry) - Segunda prioridad
 
--   **Ejecuta plugins**:
--   `onBeforeExecute` en orden normal
--   `command.run()` (el comando)
--   `onAfterExecute` en orden INVERSO
--   Maneja errores de ejecución y validación
+- **Ejecuta plugins**:
+- `onBeforeExecute` en orden normal
+- `command.run()` (el comando)
+- `onAfterExecute` en orden INVERSO
+- Maneja errores de ejecución y validación
 
 **Nuevo**: Integración completa del sistema de plugins
 
@@ -192,12 +192,12 @@ config.INTENTS; // number | undefined
 
 **Responsabilidad**: Resolver y validar argumentos
 
--   Obtiene valores raw de la fuente (Message o Interaction)
--   **Maneja `rawText`**: Captura todo el texto después del comando
--   **Maneja `parser`**: Tipos personalizados con validación
--   Delega resolución de tipos a TypeResolver
--   Ejecuta validaciones personalizadas
--   Retorna argumentos resueltos
+- Obtiene valores raw de la fuente (Message o Interaction)
+- **Maneja `rawText`**: Captura todo el texto después del comando
+- **Maneja `parser`**: Tipos personalizados con validación
+- Delega resolución de tipos a TypeResolver
+- Ejecuta validaciones personalizadas
+- Retorna argumentos resueltos
 
 **Nuevo**: Soporte para `rawText` y `parser` personalizado
 
@@ -205,18 +205,18 @@ config.INTENTS; // number | undefined
 
 **Responsabilidad**: Coerción y resolución de tipos
 
--   Tipos primitivos: String, Number, Boolean, Array
--   Tipos Discord: User, Member, Channel, Role
--   Parsea menciones y IDs
--   Hace fetch en Discord API cuando es necesario
+- Tipos primitivos: String, Number, Boolean, Array
+- Tipos Discord: User, Member, Channel, Role
+- Parsea menciones y IDs
+- Hace fetch en Discord API cuando es necesario
 
 ### **6.5. PrefixResolver (`core/resolvers/prefix.resolver.ts`)**
 
 **Responsabilidad**: Obtener prefijo de comandos de texto
 
--   Usa `Env.get().COMMAND_PREFIX` para obtener prefijo configurado
--   Centralizado en un solo lugar
--   Default: `!`
+- Usa `Env.get().COMMAND_PREFIX` para obtener prefijo configurado
+- Centralizado en un solo lugar
+- Default: `!`
 
 ```typescript
 import { Env } from '@/utils/Env';
@@ -230,12 +230,12 @@ export function getPrefix(): string {
 
 **Responsabilidad**: Gestionar plugins por scope
 
--   **Tres scopes**:
--   `Folder`: Solo comandos en una carpeta específica
--   `DeepFolder`: Carpeta y todas sus subcarpetas
--   `Specified`: Lista específica de comandos
--   Matching inteligente de rutas
--   API: `register()`, `getPluginsForCommand()`, `clear()`, `getAll()`
+- **Tres scopes**:
+- `Folder`: Solo comandos en una carpeta específica
+- `DeepFolder`: Carpeta y todas sus subcarpetas
+- `Specified`: Lista específica de comandos
+- Matching inteligente de rutas
+- API: `register()`, `getPluginsForCommand()`, `clear()`, `getAll()`
 
 **Nuevo**: Sistema completo de scopes para plugins
 
@@ -243,29 +243,29 @@ export function getPrefix(): string {
 
 **Responsabilidad**: Clase base para plugins extensibles
 
--   **4 métodos opcionales** que cubren el ciclo de vida completo:
+- **4 métodos opcionales** que cubren el ciclo de vida completo:
 
 **🟦 Fase de Registro** (al iniciar el bot):
 
--   `onBeforeRegisterCommand(commandClass, commandJson)`: Antes de registrar en Discord API
-    -   Recibe clase del comando (sin instanciar) y copia del JSON del comando
-    -   Retorna: JSON modificado | `false` (cancelar) | `null`/`undefined` (original)
-    -   **⚠️ IMPORTANTE**: Debe retornar un NUEVO objeto (inmutabilidad) - El JSON original NO se modifica
-    -   Útil para: modificar comandos, traducciones, filtros por ambiente, acceso a metadata
-    -   Ejemplo: `PermissionsPlugin` lee metadata de `@RequirePermissions` y agrega `default_member_permissions`
--   `onAfterRegisterCommand(commandClass, registeredCommandJson)`: Después de registrar en Discord API
-    -   Recibe clase del comando y JSON con ID de Discord
-    -   Útil para: logging, analytics, guardar IDs en BD, mapear clases a IDs
+- `onBeforeRegisterCommand(commandClass, commandJson)`: Antes de registrar en Discord API
+    - Recibe clase del comando (sin instanciar) y copia del JSON del comando
+    - Retorna: JSON modificado | `false` (cancelar) | `null`/`undefined` (original)
+    - **⚠️ IMPORTANTE**: Debe retornar un NUEVO objeto (inmutabilidad) - El JSON original NO se modifica
+    - Útil para: modificar comandos, traducciones, filtros por ambiente, acceso a metadata
+    - Ejemplo: `PermissionsPlugin` lee metadata de `@RequirePermissions` y agrega `default_member_permissions`
+- `onAfterRegisterCommand(commandClass, registeredCommandJson)`: Después de registrar en Discord API
+    - Recibe clase del comando y JSON con ID de Discord
+    - Útil para: logging, analytics, guardar IDs en BD, mapear clases a IDs
 
 **🔵 Fase de Ejecución** (cuando un usuario ejecuta el comando):
 
--   `onBeforeExecute(command)`: Antes del comando
-    -   Retorna `true` para continuar, `false` para cancelar silenciosamente
-    -   Útil para: cooldowns, permisos, validaciones, rate limiting
-    -   Ejemplo: `PermissionsPlugin` valida que el miembro tenga los permisos requeridos
--   `onAfterExecute(command)`: Después del comando
-    -   Solo se ejecuta si no hubo errores
-    -   Útil para: logging, analytics, recompensas
+- `onBeforeExecute(command)`: Antes del comando
+    - Retorna `true` para continuar, `false` para cancelar silenciosamente
+    - Útil para: cooldowns, permisos, validaciones, rate limiting
+    - Ejemplo: `PermissionsPlugin` valida que el miembro tenga los permisos requeridos
+- `onAfterExecute(command)`: Después del comando
+    - Solo se ejecuta si no hubo errores
+    - Útil para: logging, analytics, recompensas
 
 **Nuevo**: Sistema de plugins con 4 eventos cubriendo registro y ejecución. **PermissionsPlugin** incluido con 20 tests (unit + integration).
 
@@ -273,13 +273,13 @@ export function getPrefix(): string {
 
 **Responsabilidad**: Clase base para todos los comandos
 
--   Propiedades inyectadas: `ctx`, `user`, `channel`
--   Método abstracto: `run()`
--   Helpers:
--   `reply()`: Responde al usuario
--   `send()`: Envía mensaje al canal
--   **`getEmbed(type)`**: Crea embeds preconfigurados (error, success, warning, info)
--   Soporte para plugins (`onBeforeExecute`, `onAfterExecute`)
+- Propiedades inyectadas: `ctx`, `user`, `channel`
+- Método abstracto: `run()`
+- Helpers:
+- `reply()`: Responde al usuario
+- `send()`: Envía mensaje al canal
+- **`getEmbed(type)`**: Crea embeds preconfigurados (error, success, warning, info)
+- Soporte para plugins (`onBeforeExecute`, `onAfterExecute`)
 
 **Nuevo**: Método `getEmbed()` para embeds consistentes
 
@@ -287,9 +287,9 @@ export function getPrefix(): string {
 
 **Responsabilidad**: Manejar eventos de Discord
 
--   **ready**: Inicialización del bot, registro de comandos y presencia personalizada
--   **interactionCreate**: Procesa slash commands + **pasa `commandPath`** al handler
--   **messageCreate**: Procesa comandos de texto + **pasa `commandPath`** al handler
+- **ready**: Inicialización del bot, registro de comandos y presencia personalizada
+- **interactionCreate**: Procesa slash commands + **pasa `commandPath`** al handler
+- **messageCreate**: Procesa comandos de texto + **pasa `commandPath`** al handler
 
 **Nuevo**: Los eventos pasan `commandPath` para que el handler aplique plugins de scope
 
@@ -437,15 +437,15 @@ Ejecución:
 
 ## 🎯 Principios Aplicados
 
--   **Single Responsibility Principle** (SRP)
--   **Separation of Concerns** (SoC)
--   **Dependency Injection**
--   **Factory Pattern** (Loaders)
--   **Strategy Pattern** (Resolvers)
--   **Observer Pattern** (Events)
--   **Decorator Pattern** (@Command, @Arg, @UsePlugins)
--   **Registry Pattern** (PluginRegistry)
--   **Template Method Pattern** (BaseCommand, BasePlugin)
+- **Single Responsibility Principle** (SRP)
+- **Separation of Concerns** (SoC)
+- **Dependency Injection**
+- **Factory Pattern** (Loaders)
+- **Strategy Pattern** (Resolvers)
+- **Observer Pattern** (Events)
+- **Decorator Pattern** (@Command, @Arg, @UsePlugins)
+- **Registry Pattern** (PluginRegistry)
+- **Template Method Pattern** (BaseCommand, BasePlugin)
 
 ## 🆕 Características Nuevas
 
@@ -453,16 +453,16 @@ Ejecución:
 
 Permite extender la funcionalidad de comandos sin modificar su código:
 
--   **BasePlugin**: Clase base con 4 métodos opcionales:
-    -   🟦 `onBeforeRegisterCommand`: Modificar/cancelar comandos antes de registrar en Discord
-    -   🟦 `onAfterRegisterCommand`: Logging/analytics después de registrar en Discord
-    -   🔵 `onBeforeExecute`: Validaciones antes de ejecutar el comando
-    -   🟢 `onAfterExecute`: Acciones después de ejecutar el comando
--   **@UsePlugins**: Decorador para plugins específicos por comando
--   **PluginRegistry**: Sistema de scopes (Folder, DeepFolder, Specified)
--   **Prioridad**: Decorador primero, luego scope (aplica en registro y ejecución)
--   **Orden inverso**: `onAfterExecute` se ejecuta en orden inverso
--   **Ciclo completo**: Plugins ahora cubren desde el registro hasta la ejecución
+- **BasePlugin**: Clase base con 4 métodos opcionales:
+    - 🟦 `onBeforeRegisterCommand`: Modificar/cancelar comandos antes de registrar en Discord
+    - 🟦 `onAfterRegisterCommand`: Logging/analytics después de registrar en Discord
+    - 🔵 `onBeforeExecute`: Validaciones antes de ejecutar el comando
+    - 🟢 `onAfterExecute`: Acciones después de ejecutar el comando
+- **@UsePlugins**: Decorador para plugins específicos por comando
+- **PluginRegistry**: Sistema de scopes (Folder, DeepFolder, Specified)
+- **Prioridad**: Decorador primero, luego scope (aplica en registro y ejecución)
+- **Orden inverso**: `onAfterExecute` se ejecuta en orden inverso
+- **Ciclo completo**: Plugins ahora cubren desde el registro hasta la ejecución
 
 ### 2. **Raw Text Capture**
 
@@ -476,9 +476,9 @@ public mensaje!: string;
 // mensaje = "Hola mundo sin comillas"
 ```
 
--   Solo para text commands
--   Excluye argumentos previos automáticamente
--   En slash commands funciona como argumento normal
+- Solo para text commands
+- Excluye argumentos previos automáticamente
+- En slash commands funciona como argumento normal
 
 ### 3. **Custom Type Parsers**
 
@@ -493,11 +493,41 @@ Soporte para tipos personalizados con validación:
 public jugador!: MinecraftPlayer;
 ```
 
--   Obligatorio para tipos no primitivos/Discord
--   Validación automática de tipo
--   Mensajes de error claros
+- Obligatorio para tipos no primitivos/Discord
+- Validación automática de tipo
+- Mensajes de error claros
 
-### 4. **Plugin Scopes**
+### 4. **Subcommands en @Arg**
+
+Especifica a qué subcomandos pertenece cada argumento en archivos unificados:
+
+```typescript
+@Command({
+    name: 'config',
+    subcommands: ['get', 'set', 'list'],
+})
+export abstract class ConfigDefinition extends BaseCommand {
+    @Arg({
+        name: 'clave',
+        index: 0,
+        subcommands: ['get', 'set'], // Solo en get y set, no en list
+    })
+    key!: string;
+
+    @Arg({
+        name: 'valor',
+        index: 1,
+        subcommands: ['set'], // Solo en set
+    })
+    value?: string;
+}
+```
+
+- Evita registrar argumentos innecesarios en Discord
+- Solo para comandos con subcomandos unificados
+- Sin `subcommands` = se registra en todos los subcomandos
+
+### 5. **Plugin Scopes**
 
 Configuración centralizada de plugins:
 
@@ -547,11 +577,11 @@ const entry = commandLoader.getCommandEntry('ban');
 
 Sistema centralizado de validación con `Env.ts`:
 
--   ✅ Validación al inicio del bot (fail-fast)
--   ✅ Type-safe con TypeScript
--   ✅ Mensajes de error claros en español
--   ✅ Tokens enmascarados en logs
--   ✅ Defaults centralizados
+- ✅ Validación al inicio del bot (fail-fast)
+- ✅ Type-safe con TypeScript
+- ✅ Mensajes de error claros en español
+- ✅ Tokens enmascarados en logs
+- ✅ Defaults centralizados
 
 ```typescript
 // En index.ts
@@ -589,10 +619,10 @@ await this.reply(
 
 **Ventajas:**
 
--   ✅ Un timeout para N componentes (mejor performance)
--   ✅ Cleanup automático de callbacks
--   ✅ Métodos builder pattern
--   ✅ Compatible con reply/send/edit
+- ✅ Un timeout para N componentes (mejor performance)
+- ✅ Cleanup automático de callbacks
+- ✅ Métodos builder pattern
+- ✅ Compatible con reply/send/edit
 
 ## 📊 Comparación: Antes vs Ahora
 
@@ -621,18 +651,18 @@ await this.reply(
 
 Antes, crear botones y selects requería:
 
--   ❌ Crear archivos separados (`*.button.ts`, `*.select.ts`)
--   ❌ Gestionar customIds manualmente
--   ❌ Pasar información en los IDs
--   ❌ Código disperso y difícil de mantener
+- ❌ Crear archivos separados (`*.button.ts`, `*.select.ts`)
+- ❌ Gestionar customIds manualmente
+- ❌ Pasar información en los IDs
+- ❌ Código disperso y difícil de mantener
 
 Ahora con el sistema de componentes:
 
--   ✅ **Callbacks inline** dentro del comando
--   ✅ **Registry automático** de customId → función
--   ✅ **Type-safe** con tipos completos de Discord.js
--   ✅ **Sin boilerplate** ni archivos extra
--   ✅ **RichMessage** para gestión avanzada con timeout único
+- ✅ **Callbacks inline** dentro del comando
+- ✅ **Registry automático** de customId → función
+- ✅ **Type-safe** con tipos completos de Discord.js
+- ✅ **Sin boilerplate** ni archivos extra
+- ✅ **RichMessage** para gestión avanzada con timeout único
 
 ### **Componentes Disponibles**
 
@@ -751,12 +781,12 @@ await this.reply(
 
 **Ventajas de RichMessage:**
 
--   ✅ **1 timeout** para N componentes (vs N timeouts)
--   ✅ **Cleanup automático** de callbacks del registry
--   ✅ **Builder pattern** con métodos encadenados
--   ✅ **Compatible** con `reply()`, `send()`, `editReply()`
--   ✅ **Callback onTimeout** para limpieza personalizada
--   ✅ **Mejor performance** - reduce carga del event loop
+- ✅ **1 timeout** para N componentes (vs N timeouts)
+- ✅ **Cleanup automático** de callbacks del registry
+- ✅ **Builder pattern** con métodos encadenados
+- ✅ **Compatible** con `reply()`, `send()`, `editReply()`
+- ✅ **Callback onTimeout** para limpieza personalizada
+- ✅ **Mejor performance** - reduce carga del event loop
 
 ### **ComponentRegistry**
 
@@ -800,9 +830,9 @@ async execute(interaction: Interaction) {
 
 **Ventajas:**
 
--   ✅ Un solo evento para todo
--   ✅ Flujo profesional y limpio
--   ✅ Fácil de mantener
+- ✅ Un solo evento para todo
+- ✅ Flujo profesional y limpio
+- ✅ Fácil de mantener
 
 ### **Ejemplo Completo: Paginación con RichMessage**
 
@@ -921,9 +951,9 @@ if (age < 18) {
 }
 ```
 
--   Se captura en `CommandHandler`
--   Se muestra al usuario como embed de error
--   No se loggea como error crítico
+- Se captura en `CommandHandler`
+- Se muestra al usuario como embed de error
+- No se loggea como error crítico
 
 #### 2. ReplyError
 
@@ -937,9 +967,9 @@ if (!hasPermission) {
 }
 ```
 
--   Se captura en `CommandHandler` y plugins
--   Se muestra al usuario como mensaje normal
--   No se loggea como error crítico
+- Se captura en `CommandHandler` y plugins
+- Se muestra al usuario como mensaje normal
+- No se loggea como error crítico
 
 #### 3. Errores Generales
 
@@ -949,9 +979,9 @@ Errores inesperados del sistema:
 throw new Error('Error inesperado');
 ```
 
--   Se captura en `CommandHandler`
--   Se loggea en consola
--   Se muestra mensaje genérico al usuario
+- Se captura en `CommandHandler`
+- Se loggea en consola
+- Se muestra mensaje genérico al usuario
 
 ### **Flujo de Manejo**
 
@@ -969,12 +999,12 @@ Error lanzado
 
 ### **Infraestructura**
 
--   **Jest 29** con soporte completo para TypeScript
--   **57 tests** pasando (unit + integration)
--   **Mocks de Discord.js** pre-configurados
--   **Path aliases** (`@/`, `@tests/*`) funcionando
--   **CI/CD** con GitHub Actions
--   **Debug** en VSCode configurado
+- **Jest 29** con soporte completo para TypeScript
+- **57 tests** pasando (unit + integration)
+- **Mocks de Discord.js** pre-configurados
+- **Path aliases** (`@/`, `@tests/*`) funcionando
+- **CI/CD** con GitHub Actions
+- **Debug** en VSCode configurado
 
 ### **Estructura de Tests**
 
@@ -1015,35 +1045,35 @@ npm run test:e2e            # Solo e2e
 
 Cada carpeta tiene su `README.md` completo:
 
--   📁 [`/src/commands/`](src/commands/README.md) - Implementaciones de comandos
--   📁 [`/src/definition/`](src/definition/README.md) - Definiciones de comandos
--   📁 [`/src/plugins/`](src/plugins/README.md) - Sistema de plugins (15+ ideas)
--   📁 [`/src/utils/`](src/utils/README.md) - Utilidades (Times, CommandCategories, Env)
--   📁 [`/src/error/`](src/error/README.md) - Manejo de errores
--   📁 [`/src/core/decorators/`](src/core/decorators/README.md) - @Command, @Arg, @UsePlugins
--   📁 [`/src/core/handlers/`](src/core/handlers/README.md) - CommandHandler
--   📁 [`/src/core/loaders/`](src/core/loaders/README.md) - CommandLoader y SlashCommandLoader
--   📁 [`/src/core/resolvers/`](src/core/resolvers/README.md) - Resolución de tipos y argumentos
--   📁 [`/src/core/structures/`](src/core/structures/README.md) - BaseCommand, BasePlugin, CommandContext
--   📁 [`/src/core/components/`](src/core/components/README.md) - Button, Select, Modal, RichMessage
--   📁 [`/tests/`](tests/README.md) - Testing completo con Jest
+- 📁 [`/src/commands/`](src/commands/README.md) - Implementaciones de comandos
+- 📁 [`/src/definition/`](src/definition/README.md) - Definiciones de comandos
+- 📁 [`/src/plugins/`](src/plugins/README.md) - Sistema de plugins (15+ ideas)
+- 📁 [`/src/utils/`](src/utils/README.md) - Utilidades (Times, CommandCategories, Env)
+- 📁 [`/src/error/`](src/error/README.md) - Manejo de errores
+- 📁 [`/src/core/decorators/`](src/core/decorators/README.md) - @Command, @Arg, @UsePlugins
+- 📁 [`/src/core/handlers/`](src/core/handlers/README.md) - CommandHandler
+- 📁 [`/src/core/loaders/`](src/core/loaders/README.md) - CommandLoader y SlashCommandLoader
+- 📁 [`/src/core/resolvers/`](src/core/resolvers/README.md) - Resolución de tipos y argumentos
+- 📁 [`/src/core/structures/`](src/core/structures/README.md) - BaseCommand, BasePlugin, CommandContext
+- 📁 [`/src/core/components/`](src/core/components/README.md) - Button, Select, Modal, RichMessage
+- 📁 [`/tests/`](tests/README.md) - Testing completo con Jest
 
 ### **Ejemplos Funcionales**
 
--   **Comando básico**: [`/src/commands/ping.command.ts`](src/commands/ping.command.ts)
--   **Raw text**: [`/src/commands/say.command.ts`](src/commands/say.command.ts)
--   **Plugin funcional**: [`/src/plugins/cooldown.plugin.ts`](src/plugins/cooldown.plugin.ts)
--   **Configuración de plugins**: [`/src/config/plugins.config.ts`](src/config/plugins.config.ts)
--   **Componentes interactivos**: Ver ejemplos en [`/src/core/components/README.md`](src/core/components/README.md)
--   **Tests**: [`/tests/unit/utils/Env.test.ts`](tests/unit/utils/Env.test.ts)
+- **Comando básico**: [`/src/commands/ping.command.ts`](src/commands/ping.command.ts)
+- **Raw text**: [`/src/commands/say.command.ts`](src/commands/say.command.ts)
+- **Plugin funcional**: [`/src/plugins/cooldown.plugin.ts`](src/plugins/cooldown.plugin.ts)
+- **Configuración de plugins**: [`/src/config/plugins.config.ts`](src/config/plugins.config.ts)
+- **Componentes interactivos**: Ver ejemplos en [`/src/core/components/README.md`](src/core/components/README.md)
+- **Tests**: [`/tests/unit/utils/Env.test.ts`](tests/unit/utils/Env.test.ts)
 
 ### **Archivos de Configuración**
 
--   **Variables de entorno**: [`.env.template`](.env.template)
--   **TypeScript**: [`tsconfig.json`](tsconfig.json), [`tsconfig.test.json`](tsconfig.test.json)
--   **Jest**: [`jest.config.ts`](jest.config.ts)
--   **GitHub Actions**: [`.github/workflows/test.yml`](.github/workflows/test.yml)
--   **VSCode Debug**: [`.vscode/launch.json`](.vscode/launch.json)
+- **Variables de entorno**: [`.env.template`](.env.template)
+- **TypeScript**: [`tsconfig.json`](tsconfig.json), [`tsconfig.test.json`](tsconfig.test.json)
+- **Jest**: [`jest.config.ts`](jest.config.ts)
+- **GitHub Actions**: [`.github/workflows/test.yml`](.github/workflows/test.yml)
+- **VSCode Debug**: [`.vscode/launch.json`](.vscode/launch.json)
 
 ---
 
@@ -1051,30 +1081,30 @@ Cada carpeta tiene su `README.md` completo:
 
 ### ✅ Implementado
 
--   Sistema de comandos completo (slash + text)
--   Sistema de plugins con scopes
--   Componentes interactivos (Button, Select, Modal, RichMessage)
--   Validación de variables de entorno (Env.ts)
--   Manejo de errores (ValidationError, ReplyError)
--   Testing completo (57 tests pasando)
--   CI/CD con GitHub Actions
--   Documentación completa
--   Path aliases funcionando
--   Raw text capture
--   Custom type parsers
+- Sistema de comandos completo (slash + text)
+- Sistema de plugins con scopes
+- Componentes interactivos (Button, Select, Modal, RichMessage)
+- Validación de variables de entorno (Env.ts)
+- Manejo de errores (ValidationError, ReplyError)
+- Testing completo (57 tests pasando)
+- CI/CD con GitHub Actions
+- Documentación completa
+- Path aliases funcionando
+- Raw text capture
+- Custom type parsers
 
 ### 🚀 Próximas Mejoras Sugeridas
 
--   [ ] Sistema de permisos avanzado
--   [ ] Base de datos (MongoDB/SQLite)
--   [ ] Sistema de logs robusto
--   [ ] Comandos de administración
--   [ ] Dashboard web
--   [ ] Internacionalización (i18n)
--   [ ] Sistema de economía
--   [ ] Comandos de música
--   [ ] Comandos de moderación avanzados
--   [ ] Sistema de niveles y XP
+- [ ] Sistema de permisos avanzado
+- [ ] Base de datos (MongoDB/SQLite)
+- [ ] Sistema de logs robusto
+- [ ] Comandos de administración
+- [ ] Dashboard web
+- [ ] Internacionalización (i18n)
+- [ ] Sistema de economía
+- [ ] Comandos de música
+- [ ] Comandos de moderación avanzados
+- [ ] Sistema de niveles y XP
 
 ---
 

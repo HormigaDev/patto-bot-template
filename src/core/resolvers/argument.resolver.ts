@@ -1,6 +1,7 @@
 import { Message, ChatInputCommandInteraction } from 'discord.js';
 import { CommandContext } from '@/core/structures/CommandContext';
 import { IArgumentOptions } from '@/core/decorators/argument.decorator';
+import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command.decorator';
 import { ValidationError } from '@/error/ValidationError';
 import { TypeResolver } from './type.resolver';
 import { getPrefix } from './prefix.resolver';
@@ -18,10 +19,57 @@ export class ArgumentResolver {
     ): Promise<Map<string, any>> {
         const resolvedArgs = new Map<string, any>();
 
+        // Obtener metadata del comando
+        const cmdMeta: ICommandOptions = Reflect.getMetadata(COMMAND_METADATA_KEY, TCommandClass);
+        const hasSubcommands = cmdMeta?.subcommands && cmdMeta.subcommands.length > 0;
+
+        let currentSubcommand: string | undefined;
+
+        // Para comandos de texto con subcomandos, validar y ajustar índices
+        if (!ctx.isInteraction && hasSubcommands && textArgs) {
+            const subcommandArg = textArgs[0];
+
+            // Validar que se especificó el subcomando
+            if (!subcommandArg) {
+                throw new ValidationError(
+                    `Debes especificar un subcomando. Disponibles: ${cmdMeta.subcommands!.join(', ')}`,
+                );
+            }
+
+            // Validar que el subcomando existe
+            if (!cmdMeta.subcommands!.includes(subcommandArg.toLowerCase())) {
+                throw new ValidationError(
+                    `Subcomando "${subcommandArg}" no válido. Disponibles: ${cmdMeta.subcommands!.join(', ')}`,
+                );
+            }
+
+            currentSubcommand = subcommandArg.toLowerCase();
+
+            // Eliminar el subcomando de textArgs para que los índices coincidan
+            textArgs = textArgs.slice(1);
+        } else if (ctx.isInteraction && hasSubcommands) {
+            // Para slash commands, obtener el subcomando de la interacción
+            const interaction = source as ChatInputCommandInteraction;
+            currentSubcommand = interaction.options.getSubcommand(false) || undefined;
+        }
+
+        // Filtrar argumentos según el subcomando actual
+        let filteredArgsMeta = argsMeta;
+        if (currentSubcommand) {
+            filteredArgsMeta = argsMeta.filter((arg) => {
+                // Si el argumento no especifica subcommands, está disponible en todos
+                if (!arg.subcommands || arg.subcommands.length === 0) {
+                    return true;
+                }
+                // Si especifica subcommands, verificar que el actual esté en la lista
+                return arg.subcommands.includes(currentSubcommand!);
+            });
+        }
+
         // Para comandos de texto, obtener el contenido completo del mensaje
         const fullMessageContent = source instanceof Message ? source.content.trim() : undefined;
 
-        for (const meta of argsMeta) {
+        for (const meta of filteredArgsMeta) {
             let rawValue: any;
 
             // Manejar rawText (solo para text commands)

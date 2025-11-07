@@ -4,7 +4,8 @@
     "description": "Template profesional de Discord Bot con TypeScript, decoradores, sistema de plugins, componentes interactivos (botones, selects, modals), validación de entorno, testing completo y arquitectura modular. Listo para producción.",
     "main": "dist/src/index.js",
     "scripts": {
-        "dev": "ts-node-dev -r tsconfig-paths/register --project tsconfig.json --respawn --transpile-only src/index.ts",
+        "dev": "ts-node -r tsconfig-paths/register --project tsconfig.json src/index.ts",
+        "dev:hot": "ts-node-dev -r tsconfig-paths/register --project tsconfig.json --respawn --transpile-only src/index.ts",
         "build": "tsc && tsc-alias",
         "start": "node -r tsconfig-paths/register dist/src/index.js",
         "test": "jest",

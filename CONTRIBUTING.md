@@ -312,7 +312,8 @@ cp .env.template .env
 # Edita .env con tus credenciales
 
 # 4. Ejecutar en desarrollo
-npm run dev
+npm run dev           # Recomendado (sin hot reload)
+# npm run dev:hot     # Opcional: con hot reload (puede causar rate limits)
 ```
 
 ### Estructura del Proyecto
@@ -334,7 +335,8 @@ tests/
 ### Scripts Disponibles
 
 ```bash
-npm run dev           # Desarrollo con hot reload
+npm run dev           # Desarrollo (recomendado)
+npm run dev:hot       # Desarrollo con hot reload (puede causar rate limits de Discord)
 npm run build         # Compilar TypeScript
 npm start             # Ejecutar compilado
 npm test              # Todos los tests
