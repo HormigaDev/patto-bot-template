@@ -26,7 +26,11 @@
 - ✅ **Decoradores TypeScript** para definición declarativa de comandos
 - ✅ **Slash Commands** (/comando) - Siempre disponibles
 - ✅ **Text Commands** (!comando) - Opcionales y configurables
-- ✅ **Soporte para Subcomandos** - Agrupa funcionalidades relacionadas (ej: `/config get`, `/user info`) - [📖 Ver docs](./docs/SUBCOMMANDS.md)
+- ✅ **Soporte para Subcomandos (hasta 3 niveles)** - Agrupa funcionalidades relacionadas con grupos de subcomandos
+    - Nivel 2: `/config get`, `/user info`
+    - Nivel 3: `/server config get`, `/admin roles add`
+    - Soporte para kebab-case: `delete-all` → `subcommandDeleteAll()`
+    - [📖 Ver documentación completa](./docs/SUBCOMMANDS.md)
 - ✅ **Resolución automática** de argumentos con validación
 - ✅ **Raw Text Capture** - Captura texto completo sin comillas (ej: `!say Hola mundo`)
 - ✅ **Options/Choices** - Argumentos con valores predefinidos y dropdown en slash commands
@@ -292,7 +296,7 @@ El comando se carga automáticamente. Reinicia el bot y prueba:
 
 ---
 
-## � Ejemplo: Comando con Permisos
+## Ejemplo: Comando con Permisos
 
 El template incluye un **sistema de permisos** integrado. Usa el decorador `@RequirePermissions`:
 

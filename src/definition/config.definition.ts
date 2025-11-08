@@ -27,6 +27,7 @@ export abstract class ConfigDefinition extends BaseCommand {
         name: 'valor',
         description: 'El valor a establecer',
         index: 1,
+        required: true, // En set es obligatorio tener un valor
         subcommands: ['set'], // Solo se usa en 'set'
     })
     value?: string;

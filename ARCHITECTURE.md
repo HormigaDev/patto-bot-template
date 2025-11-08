@@ -449,7 +449,32 @@ Ejecución:
 
 ## 🆕 Características Nuevas
 
-### 1. **Sistema de Plugins**
+### 1. **Sistema de Subcomandos (hasta 3 niveles)**
+
+Agrupa funcionalidades relacionadas con soporte completo de Discord para comandos de 3 niveles:
+
+- **Estructura de 3 niveles**:
+    - Nivel 1: Comando (`/server`)
+    - Nivel 2: Grupo de subcomandos (`config`)
+    - Nivel 3: Subcomando (`get`)
+- **Ejemplo**: `/server config get` = comando + grupo + subcomando
+- **Dos patrones soportados**:
+    - **Unified**: Todos los subcomandos en un archivo con `subcommands: []`
+    - **Separated**: Cada subcomando en su propio archivo (`user info.command.ts`)
+- **Auto-agrupamiento**: Subcomandos con prefijos comunes se agrupan automáticamente
+    - `subcommands: ['config get', 'config set']` → Grupo "config" con subcomandos "get" y "set"
+- **Soporte kebab-case**: Nombres con guiones se convierten automáticamente
+    - `delete-all` → `subcommandDeleteAll()`
+    - `my-long-command` → `subcommandMyLongCommand()`
+- **Validación robusta**:
+    - ✅ Valida límite de 3 niveles en tiempo de carga
+    - ✅ Valida formato de nombres (lowercase, alfanumérico + guiones)
+    - ✅ Valida existencia de métodos requeridos
+    - ✅ Errores descriptivos en español
+- **Argumentos por subcomando**: Usa `subcommands: []` en `@Arg` para especificar disponibilidad
+- **Documentación completa**: Ver [docs/SUBCOMMANDS.md](./docs/SUBCOMMANDS.md)
+
+### 2. **Sistema de Plugins**
 
 Permite extender la funcionalidad de comandos sin modificar su código:
 
@@ -523,9 +548,35 @@ export abstract class ConfigDefinition extends BaseCommand {
 }
 ```
 
+**Para comandos de 3 niveles:**
+
+```typescript
+@Command({
+    name: 'server',
+    subcommands: ['config get', 'config set', 'roles add'], // ✅ Espacios para grupos
+})
+export abstract class ServerDefinition extends BaseCommand {
+    @Arg({
+        name: 'clave',
+        index: 0,
+        subcommands: ['config get', 'config set'], // ✅ Nombre completo con espacio
+    })
+    key!: string;
+
+    // Métodos: subcommandConfigGet(), subcommandConfigSet(), subcommandRolesAdd()
+}
+```
+
+⚠️ **Convención de nombres:**
+
+- **Archivos**: Usar kebab-case (guiones): `server-config-get.command.ts`
+- **Metadata `@Command`**: Usar espacios: `name: 'server config get'`
+- Los espacios en nombres de archivos están **prohibidos** para evitar problemas en diferentes sistemas operativos
+
 - Evita registrar argumentos innecesarios en Discord
 - Solo para comandos con subcomandos unificados
 - Sin `subcommands` = se registra en todos los subcomandos
+- Soporta nombres de 2-3 palabras con espacios
 
 ### 5. **Plugin Scopes**
 

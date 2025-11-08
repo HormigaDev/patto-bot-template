@@ -149,8 +149,63 @@ export class HelpCommand extends HelpDefinition {
     }
 
     private async showCommandHelp(commandName: string): Promise<void> {
-        const commandClass = this.loader.getCommand(commandName);
+        const originalCommandName = commandName;
+        const parts = originalCommandName.split(' ');
+
+        // Intentar buscar el comando exacto primero (de más largo a más corto)
+        // Esto permite: !help test alpha first → busca "test alpha first", luego "test alpha", luego "test"
+        let commandClass = null;
+
+        for (let wordCount = Math.min(parts.length, 3); wordCount > 0; wordCount--) {
+            const tryName = parts.slice(0, wordCount).join(' ');
+            const tryClass = this.loader.getCommand(tryName);
+
+            if (tryClass) {
+                commandClass = tryClass;
+                commandName = tryName;
+                break;
+            }
+        } // Si no se encuentra el comando, verificar si tiene subcomandos (patrón separated)
         if (!commandClass) {
+            // Intentar con la primera palabra como prefijo
+            const firstWord = commandName.split(' ')[0];
+            const subcommands = this.loader.getSubcommandsByPrefix(firstWord);
+
+            if (subcommands.length > 0) {
+                // Es un comando padre sin archivo propio, pero con subcomandos
+                const prefix = this.ctx.isInteraction ? '/' : this.loader.prefix;
+
+                const subcommandList = subcommands
+                    .map((cmd) => {
+                        const subCommandClass = this.loader.getCommand(cmd);
+                        if (subCommandClass) {
+                            const subMeta: ICommandOptions = Reflect.getMetadata(
+                                COMMAND_METADATA_KEY,
+                                subCommandClass,
+                            );
+                            return `**${prefix}${cmd}** - ${subMeta.description}`;
+                        }
+                        return null;
+                    })
+                    .filter(Boolean)
+                    .join('\n');
+
+                const embed = this.getEmbed('info')
+                    .setTitle(`Ayuda: ${firstWord}`)
+                    .setDescription('Este comando tiene los siguientes subcomandos:')
+                    .addFields({ name: 'Subcomandos', value: subcommandList });
+
+                if (!this.ctx.isInteraction) {
+                    embed.setFooter({
+                        text: `Usa ${this.loader.prefix}help ${firstWord} <subcomando> para más información`,
+                    });
+                }
+
+                await this.reply({ embeds: [embed] });
+                return;
+            }
+
+            // No se encontró ni el comando ni subcomandos
             const embed = this.getEmbed('error')
                 .setTitle('Comando no encontrado')
                 .setDescription(`No se encontró el comando \`${commandName}\`.`);
@@ -166,38 +221,360 @@ export class HelpCommand extends HelpDefinition {
         // Verificar si tiene subcomandos
         const hasSubcommands = meta.subcommands && meta.subcommands.length > 0;
 
+        // Si el comando encontrado tiene subcomandos Y el usuario especificó más palabras,
+        // intentar encontrar el subcomando específico o filtrar por grupo
+        if (hasSubcommands && parts.length > commandName.split(' ').length) {
+            // El usuario pidió algo más específico (ej: !help test alpha o !help test alpha first)
+            // Extraer las palabras restantes
+            const baseWordCount = commandName.split(' ').length;
+            const remainingParts = parts.slice(baseWordCount);
+
+            // Caso 1: El usuario especificó grupo + subcomando (2 palabras restantes)
+            // Ejemplo: !help test alpha first
+            if (remainingParts.length === 2) {
+                const potentialGroupAndSub = remainingParts.join(' ');
+                const matchingSubcommand = meta.subcommands!.find(
+                    (sub) => sub.toLowerCase() === potentialGroupAndSub.toLowerCase(),
+                );
+
+                if (matchingSubcommand) {
+                    // Es un subcomando con grupo
+                    const fullSubcommandName = `${meta.name} ${matchingSubcommand}`;
+
+                    // Intentar buscar archivo separado (patrón separated)
+                    const subCommandClass = this.loader.getCommand(fullSubcommandName);
+
+                    if (subCommandClass) {
+                        // PATRÓN SEPARATED: Archivo separado encontrado
+                        const subMeta: ICommandOptions = Reflect.getMetadata(
+                            COMMAND_METADATA_KEY,
+                            subCommandClass,
+                        );
+                        const subArgsMeta: IArgumentOptions[] =
+                            Reflect.getMetadata(ARGUMENT_METADATA_KEY, subCommandClass) || [];
+
+                        const subEmbed = this.getEmbed('info')
+                            .setTitle(`Ayuda: ${subMeta.name}`)
+                            .setDescription(subMeta.description || '*Sin descripción*');
+
+                        const prefix = this.ctx.isInteraction ? '/' : this.loader.prefix;
+                        let usage = `${prefix}${subMeta.name}`;
+
+                        if (subArgsMeta.length > 0 && !this.ctx.isInteraction) {
+                            const argsText = subArgsMeta
+                                .sort((a, b) => a.index - b.index)
+                                .map((arg) => {
+                                    const bracket = arg.required ? '<>' : '[]';
+                                    return bracket[0] + arg.name + bracket[1];
+                                })
+                                .join(' ');
+                            usage += ` ${argsText}`;
+                        }
+
+                        subEmbed.addFields({ name: 'Uso', value: `\`${usage}\`` });
+
+                        if (subArgsMeta.length > 0) {
+                            const argsDescription = subArgsMeta
+                                .sort((a, b) => a.index - b.index)
+                                .map((arg) => `**${arg.name}**: ${arg.description}`)
+                                .join('\n\n');
+
+                            subEmbed.addFields({ name: 'Argumentos', value: argsDescription });
+                        }
+
+                        if (!this.ctx.isInteraction) {
+                            subEmbed.setFooter({ text: `<> = obligatorio, [] = opcional` });
+                        }
+
+                        await this.reply({ embeds: [subEmbed] });
+                        return;
+                    } else {
+                        // PATRÓN UNIFIED: No hay archivo separado, usar argumentos del comando base
+                        // Filtrar argumentos que pertenecen a este subcomando
+                        const subArgsMeta = argsMeta.filter((arg) => {
+                            if (!arg.subcommands || arg.subcommands.length === 0) {
+                                return true; // Argumentos sin subcommands están en todos
+                            }
+                            return arg.subcommands.includes(matchingSubcommand);
+                        });
+
+                        const subEmbed = this.getEmbed('info')
+                            .setTitle(`Ayuda: ${meta.name} ${matchingSubcommand}`)
+                            .setDescription(`Subcomando ${matchingSubcommand} de ${meta.name}`);
+
+                        const prefix = this.ctx.isInteraction ? '/' : this.loader.prefix;
+                        let usage = `${prefix}${meta.name} ${matchingSubcommand}`;
+
+                        if (subArgsMeta.length > 0 && !this.ctx.isInteraction) {
+                            const argsText = subArgsMeta
+                                .sort((a, b) => a.index - b.index)
+                                .map((arg) => {
+                                    const bracket = arg.required ? '<>' : '[]';
+                                    return bracket[0] + arg.name + bracket[1];
+                                })
+                                .join(' ');
+                            usage += ` ${argsText}`;
+                        }
+
+                        subEmbed.addFields({ name: 'Uso', value: `\`${usage}\`` });
+
+                        if (subArgsMeta.length > 0) {
+                            const argsDescription = subArgsMeta
+                                .sort((a, b) => a.index - b.index)
+                                .map((arg) => `**${arg.name}**: ${arg.description}`)
+                                .join('\n\n');
+
+                            subEmbed.addFields({ name: 'Argumentos', value: argsDescription });
+                        }
+
+                        if (!this.ctx.isInteraction) {
+                            subEmbed.setFooter({ text: `<> = obligatorio, [] = opcional` });
+                        }
+
+                        await this.reply({ embeds: [subEmbed] });
+                        return;
+                    }
+                }
+            } // Caso 2: El usuario especificó solo 1 palabra adicional
+            // Puede ser: un grupo (alpha) o un subcomando directo (get)
+            if (remainingParts.length === 1) {
+                const singleWord = remainingParts[0].toLowerCase();
+
+                // Primero verificar si es un subcomando directo (sin espacio)
+                const directSubcommand = meta.subcommands!.find(
+                    (sub) => sub.toLowerCase() === singleWord && !sub.includes(' '),
+                );
+
+                if (directSubcommand) {
+                    // Es un subcomando directo (sin espacio)
+                    const fullSubcommandName = `${meta.name} ${directSubcommand}`;
+                    const subCommandClass = this.loader.getCommand(fullSubcommandName);
+
+                    if (subCommandClass) {
+                        // PATRÓN SEPARATED: Archivo separado encontrado
+                        const subMeta: ICommandOptions = Reflect.getMetadata(
+                            COMMAND_METADATA_KEY,
+                            subCommandClass,
+                        );
+                        const subArgsMeta: IArgumentOptions[] =
+                            Reflect.getMetadata(ARGUMENT_METADATA_KEY, subCommandClass) || [];
+
+                        const subEmbed = this.getEmbed('info')
+                            .setTitle(`Ayuda: ${subMeta.name}`)
+                            .setDescription(subMeta.description || '*Sin descripción*');
+
+                        const prefix = this.ctx.isInteraction ? '/' : this.loader.prefix;
+                        let usage = `${prefix}${subMeta.name}`;
+
+                        if (subArgsMeta.length > 0 && !this.ctx.isInteraction) {
+                            const argsText = subArgsMeta
+                                .sort((a, b) => a.index - b.index)
+                                .map((arg) => {
+                                    const bracket = arg.required ? '<>' : '[]';
+                                    return bracket[0] + arg.name + bracket[1];
+                                })
+                                .join(' ');
+                            usage += ` ${argsText}`;
+                        }
+
+                        subEmbed.addFields({ name: 'Uso', value: `\`${usage}\`` });
+
+                        if (subArgsMeta.length > 0) {
+                            const argsDescription = subArgsMeta
+                                .sort((a, b) => a.index - b.index)
+                                .map((arg) => `**${arg.name}**: ${arg.description}`)
+                                .join('\n\n');
+
+                            subEmbed.addFields({ name: 'Argumentos', value: argsDescription });
+                        }
+
+                        if (!this.ctx.isInteraction) {
+                            subEmbed.setFooter({ text: `<> = obligatorio, [] = opcional` });
+                        }
+
+                        await this.reply({ embeds: [subEmbed] });
+                        return;
+                    } else {
+                        // PATRÓN UNIFIED: No hay archivo separado, usar argumentos del comando base
+                        const subArgsMeta = argsMeta.filter((arg) => {
+                            if (!arg.subcommands || arg.subcommands.length === 0) {
+                                return true; // Argumentos sin subcommands están en todos
+                            }
+                            return arg.subcommands.includes(directSubcommand);
+                        });
+
+                        const subEmbed = this.getEmbed('info')
+                            .setTitle(`Ayuda: ${meta.name} ${directSubcommand}`)
+                            .setDescription(`Subcomando ${directSubcommand} de ${meta.name}`);
+
+                        const prefix = this.ctx.isInteraction ? '/' : this.loader.prefix;
+                        let usage = `${prefix}${meta.name} ${directSubcommand}`;
+
+                        if (subArgsMeta.length > 0 && !this.ctx.isInteraction) {
+                            const argsText = subArgsMeta
+                                .sort((a, b) => a.index - b.index)
+                                .map((arg) => {
+                                    const bracket = arg.required ? '<>' : '[]';
+                                    return bracket[0] + arg.name + bracket[1];
+                                })
+                                .join(' ');
+                            usage += ` ${argsText}`;
+                        }
+
+                        subEmbed.addFields({ name: 'Uso', value: `\`${usage}\`` });
+
+                        if (subArgsMeta.length > 0) {
+                            const argsDescription = subArgsMeta
+                                .sort((a, b) => a.index - b.index)
+                                .map((arg) => `**${arg.name}**: ${arg.description}`)
+                                .join('\n\n');
+
+                            subEmbed.addFields({ name: 'Argumentos', value: argsDescription });
+                        }
+
+                        if (!this.ctx.isInteraction) {
+                            subEmbed.setFooter({ text: `<> = obligatorio, [] = opcional` });
+                        }
+
+                        await this.reply({ embeds: [subEmbed] });
+                        return;
+                    }
+                }
+
+                // Si no es subcomando directo, verificar si es un grupo
+                const groupSubcommands = meta.subcommands!.filter((sub) => {
+                    const subParts = sub.split(' ');
+                    return subParts.length === 2 && subParts[0].toLowerCase() === singleWord;
+                });
+
+                if (groupSubcommands.length > 0) {
+                    // Es un grupo, mostrar solo los subcomandos de ese grupo
+                    const prefix = this.ctx.isInteraction ? '/' : this.loader.prefix;
+                    const embed = this.getEmbed('info')
+                        .setTitle(`Ayuda: ${meta.name} - Grupo ${singleWord}`)
+                        .setDescription(`Subcomandos del grupo \`${singleWord}\`:`);
+
+                    const groupText = groupSubcommands
+                        .map((sub) => {
+                            const subCommandName = `${meta.name} ${sub}`;
+                            const subCommandClass = this.loader.getCommand(subCommandName);
+
+                            let description = `Subcomando ${sub}`;
+                            if (subCommandClass) {
+                                const subMeta: ICommandOptions = Reflect.getMetadata(
+                                    COMMAND_METADATA_KEY,
+                                    subCommandClass,
+                                );
+                                description = subMeta.description;
+                            }
+
+                            return `**${prefix}${subCommandName}** - ${description}`;
+                        })
+                        .join('\n');
+
+                    embed.addFields({ name: `Subcomandos`, value: groupText });
+
+                    if (!this.ctx.isInteraction) {
+                        embed.setFooter({
+                            text: `Usa ${this.loader.prefix}help ${meta.name} ${singleWord} <subcomando> para más información`,
+                        });
+                    }
+
+                    await this.reply({ embeds: [embed] });
+                    return;
+                }
+            }
+        }
+
         const embed = this.getEmbed('info')
             .setTitle(`Ayuda: ${meta.name}`)
             .setDescription(meta.description || '*Sin descripción*');
 
         if (hasSubcommands) {
-            // Mostrar subcomandos
-            const subcommandsText = meta
-                .subcommands!.map((sub) => {
-                    // Buscar si el subcomando está en archivo separado
-                    const subCommandName = `${meta.name} ${sub}`;
-                    const subCommandClass = this.loader.getCommand(subCommandName);
+            // Organizar subcomandos por grupos si tienen espacios
+            const groups = new Map<string, Array<{ name: string; description: string }>>();
+            const directSubcommands: Array<{ name: string; description: string }> = [];
 
-                    let description = `Subcomando ${sub}`;
-                    if (subCommandClass) {
-                        const subMeta: ICommandOptions = Reflect.getMetadata(
-                            COMMAND_METADATA_KEY,
-                            subCommandClass,
-                        );
-                        description = subMeta.description;
+            for (const sub of meta.subcommands!) {
+                const parts = sub.split(' ');
+
+                // Buscar si el subcomando está en archivo separado (patrón separated)
+                const subCommandName = `${meta.name} ${sub}`;
+                const subCommandClass = this.loader.getCommand(subCommandName);
+
+                let description = `Subcomando ${sub}`;
+                if (subCommandClass) {
+                    const subMeta: ICommandOptions = Reflect.getMetadata(
+                        COMMAND_METADATA_KEY,
+                        subCommandClass,
+                    );
+                    description = subMeta.description;
+                }
+
+                if (parts.length === 2) {
+                    // "alpha first" → grupo: "alpha", subcomando: "first"
+                    const [groupName, subName] = parts;
+
+                    if (!groups.has(groupName)) {
+                        groups.set(groupName, []);
                     }
 
-                    const prefix = this.ctx.isInteraction ? '/' : this.loader.prefix;
-                    return `**${prefix}${meta.name} ${sub}** - ${description}`;
-                })
-                .join('\n');
+                    groups.get(groupName)!.push({ name: subName, description });
+                } else {
+                    // "get" → subcomando directo sin grupo
+                    directSubcommands.push({ name: sub, description });
+                }
+            }
 
-            embed.addFields({ name: 'Subcomandos', value: subcommandsText });
+            const prefix = this.ctx.isInteraction ? '/' : this.loader.prefix;
 
+            // Si hay grupos, mostrarlos separados
+            if (groups.size > 0) {
+                for (const [groupName, subs] of groups) {
+                    const groupText = subs
+                        .map(
+                            (sub) =>
+                                `**${prefix}${meta.name} ${groupName} ${sub.name}** - ${sub.description}`,
+                        )
+                        .join('\n');
+
+                    embed.addFields({
+                        name: `📁 Grupo: ${groupName}`,
+                        value: groupText,
+                    });
+                }
+            }
+
+            // Mostrar subcomandos directos si existen
+            if (directSubcommands.length > 0) {
+                const directText = directSubcommands
+                    .map((sub) => `**${prefix}${meta.name} ${sub.name}** - ${sub.description}`)
+                    .join('\n');
+
+                const fieldName = groups.size > 0 ? '📄 Subcomandos directos' : 'Subcomandos';
+                embed.addFields({ name: fieldName, value: directText });
+            }
+
+            // Solo mostrar el footer para comandos de texto
             if (!this.ctx.isInteraction) {
-                embed.setFooter({
-                    text: `Usa ${this.loader.prefix}help ${meta.name} <subcomando> para más información`,
+                // Determinar si es patrón separated (subcomandos en archivos separados)
+                // Si al menos uno de los subcomandos existe como comando separado, es patrón separated
+                const isSeparatedPattern = meta.subcommands!.some((sub) => {
+                    const subCommandName = `${meta.name} ${sub}`;
+                    return this.loader.getCommand(subCommandName) !== undefined;
                 });
+
+                if (isSeparatedPattern) {
+                    // Patrón separated: permite !help comando subcomando
+                    embed.setFooter({
+                        text: `Usa ${this.loader.prefix}help ${meta.name} <subcomando> para más información`,
+                    });
+                } else {
+                    // Patrón unified: no permite ayuda individual por subcomando
+                    embed.setFooter({
+                        text: `Usa ${this.loader.prefix}${meta.name} <subcomando> para ejecutar el comando`,
+                    });
+                }
             }
         } else {
             // Comando sin subcomandos - mostrar uso normal

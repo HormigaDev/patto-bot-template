@@ -11,6 +11,7 @@ import { ReplyError } from '@/error/ReplyError';
 import { ArgumentResolver } from '@/core/resolvers/argument.resolver';
 import { PluginRegistry } from '@/config/plugin.registry';
 import { CommandLoader } from '../loaders/command.loader';
+import { createMissingSubcommandEmbed } from '@/utils/CommandUtils';
 
 type CommandClass = new (...args: any[]) => BaseCommand;
 
@@ -42,6 +43,23 @@ export class CommandHandler {
         (command as any).guild = ctx.guild;
         (command as any).client = ctx.client;
         (command as any).loader = commandLoader;
+
+        // Obtener metadata del comando ANTES de resolver argumentos
+        const cmdMeta: ICommandOptions = Reflect.getMetadata(COMMAND_METADATA_KEY, TCommandClass);
+
+        // Verificar si el comando tiene subcomandos declarados explícitamente
+        const hasExplicitSubcommands = cmdMeta.subcommands && cmdMeta.subcommands.length > 0;
+
+        // Para comandos unificados (con subcommands definidos), validar el subcomando ANTES de resolver argumentos
+        if (hasExplicitSubcommands && !ctx.isInteraction && (!textArgs || textArgs.length === 0)) {
+            const embed = createMissingSubcommandEmbed(
+                cmdMeta.name,
+                cmdMeta.subcommands!,
+                commandLoader.prefix,
+            );
+            await ctx.reply({ embeds: [embed] });
+            return;
+        }
 
         const argsMeta: IArgumentOptions[] =
             Reflect.getMetadata(ARGUMENT_METADATA_KEY, TCommandClass) || [];
@@ -83,14 +101,6 @@ export class CommandHandler {
 
             // Ejecutar el comando
             // Determinar si tiene subcomandos y cuál ejecutar
-            const cmdMeta: ICommandOptions = Reflect.getMetadata(
-                COMMAND_METADATA_KEY,
-                TCommandClass,
-            );
-
-            // Verificar si el comando tiene subcomandos declarados explícitamente
-            const hasExplicitSubcommands = cmdMeta.subcommands && cmdMeta.subcommands.length > 0;
-
             let subcommandName: string | undefined;
 
             if (hasExplicitSubcommands) {
@@ -98,27 +108,63 @@ export class CommandHandler {
                 // Para slash commands, Discord.js maneja el subcomando automáticamente
                 if (ctx.isInteraction && (source as ChatInputCommandInteraction).options) {
                     const interaction = source as ChatInputCommandInteraction;
-                    subcommandName = interaction.options.getSubcommand(false) || undefined;
+                    const group = interaction.options.getSubcommandGroup(false);
+                    const subcommand = interaction.options.getSubcommand(false);
+
+                    // Si hay grupo, combinar "grupo subcomando"
+                    if (group && subcommand) {
+                        subcommandName = `${group} ${subcommand}`;
+                    } else if (subcommand) {
+                        subcommandName = subcommand;
+                    }
                 } else if (textArgs && textArgs.length > 0) {
-                    // Para text commands, el primer argumento es el subcomando
-                    subcommandName = textArgs[0];
+                    // Para text commands, necesitamos determinar si es:
+                    // - Nivel 2: "get" (1 palabra)
+                    // - Nivel 3: "alpha first" (2 palabras - grupo + subcomando)
+
+                    // Intentar con 2 palabras primero (grupo + subcomando)
+                    if (
+                        textArgs.length >= 2 &&
+                        typeof textArgs[0] === 'string' &&
+                        typeof textArgs[1] === 'string'
+                    ) {
+                        const potentialTwoWords = `${textArgs[0]} ${textArgs[1]}`.toLowerCase();
+
+                        if (cmdMeta.subcommands!.includes(potentialTwoWords)) {
+                            subcommandName = potentialTwoWords;
+                        }
+                    }
+
+                    // Si no se encontró con 2 palabras, intentar con 1 palabra
+                    if (!subcommandName && typeof textArgs[0] === 'string') {
+                        const potentialOneWord = textArgs[0].toLowerCase();
+
+                        if (cmdMeta.subcommands!.includes(potentialOneWord)) {
+                            subcommandName = potentialOneWord;
+                        }
+                    }
+
+                    // Si aún no se encontró, es inválido
+                    if (!subcommandName) {
+                        throw new ValidationError(
+                            `Subcomando "${textArgs[0]}" no válido. Disponibles: ${cmdMeta.subcommands?.join(', ')}`,
+                        );
+                    }
                 }
 
                 if (subcommandName) {
-                    // Ejecutar método del subcomando
-                    const methodName = `subcommand${subcommandName.charAt(0).toUpperCase() + subcommandName.slice(1)}`;
+                    // Convertir nombre de subcomando a nombre de método
+                    // "get" → "subcommandGet"
+                    // "delete-all" → "subcommandDeleteAll"
+                    const methodName = this.getSubcommandMethodName(subcommandName);
 
-                    if (typeof (command as any)[methodName] === 'function') {
-                        await (command as any)[methodName]();
-                    } else {
-                        throw new ValidationError(
-                            `Subcomando "${subcommandName}" no encontrado. Subcomandos disponibles: ${cmdMeta.subcommands?.join(', ')}`,
+                    if (typeof (command as any)[methodName] !== 'function') {
+                        throw new Error(
+                            `El método ${methodName}() no existe en el comando ${cmdMeta.name}`,
                         );
                     }
-                } else {
-                    throw new ValidationError(
-                        `Debes especificar un subcomando. Disponibles: ${cmdMeta.subcommands?.join(', ')}`,
-                    );
+
+                    await (command as any)[methodName]();
                 }
             } else {
                 // Comando sin subcomandos explícitos o subcomando individual (ej: "user info")
@@ -210,5 +256,25 @@ export class CommandHandler {
 
             await ctx.send({ embeds: [embed] });
         }
+    }
+
+    /**
+     * Convierte un nombre de subcomando a nombre de método
+     * @param subcommand - Nombre del subcomando (ej: "get", "delete-all", "config get")
+     * @returns Nombre del método (ej: "subcommandGet", "subcommandDeleteAll", "subcommandConfigGet")
+     */
+    private getSubcommandMethodName(subcommand: string): string {
+        // Primero separar por espacios (para 3 niveles como "config get")
+        // Luego separar cada parte por guiones (para kebab-case como "delete-all")
+        const words = subcommand
+            .split(' ')
+            .flatMap((part) => part.split('-'))
+            .map((word) => {
+                // Capitalizar primera letra de cada palabra
+                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+            })
+            .join('');
+
+        return `subcommand${words}`;
     }
 }

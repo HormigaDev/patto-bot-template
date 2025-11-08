@@ -94,9 +94,26 @@ export class BanCommand extends BanDefinition {
 - ✅ Metadatos reutilizables
 - ✅ Código más limpio
 
-### 🔹 Patrón 3: Comandos con Subcomandos
+### 🔹 Patrón 3: Comandos con Subcomandos (hasta 3 niveles)
 
-Para agrupar funcionalidades relacionadas bajo un mismo comando padre. Ver [documentación completa de subcomandos](../../docs/SUBCOMMANDS.md).
+Para agrupar funcionalidades relacionadas bajo un mismo comando padre. Discord soporta hasta **3 niveles**: comando → grupo → subcomando.
+
+**Ejemplos:**
+
+- 2 niveles: `/user info`, `/config get`
+- 3 niveles: `/server config get`, `/admin roles add`
+
+Ver [documentación completa de subcomandos](../../docs/SUBCOMMANDS.md) para ejemplos detallados.
+
+**Características:**
+
+- ✅ Soporta hasta 3 niveles (límite de Discord)
+- ✅ Archivos unificados o separados
+- ✅ Auto-agrupamiento por prefijos comunes
+- ✅ Soporte para kebab-case (`delete-all` → `subcommandDeleteAll()`)
+- ✅ Validación automática en tiempo de carga y ejecución
+
+⚠️ **Importante**: Nombres de archivos usan kebab-case (`user-info.command.ts`), pero el metadata `@Command` usa espacios (`name: 'user info'`). Ver documentación completa para detalles.
 
 #### Opción A: Subcomandos en Archivo Unificado
 

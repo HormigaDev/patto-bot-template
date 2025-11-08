@@ -18,16 +18,33 @@ export function registerInteractionCreateEvent(
             try {
                 // Manejar slash commands
                 if (interaction.isChatInputCommand()) {
-                    let commandName = interaction.commandName;
+                    const baseCommandName = interaction.commandName;
 
-                    // Detectar si tiene subcomando
+                    // Detectar estructura de Discord: command → [group] → subcommand
+                    const subcommandGroup = interaction.options.getSubcommandGroup(false);
                     const subcommand = interaction.options.getSubcommand(false);
+
+                    // Primero intentar con el nombre base (para comandos con subcommands explícitos)
+                    let commandEntry = commandLoader.getCommandEntry(baseCommandName);
+
+                    // Si hay subcomando, verificar si existe un archivo separado para él
                     if (subcommand) {
-                        // Construir nombre completo: "user info"
-                        commandName = `${commandName} ${subcommand}`;
+                        // Construir nombre completo según la estructura
+                        const fullCommandName = subcommandGroup
+                            ? `${baseCommandName} ${subcommandGroup} ${subcommand}` // Nivel 3: /server config get
+                            : `${baseCommandName} ${subcommand}`; // Nivel 2: /user info
+
+                        // Intentar buscar comando con nombre completo (patrón separated)
+                        const fullCommandEntry = commandLoader.getCommandEntry(fullCommandName);
+
+                        if (fullCommandEntry) {
+                            // Patrón separated: cada subcomando es un archivo separado
+                            commandEntry = fullCommandEntry;
+                        }
+                        // Si no existe con nombre completo, usar el comando base (patrón unified)
+                        // El comando base manejará los subcomandos internamente
                     }
 
-                    const commandEntry = commandLoader.getCommandEntry(commandName);
                     if (!commandEntry) return;
 
                     await commandHandler.executeCommand(

@@ -2,13 +2,21 @@
 
 ## 📖 Descripción
 
-Los subcomandos permiten agrupar funcionalidades relacionadas bajo un mismo comando padre, organizando mejor la estructura de comandos de tu bot. Por ejemplo: `/user info`, `/user avatar`, `/config get`, `/config set`.
+Los subcomandos permiten agrupar funcionalidades relacionadas bajo un mismo comando padre, organizando mejor la estructura de comandos de tu bot. Discord soporta hasta **3 niveles** de comandos: comando → grupo → subcomando.
+
+**Ejemplos:**
+
+- 2 niveles: `/user info`, `/user avatar`, `/config get`
+- 3 niveles: `/server config get`, `/server config set`, `/admin roles add`
 
 ## 🎯 Características
 
 - ✅ Soporte nativo para slash commands y text commands
+- ✅ **Hasta 3 niveles** de comandos (comando → grupo → subcomando)
 - ✅ Validación automática de subcomandos
 - ✅ Archivos unificados o separados
+- ✅ **Soporte para kebab-case** (`delete-all` → `subcommandDeleteAll()`)
+- ✅ Grupos de subcomandos automáticos
 - ✅ Retrocompatible con comandos sin subcomandos
 - ✅ Errores descriptivos en español
 
@@ -98,14 +106,14 @@ Cada subcomando en su propio archivo.
 **1. Crear Definition para cada subcomando:**
 
 ```typescript
-// src/definition/user.info.definition.ts
+// src/definition/user-info.definition.ts
 import { Arg } from '@/core/decorators/argument.decorator';
 import { Command } from '@/core/decorators/command.decorator';
 import { BaseCommand } from '@/core/structures/BaseCommand';
 import { User } from 'discord.js';
 
 @Command({
-    name: 'user info', // ✅ Nombre con espacio: "comando subcomando"
+    name: 'user info', // ✅ Nombre con espacio en metadata (Discord API)
     description: 'Muestra información de un usuario',
     // ❌ NO usar 'subcommands' aquí
 })
@@ -120,9 +128,9 @@ export abstract class UserInfoDefinition extends BaseCommand {
 ```
 
 ```typescript
-// src/definition/user.avatar.definition.ts
+// src/definition/user-avatar.definition.ts
 @Command({
-    name: 'user avatar', // ✅ "comando subcomando"
+    name: 'user avatar', // ✅ "comando subcomando" en metadata
     description: 'Muestra el avatar de un usuario',
 })
 export abstract class UserAvatarDefinition extends BaseCommand {
@@ -130,11 +138,13 @@ export abstract class UserAvatarDefinition extends BaseCommand {
 }
 ```
 
+⚠️ **Nota**: El archivo se llama `user-info.definition.ts` (con guiones), pero el `name` en `@Command` es `'user info'` (con espacios) para Discord API.
+
 **2. Implementar cada Command:**
 
 ```typescript
-// src/commands/user/user.info.command.ts
-import { UserInfoDefinition } from '@/definition/user.info.definition';
+// src/commands/user/user-info.command.ts
+import { UserInfoDefinition } from '@/definition/user-info.definition';
 
 export class UserInfoCommand extends UserInfoDefinition {
     async run(): Promise<void> {
@@ -145,8 +155,8 @@ export class UserInfoCommand extends UserInfoDefinition {
 ```
 
 ```typescript
-// src/commands/user/user.avatar.command.ts
-import { UserAvatarDefinition } from '@/definition/user.avatar.definition';
+// src/commands/user/user-avatar.command.ts
+import { UserAvatarDefinition } from '@/definition/user-avatar.definition';
 
 export class UserAvatarCommand extends UserAvatarDefinition {
     async run(): Promise<void> {
@@ -158,17 +168,91 @@ export class UserAvatarCommand extends UserAvatarDefinition {
 
 ## 📝 Convenciones
 
+### ⚠️ Convención Crítica: Nombres de Archivos vs Metadata
+
+**Regla de oro:** Los nombres de archivos y el metadata `@Command` usan formatos diferentes:
+
+| Contexto                | Formato              | Ejemplo                |
+| ----------------------- | -------------------- | ---------------------- |
+| **Nombre de archivo**   | kebab-case (guiones) | `user-info.command.ts` |
+| **Metadata `@Command`** | Espacios             | `name: 'user info'`    |
+
+**¿Por qué esta diferencia?**
+
+- **Archivos con kebab-case**: Evita problemas en sistemas operativos (Windows, Linux, macOS) donde los espacios en rutas pueden causar errores
+- **Metadata con espacios**: Discord API requiere espacios para separar comando/grupo/subcomando
+
+**Ejemplo completo:**
+
+```typescript
+// Archivo: src/definition/server-config-get.definition.ts (CON GUIONES)
+// ✅ Nombre de archivo: server-config-get.definition.ts
+
+@Command({
+    name: 'server config get', // ✅ Metadata: CON ESPACIOS
+    description: 'Obtiene configuración del servidor',
+})
+export abstract class ServerConfigGetDefinition extends BaseCommand {
+    // ...
+}
+```
+
+### Límite de Niveles
+
+Discord soporta **máximo 3 niveles** de comandos:
+
+```
+Nivel 1: Comando base      (/server)
+Nivel 2: Grupo/Subcomando  (config)
+Nivel 3: Subcomando        (get)
+```
+
+**Válido:**
+
+- ✅ `/user` (1 nivel)
+- ✅ `/user info` (2 niveles)
+- ✅ `/server config get` (3 niveles)
+
+**Inválido:**
+
+- ❌ `/server admin config get` (4 niveles - excede el límite)
+
 ### Nombres de Archivos
 
-**Unificado:**
+**Formato:** kebab-case (lowercase con guiones separando palabras), solo letras, números y guiones.
 
-- Definition: `config.definition.ts`
-- Command: `config.command.ts`
+⚠️ **Importante**: NO usar espacios en nombres de archivos ya que pueden causar problemas de rutas en algunos sistemas operativos.
 
-**Separado:**
+**Unificado (1 nivel):**
 
-- Definition: `user.info.definition.ts`, `user.avatar.definition.ts`
-- Command: `user.info.command.ts`, `user.avatar.command.ts`
+- `config.definition.ts` / `config.command.ts`
+- `user.definition.ts` / `user.command.ts`
+
+**Separado (2 niveles):**
+
+- `user-info.definition.ts` / `user-info.command.ts`
+- `user-avatar.definition.ts` / `user-avatar.command.ts`
+- `config-get.definition.ts` / `config-get.command.ts`
+
+**Separado (3 niveles):**
+
+- `server-config-get.definition.ts` / `server-config-get.command.ts`
+- `server-config-set.definition.ts` / `server-config-set.command.ts`
+- `server-roles-add.definition.ts` / `server-roles-add.command.ts`
+
+**Válidos:**
+
+- ✅ `config.command.ts` (1 nivel)
+- ✅ `user-info.command.ts` (2 niveles)
+- ✅ `server-config-get.command.ts` (3 niveles)
+- ✅ `delete-all.command.ts` (nombre con guiones)
+
+**Inválidos:**
+
+- ❌ `Config.command.ts` (mayúscula)
+- ❌ `user_info.command.ts` (underscore)
+- ❌ `user info.command.ts` (espacios - NO permitido)
+- ❌ `server-admin-config-get.command.ts` (4 niveles - excede límite Discord)
 
 ### Nombres en @Command
 
@@ -177,7 +261,7 @@ export class UserAvatarCommand extends UserAvatarDefinition {
 ```typescript
 @Command({
     name: 'config', // Nombre base
-    subcommands: ['get', 'set'], // Subcomandos
+    subcommands: ['get', 'set', 'delete-all'], // Subcomandos (soporta kebab-case)
 })
 ```
 
@@ -185,18 +269,43 @@ export class UserAvatarCommand extends UserAvatarDefinition {
 
 ```typescript
 @Command({
-    name: 'user info', // "comando subcomando" con espacio
+    name: 'user info', // ✅ "comando subcomando" con espacio (SOLO en metadata)
     // NO usar 'subcommands'
+})
+
+@Command({
+    name: 'server config get', // ✅ 3 niveles: "comando grupo subcomando" (SOLO en metadata)
 })
 ```
 
+⚠️ **Nota importante:** Los espacios SOLO se usan en el metadata `name` del decorador `@Command`. Los nombres de archivos SIEMPRE deben usar kebab-case (`user-info.command.ts`, NO `user info.command.ts`).
+
 ### Nombres de Métodos
 
-Los métodos de subcomandos deben seguir la convención `subcommand<Nombre>` con capitalización:
+Los métodos de subcomandos siguen la convención `subcommand<CamelCase>`:
 
-- `subcommands: ['get']` → `subcommandGet()`
-- `subcommands: ['set']` → `subcommandSet()`
-- `subcommands: ['deleteall']` → `subcommandDeleteall()`
+**Conversión automática de kebab-case a camelCase:**
+
+- `'get'` → `subcommandGet()`
+- `'set'` → `subcommandSet()`
+- `'delete-all'` → `subcommandDeleteAll()`
+- `'my-long-command'` → `subcommandMyLongCommand()`
+
+**Ejemplo:**
+
+```typescript
+@Command({
+    name: 'config',
+    subcommands: ['get', 'set', 'delete-all'], // ✅ kebab-case permitido
+})
+export abstract class ConfigDefinition extends BaseCommand {
+    async run(): Promise<void> {}
+
+    abstract subcommandGet(): Promise<void>;
+    abstract subcommandSet(): Promise<void>;
+    abstract subcommandDeleteAll(): Promise<void>; // ✅ Convertido a camelCase
+}
+```
 
 ## 🔄 Flujo de Ejecución
 
@@ -282,8 +391,8 @@ async subcommandSet() { }
 async subcommandDelete() { }
 
 // ✅ Usar archivos separados para subcomandos complejos
-// user.info.command.ts (50+ líneas de lógica)
-// user.avatar.command.ts (30+ líneas de lógica)
+// user-info.command.ts (50+ líneas de lógica)
+// user-avatar.command.ts (30+ líneas de lógica)
 
 // ✅ Usar archivo unificado para subcomandos simples
 @Command({ subcommands: ['get', 'set'] })
@@ -326,7 +435,7 @@ export abstract class ConfigDefinition extends BaseCommand {
     subcommands: ['set'],
 })
 // ❌ Usar 'subcommands' en archivos separados
-// user.info.definition.ts
+// user-info.definition.ts
 @Command({
     name: 'user info',
     subcommands: ['avatar'], // ❌ Innecesario
@@ -346,6 +455,148 @@ export abstract class ConfigDefinition extends BaseCommand {
 }
 ```
 
+## 🎯 Ejemplo de 3 Niveles (Comando → Grupo → Subcomando)
+
+Discord soporta agrupar subcomandos en grupos, creando una estructura de 3 niveles.
+
+### Opción A: Archivos Separados (Recomendado)
+
+**Estructura de archivos:**
+
+```
+src/
+  definition/
+    server-config-get.definition.ts
+    server-config-set.definition.ts
+    server-roles-add.definition.ts
+    server-roles-remove.definition.ts
+  commands/
+    server/
+      server-config-get.command.ts
+      server-config-set.command.ts
+      server-roles-add.command.ts
+      server-roles-remove.command.ts
+```
+
+⚠️ **Importante**: Los nombres de archivos usan kebab-case (guiones), NO espacios.
+
+**Ejemplo: `/server config get`**
+
+```typescript
+// src/definition/server-config-get.definition.ts
+import { Arg } from '@/core/decorators/argument.decorator';
+import { Command } from '@/core/decorators/command.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+import { CommandCategoryTag } from '@/utils/CommandCategories';
+
+@Command({
+    name: 'server config get', // ✅ 3 niveles con espacios (SOLO en metadata)
+    description: 'Obtiene una configuración del servidor',
+    category: CommandCategoryTag.Admin,
+})
+export abstract class ServerConfigGetDefinition extends BaseCommand {
+    @Arg({
+        name: 'clave',
+        description: 'La clave de configuración',
+        index: 0,
+        required: true,
+    })
+    key!: string;
+}
+```
+
+```typescript
+// src/commands/server/server-config-get.command.ts
+import { ServerConfigGetDefinition } from '@/definition/server-config-get.definition';
+
+export class ServerConfigGetCommand extends ServerConfigGetDefinition {
+    async run(): Promise<void> {
+        await this.reply(`El valor de ${this.key} es: ...`);
+    }
+}
+```
+
+**Resultado en Discord:**
+
+```
+/server
+  ├─ config (SubcommandGroup)
+  │   ├─ get
+  │   └─ set
+  └─ roles (SubcommandGroup)
+      ├─ add
+      └─ remove
+```
+
+### Opción B: Archivo Unificado con Auto-agrupamiento
+
+El sistema automáticamente agrupa subcomandos con prefijos comunes:
+
+```typescript
+// src/definition/server.definition.ts
+@Command({
+    name: 'server',
+    description: 'Comandos de administración del servidor',
+    category: CommandCategoryTag.Admin,
+    subcommands: [
+        'config get', // Grupo: config, Subcomando: get
+        'config set', // Grupo: config, Subcomando: set
+        'roles add', // Grupo: roles, Subcomando: add
+        'roles remove', // Grupo: roles, Subcomando: remove
+    ],
+})
+export abstract class ServerDefinition extends BaseCommand {
+    @Arg({
+        name: 'clave',
+        description: 'Clave de configuración',
+        index: 0,
+        required: true,
+        subcommands: ['config get', 'config set'], // ✅ Solo en estos subcomandos
+    })
+    key?: string;
+
+    async run(): Promise<void> {}
+
+    // ✅ Métodos con espacios convertidos a camelCase
+    abstract subcommandConfigGet(): Promise<void>; // "config get" → ConfigGet
+    abstract subcommandConfigSet(): Promise<void>; // "config set" → ConfigSet
+    abstract subcommandRolesAdd(): Promise<void>; // "roles add" → RolesAdd
+    abstract subcommandRolesRemove(): Promise<void>; // "roles remove" → RolesRemove
+}
+```
+
+```typescript
+// src/commands/admin/server.command.ts
+import { ServerDefinition } from '@/definition/server.definition';
+
+export class ServerCommand extends ServerDefinition {
+    async subcommandConfigGet(): Promise<void> {
+        await this.reply(`Configuración ${this.key}: ...`);
+    }
+
+    async subcommandConfigSet(): Promise<void> {
+        await this.reply(`Configuración ${this.key} actualizada`);
+    }
+
+    async subcommandRolesAdd(): Promise<void> {
+        await this.reply('Rol agregado');
+    }
+
+    async subcommandRolesRemove(): Promise<void> {
+        await this.reply('Rol eliminado');
+    }
+}
+```
+
+**Uso:**
+
+```
+/server config get clave    → subcommandConfigGet()
+/server config set clave    → subcommandConfigSet()
+/server roles add rol       → subcommandRolesAdd()
+!server config get clave    → subcommandConfigGet()
+```
+
 ## 🔍 Ejemplos Completos
 
 Ver los archivos de ejemplo en el proyecto:
@@ -357,10 +608,12 @@ Ver los archivos de ejemplo en el proyecto:
 
 ### Archivos Separados
 
-- `/src/definition/user.info.definition.ts`
-- `/src/commands/user/user.info.command.ts`
-- `/src/definition/user.avatar.definition.ts`
-- `/src/commands/user/user.avatar.command.ts`
+- `/src/definition/user-info.definition.ts`
+- `/src/commands/user/user-info.command.ts`
+- `/src/definition/user-avatar.definition.ts`
+- `/src/commands/user/user-avatar.command.ts`
+
+⚠️ **Nota**: Los archivos usan kebab-case (guiones), pero el `name` en `@Command` usa espacios para Discord API.
 
 ## 🚨 Troubleshooting
 

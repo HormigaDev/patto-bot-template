@@ -1,4 +1,4 @@
-import { UserAvatarDefinition } from '@/definition/user.avatar.definition';
+import { UserAvatarDefinition } from '@/definition/user-avatar.definition';
 
 /**
  * Subcomando: user avatar

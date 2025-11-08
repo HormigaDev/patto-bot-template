@@ -1,4 +1,4 @@
-import { UserInfoDefinition } from '@/definition/user.info.definition';
+import { UserInfoDefinition } from '@/definition/user-info.definition';
 import { Times } from '@/utils/Times';
 
 /**

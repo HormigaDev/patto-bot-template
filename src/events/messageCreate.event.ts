@@ -3,6 +3,7 @@ import { CommandLoader } from '@/core/loaders/command.loader';
 import { CommandHandler } from '@/core/handlers/command.handler';
 import { getPrefix } from '@/core/resolvers/prefix.resolver';
 import { Permissions } from '@/utils/Permissions';
+import { createMissingSubcommandEmbed } from '@/utils/CommandUtils';
 
 const PREFIX = getPrefix();
 
@@ -13,46 +14,66 @@ export function registerMessageCreateEvent(
     return {
         name: Events.MessageCreate,
         async execute(message: Message) {
-            // Ignorar bots y mensajes fuera de servidores
             if (message.author.bot || !message.guild) return;
-            // Verificar prefijo
             if (!message.content.startsWith(PREFIX)) return;
             const guild = message.guild;
             if (!guild.members.me?.permissions.has(Permissions.SendMessages)) return;
 
-            // Parsear comando y argumentos
-            let args: (string | number)[] = message.content
-                .slice(PREFIX.length)
-                .trim()
-                .split(/ +/g);
+            const parts = message.content.slice(PREFIX.length).trim().split(/ +/g);
+            if (parts.length === 0) return;
 
-            let commandName = (args.shift() as string)?.toLowerCase();
-            if (!commandName) return;
+            // Intentar detectar comandos con múltiples palabras (máximo 3 para Discord)
+            // Ejemplos: "ping", "user info", "server config get"
+            let commandName: string | undefined;
+            let commandEntry: ReturnType<typeof commandLoader.getCommandEntry> | undefined;
+            let remainingArgs: (string | number)[] = [];
 
-            // Intentar detectar comandos con múltiples palabras (ej: "user info")
-            let commandEntry = commandLoader.getCommandEntry(commandName);
+            // Intentar de más largo a más corto (3 palabras → 2 palabras → 1 palabra)
+            for (let wordCount = Math.min(parts.length, 3); wordCount > 0; wordCount--) {
+                const potentialCommand = parts.slice(0, wordCount).join(' ').toLowerCase();
+                const entry = commandLoader.getCommandEntry(potentialCommand);
 
-            // Si no se encuentra el comando, intentar con 2 palabras
-            if (!commandEntry && args.length > 0) {
-                const secondWord = args[0];
-                if (typeof secondWord === 'string') {
-                    const twoWordCommand = `${commandName} ${secondWord.toLowerCase()}`;
-                    const twoWordEntry = commandLoader.getCommandEntry(twoWordCommand);
-
-                    if (twoWordEntry) {
-                        // Encontrado comando de dos palabras, actualizar y remover segunda palabra de args
-                        commandName = twoWordCommand;
-                        commandEntry = twoWordEntry;
-                        args.shift();
-                    }
+                if (entry) {
+                    commandName = potentialCommand;
+                    commandEntry = entry;
+                    // Los argumentos son todo después del comando
+                    remainingArgs = parts.slice(wordCount);
+                    break;
                 }
             }
 
-            // Si aún no se encuentra el comando, salir
-            if (!commandEntry) return;
+            // Si no se encontró el comando, verificar si existe como prefijo de subcomandos
+            if (!commandEntry || !commandName) {
+                // Intentar con la primera palabra como prefijo
+                if (parts.length > 0) {
+                    const prefix = parts[0].toLowerCase();
+                    const subcommands = commandLoader.getSubcommandsByPrefix(prefix);
+
+                    if (subcommands.length > 0) {
+                        // Hay subcomandos disponibles con este prefijo - usar función centralizada
+                        // Extraer solo los subcomandos (eliminar el prefijo del nombre completo)
+                        const subcommandNames = subcommands.map((fullName) => {
+                            const parts = fullName.split(' ');
+                            return parts.slice(1).join(' '); // Eliminar primera palabra (prefijo)
+                        });
+
+                        const embed = createMissingSubcommandEmbed(
+                            prefix,
+                            subcommandNames,
+                            commandLoader.prefix,
+                        );
+
+                        await message.reply({ embeds: [embed] });
+                        return;
+                    }
+                }
+
+                // No se encontró comando ni subcomandos
+                return;
+            }
 
             // Parsear argumentos con soporte para strings entre comillas
-            args = parseTextArguments(args.join(' '));
+            const args = parseTextArguments(remainingArgs.join(' '));
 
             // Ejecutar comando con su ruta
             await commandHandler.executeCommand(

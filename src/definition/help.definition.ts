@@ -12,8 +12,9 @@ import { CommandCategoryTag } from '@/utils/CommandCategories';
 export abstract class HelpDefinition extends BaseCommand {
     @Arg({
         name: 'comando',
-        description: 'El nombre del comando para obtener ayuda',
+        description: 'El nombre del comando para obtener ayuda (puede incluir subcomandos)',
         index: 0,
+        rawText: true, // Captura todo el texto, permitiendo espacios
     })
-    commandName!: string;
+    commandName?: string;
 }

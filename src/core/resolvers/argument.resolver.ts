@@ -25,32 +25,52 @@ export class ArgumentResolver {
 
         let currentSubcommand: string | undefined;
 
-        // Para comandos de texto con subcomandos, validar y ajustar índices
+        // Para comandos de texto con subcomandos, procesar el subcomando (sin validar aquí)
         if (!ctx.isInteraction && hasSubcommands && textArgs) {
-            const subcommandArg = textArgs[0];
+            // Intentar detectar subcomando de 2 palabras primero (ej: "alpha first")
+            if (
+                textArgs.length >= 2 &&
+                typeof textArgs[0] === 'string' &&
+                typeof textArgs[1] === 'string'
+            ) {
+                const twoWordSubcommand = `${textArgs[0]} ${textArgs[1]}`.toLowerCase();
 
-            // Validar que se especificó el subcomando
-            if (!subcommandArg) {
-                throw new ValidationError(
-                    `Debes especificar un subcomando. Disponibles: ${cmdMeta.subcommands!.join(', ')}`,
-                );
+                if (cmdMeta.subcommands!.includes(twoWordSubcommand)) {
+                    currentSubcommand = twoWordSubcommand;
+                    // Eliminar las 2 palabras del subcomando
+                    textArgs = textArgs.slice(2);
+                }
             }
 
-            // Validar que el subcomando existe
-            if (!cmdMeta.subcommands!.includes(subcommandArg.toLowerCase())) {
-                throw new ValidationError(
-                    `Subcomando "${subcommandArg}" no válido. Disponibles: ${cmdMeta.subcommands!.join(', ')}`,
-                );
+            // Si no se encontró con 2 palabras, intentar con 1 palabra
+            if (!currentSubcommand && textArgs.length >= 1 && typeof textArgs[0] === 'string') {
+                const oneWordSubcommand = textArgs[0].toLowerCase();
+
+                if (cmdMeta.subcommands!.includes(oneWordSubcommand)) {
+                    currentSubcommand = oneWordSubcommand;
+                    // Eliminar la 1 palabra del subcomando
+                    textArgs = textArgs.slice(1);
+                } else if (textArgs[0]) {
+                    // Hay algo pero no es válido - lanzar error
+                    throw new ValidationError(
+                        `Subcomando "${textArgs[0]}" no válido. Disponibles: ${cmdMeta.subcommands!.join(', ')}`,
+                    );
+                }
             }
-
-            currentSubcommand = subcommandArg.toLowerCase();
-
-            // Eliminar el subcomando de textArgs para que los índices coincidan
-            textArgs = textArgs.slice(1);
+            // Si no hay subcomando (textArgs vacío), no lanzamos error aquí
+            // El command.handler se encargará de mostrar el mensaje naranja
         } else if (ctx.isInteraction && hasSubcommands) {
-            // Para slash commands, obtener el subcomando de la interacción
+            // Para slash commands, obtener el subcomando y grupo de la interacción
             const interaction = source as ChatInputCommandInteraction;
-            currentSubcommand = interaction.options.getSubcommand(false) || undefined;
+            const group = interaction.options.getSubcommandGroup(false);
+            const subcommand = interaction.options.getSubcommand(false);
+
+            // Si hay grupo, combinar "grupo subcomando"
+            if (group && subcommand) {
+                currentSubcommand = `${group} ${subcommand}`;
+            } else if (subcommand) {
+                currentSubcommand = subcommand;
+            }
         }
 
         // Filtrar argumentos según el subcomando actual

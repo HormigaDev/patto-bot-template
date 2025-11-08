@@ -66,23 +66,96 @@ export class CommandLoader {
 
         const prototype = commandClass.prototype;
         const missingMethods: string[] = [];
+        const invalidNames: string[] = [];
 
         for (const subcommand of meta.subcommands) {
-            // Capitalizar primera letra: 'get' -> 'Get'
-            const methodName = `subcommand${subcommand.charAt(0).toUpperCase() + subcommand.slice(1)}`;
+            // Validar que el nombre sea válido (Discord requirements)
+            // Puede ser:
+            // - 1 palabra: "get" (subcomando simple)
+            // - 2 palabras: "config get" (grupo + subcomando para 3 niveles)
+            // Cada palabra debe ser lowercase, solo alfanumérico y guiones
+
+            const words = subcommand.split(' ');
+
+            // Máximo 2 palabras (para 3 niveles: comando + "grupo subcomando")
+            if (words.length > 2) {
+                invalidNames.push(subcommand);
+                continue;
+            }
+
+            // Validar cada palabra
+            const validWordRegex = /^[a-z0-9-]+$/;
+            let hasInvalidWord = false;
+
+            for (const word of words) {
+                if (!validWordRegex.test(word)) {
+                    hasInvalidWord = true;
+                    break;
+                }
+            }
+
+            if (hasInvalidWord) {
+                invalidNames.push(subcommand);
+                continue;
+            }
+
+            // Convertir kebab-case a camelCase para el nombre del método
+            // "get" → "subcommandGet"
+            // "delete-all" → "subcommandDeleteAll"
+            const methodName = this.getSubcommandMethodName(subcommand);
 
             if (typeof prototype[methodName] !== 'function') {
-                missingMethods.push(methodName);
+                missingMethods.push(`${methodName}() para "${subcommand}"`);
             }
+        }
+
+        if (invalidNames.length > 0) {
+            throw new Error(
+                `❌ El comando "${meta.name}" tiene subcomandos con nombres inválidos:\n` +
+                    `   ${invalidNames.join(', ')}\n\n` +
+                    `Los nombres de subcomandos deben:\n` +
+                    `   • Estar en minúsculas\n` +
+                    `   • Contener solo letras, números y guiones en cada palabra\n` +
+                    `   • Máximo 2 palabras separadas por espacio (para 3 niveles)\n\n` +
+                    `Ejemplos válidos:\n` +
+                    `   • "get" (1 nivel)\n` +
+                    `   • "config get" (2 palabras para 3 niveles)\n` +
+                    `   • "delete-all" (kebab-case)\n\n` +
+                    `Ejemplos inválidos:\n` +
+                    `   • "Get" (mayúscula)\n` +
+                    `   • "set_value" (underscore)\n` +
+                    `   • "config get set" (3 palabras - excede límite)`,
+            );
         }
 
         if (missingMethods.length > 0) {
             throw new Error(
                 `❌ El comando "${meta.name}" declara subcomandos pero faltan los siguientes métodos:\n` +
-                    `   ${missingMethods.map((m) => `- ${m}()`).join('\n   ')}\n` +
-                    `   Asegúrate de implementar todos los métodos requeridos en la clase.`,
+                    `   ${missingMethods.map((m) => `- ${m}`).join('\n   ')}\n\n` +
+                    `Asegúrate de implementar todos los métodos requeridos en la clase.`,
             );
         }
+    }
+
+    /**
+     * Convierte un nombre de subcomando a nombre de método
+     * "get" → "subcommandGet"
+     * "delete-all" → "subcommandDeleteAll"
+     * "config get" → "subcommandConfigGet"
+     */
+    private getSubcommandMethodName(subcommand: string): string {
+        // Primero separar por espacios (para 3 niveles como "config get")
+        // Luego separar cada parte por guiones (para kebab-case como "delete-all")
+        const words = subcommand
+            .split(' ')
+            .flatMap((part) => part.split('-'))
+            .map((word) => {
+                // Capitalizar primera letra de cada palabra
+                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+            })
+            .join('');
+
+        return `subcommand${words}`;
     }
 
     /**
@@ -133,24 +206,59 @@ export class CommandLoader {
                     continue;
                 }
 
-                // Detectar si es un subcomando por nombre de archivo (ej: config.get.command.ts)
-                const fileName = path.basename(filePath, extension);
-                const fileNameParts = fileName.split('.');
+                // Validar que el nombre del comando sea válido según Discord
+                const nameParts = meta.name.split(' ');
 
-                // Si el archivo tiene formato comando.sub.command, extraer subcomando
-                if (
-                    fileNameParts.length >= 3 &&
-                    fileNameParts[fileNameParts.length - 1] === 'command'
-                ) {
-                    const subcommandName = fileNameParts[fileNameParts.length - 2];
+                if (nameParts.length > 3) {
+                    throw new Error(
+                        `❌ El comando "${meta.name}" (archivo: ${path.basename(filePath)}) tiene demasiadas palabras (${nameParts.length}).\n` +
+                            `Discord solo soporta hasta 3 niveles: comando → grupo → subcomando\n\n` +
+                            `Ejemplos válidos:\n` +
+                            `  • 1 nivel: "ping"\n` +
+                            `  • 2 niveles: "user info"\n` +
+                            `  • 3 niveles: "server config get"\n\n` +
+                            `Ejemplo inválido: "${meta.name}" (${nameParts.length} niveles)`,
+                    );
+                }
 
-                    // Validar que el nombre del @Command incluya el subcomando
-                    const expectedName = `${fileNameParts[0]} ${subcommandName}`;
-                    if (meta.name !== expectedName) {
-                        console.warn(
-                            `⚠️  Advertencia: El archivo "${path.basename(filePath)}" debería tener name: "${expectedName}" en @Command`,
+                // Validar que cada parte del nombre sea válida
+                const validNameRegex = /^[a-z0-9-]+$/;
+                for (const part of nameParts) {
+                    if (!validNameRegex.test(part)) {
+                        throw new Error(
+                            `❌ El comando "${meta.name}" (archivo: ${path.basename(filePath)}) tiene una palabra inválida: "${part}"\n\n` +
+                                `Cada palabra debe:\n` +
+                                `  • Estar en minúsculas\n` +
+                                `  • Contener solo letras, números y guiones\n` +
+                                `  • NO contener espacios ni caracteres especiales\n\n` +
+                                `Ejemplos válidos: "ping", "user-info", "server-config"\n` +
+                                `Ejemplos inválidos: "Ping", "user Info", "server_config"`,
                         );
                     }
+                }
+
+                // Detectar nombre esperado del comando basado en el nombre del archivo
+                // Convención: kebab-case en archivo → espacios en metadata
+                // Ejemplo: user-info.command.ts → name: 'user info'
+                // Ejemplo: server-config-get.command.ts → name: 'server config get'
+                const fileName = path.basename(filePath, extension);
+
+                // Eliminar .command del nombre
+                const commandFileName = fileName.replace(/\.command$/, '');
+
+                // Convertir kebab-case a espacios para el nombre esperado
+                // "user-info" → "user info"
+                // "server-config-get" → "server config get"
+                const expectedNameFromFile = commandFileName.replace(/-/g, ' ');
+
+                // Validar que el nombre en @Command coincida con el nombre del archivo
+                if (meta.name !== expectedNameFromFile) {
+                    console.warn(
+                        `⚠️  Advertencia: El archivo "${path.basename(filePath)}" debería tener name: "${expectedNameFromFile}" en @Command\n` +
+                            `   Archivo: ${commandFileName} (kebab-case)\n` +
+                            `   Esperado en @Command: name: '${expectedNameFromFile}' (con espacios)\n` +
+                            `   Actual en @Command: name: '${meta.name}'`,
+                    );
                 }
 
                 // Validar subcomandos declarados explícitamente
@@ -262,6 +370,24 @@ export class CommandLoader {
      */
     getAllCommandEntries(): Map<string, CommandEntry> {
         return this.commands;
+    }
+
+    /**
+     * Obtiene todos los subcomandos que empiezan con un prefijo
+     * Ej: prefix "user" → ["user info", "user avatar"]
+     */
+    getSubcommandsByPrefix(prefix: string): string[] {
+        const subcommands: string[] = [];
+        const prefixLower = prefix.toLowerCase();
+
+        for (const commandName of this.commands.keys()) {
+            // Verificar si el comando empieza con el prefijo seguido de un espacio
+            if (commandName.startsWith(prefixLower + ' ')) {
+                subcommands.push(commandName);
+            }
+        }
+
+        return subcommands.sort();
     }
 
     /**
