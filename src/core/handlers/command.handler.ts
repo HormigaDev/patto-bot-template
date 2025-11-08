@@ -11,7 +11,7 @@ import { ReplyError } from '@/error/ReplyError';
 import { ArgumentResolver } from '@/core/resolvers/argument.resolver';
 import { PluginRegistry } from '@/config/plugin.registry';
 import { CommandLoader } from '../loaders/command.loader';
-import { createMissingSubcommandEmbed } from '@/utils/CommandUtils';
+import { createMissingSubcommandEmbed, getSubcommandMethodName } from '@/utils/CommandUtils';
 
 type CommandClass = new (...args: any[]) => BaseCommand;
 
@@ -156,7 +156,7 @@ export class CommandHandler {
                     // Convertir nombre de subcomando a nombre de método
                     // "get" → "subcommandGet"
                     // "delete-all" → "subcommandDeleteAll"
-                    const methodName = this.getSubcommandMethodName(subcommandName);
+                    const methodName = getSubcommandMethodName(subcommandName);
 
                     if (typeof (command as any)[methodName] !== 'function') {
                         throw new Error(
@@ -256,25 +256,5 @@ export class CommandHandler {
 
             await ctx.send({ embeds: [embed] });
         }
-    }
-
-    /**
-     * Convierte un nombre de subcomando a nombre de método
-     * @param subcommand - Nombre del subcomando (ej: "get", "delete-all", "config get")
-     * @returns Nombre del método (ej: "subcommandGet", "subcommandDeleteAll", "subcommandConfigGet")
-     */
-    private getSubcommandMethodName(subcommand: string): string {
-        // Primero separar por espacios (para 3 niveles como "config get")
-        // Luego separar cada parte por guiones (para kebab-case como "delete-all")
-        const words = subcommand
-            .split(' ')
-            .flatMap((part) => part.split('-'))
-            .map((word) => {
-                // Capitalizar primera letra de cada palabra
-                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-            })
-            .join('');
-
-        return `subcommand${words}`;
     }
 }

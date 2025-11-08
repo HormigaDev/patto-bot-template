@@ -23,3 +23,28 @@ export function createMissingSubcommandEmbed(
             text: `Usa ${prefix}help ${commandName} para más información`,
         });
 }
+
+/**
+ * Convierte un nombre de subcomando a nombre de método
+ * @param subcommand - Nombre del subcomando (ej: "get", "delete-all", "alpha first")
+ * @returns Nombre del método (ej: "subcommandGet", "subcommandDeleteAll", "subcommandAlphaFirst")
+ *
+ * @example
+ * getSubcommandMethodName("get") // "subcommandGet"
+ * getSubcommandMethodName("delete-all") // "subcommandDeleteAll"
+ * getSubcommandMethodName("alpha first") // "subcommandAlphaFirst"
+ */
+export function getSubcommandMethodName(subcommand: string): string {
+    // Primero separar por espacios (para 3 niveles como "alpha first")
+    // Luego separar cada parte por guiones (para kebab-case como "delete-all")
+    const words = subcommand
+        .split(' ')
+        .flatMap((part) => part.split('-'))
+        .map((word) => {
+            // Capitalizar primera letra de cada palabra
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        })
+        .join('');
+
+    return `subcommand${words}`;
+}

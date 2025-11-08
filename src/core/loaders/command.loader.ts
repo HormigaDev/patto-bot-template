@@ -5,6 +5,7 @@ import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command
 import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
 import { CommandCategoryTag } from '@/utils/CommandCategories';
 import { getPrefix } from '@/core/resolvers/prefix.resolver';
+import { getSubcommandMethodName } from '@/utils/CommandUtils';
 
 type CommandClass = new (...args: any[]) => BaseCommand;
 
@@ -102,7 +103,7 @@ export class CommandLoader {
             // Convertir kebab-case a camelCase para el nombre del método
             // "get" → "subcommandGet"
             // "delete-all" → "subcommandDeleteAll"
-            const methodName = this.getSubcommandMethodName(subcommand);
+            const methodName = getSubcommandMethodName(subcommand);
 
             if (typeof prototype[methodName] !== 'function') {
                 missingMethods.push(`${methodName}() para "${subcommand}"`);
@@ -135,27 +136,6 @@ export class CommandLoader {
                     `Asegúrate de implementar todos los métodos requeridos en la clase.`,
             );
         }
-    }
-
-    /**
-     * Convierte un nombre de subcomando a nombre de método
-     * "get" → "subcommandGet"
-     * "delete-all" → "subcommandDeleteAll"
-     * "config get" → "subcommandConfigGet"
-     */
-    private getSubcommandMethodName(subcommand: string): string {
-        // Primero separar por espacios (para 3 niveles como "config get")
-        // Luego separar cada parte por guiones (para kebab-case como "delete-all")
-        const words = subcommand
-            .split(' ')
-            .flatMap((part) => part.split('-'))
-            .map((word) => {
-                // Capitalizar primera letra de cada palabra
-                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-            })
-            .join('');
-
-        return `subcommand${words}`;
     }
 
     /**
