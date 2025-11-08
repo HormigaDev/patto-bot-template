@@ -233,8 +233,9 @@ export class HelpCommand extends HelpDefinition {
             // Ejemplo: !help test alpha first
             if (remainingParts.length === 2) {
                 const potentialGroupAndSub = remainingParts.join(' ');
+                const potentialGroupAndSubLower = potentialGroupAndSub.toLowerCase();
                 const matchingSubcommand = meta.subcommands!.find(
-                    (sub) => sub.toLowerCase() === potentialGroupAndSub.toLowerCase(),
+                    (sub) => sub.toLowerCase() === potentialGroupAndSubLower,
                 );
 
                 if (matchingSubcommand) {
@@ -338,11 +339,12 @@ export class HelpCommand extends HelpDefinition {
             } // Caso 2: El usuario especificó solo 1 palabra adicional
             // Puede ser: un grupo (alpha) o un subcomando directo (get)
             if (remainingParts.length === 1) {
-                const singleWord = remainingParts[0].toLowerCase();
+                const singleWord = remainingParts[0];
+                const singleWordLower = singleWord.toLowerCase();
 
                 // Primero verificar si es un subcomando directo (sin espacio)
                 const directSubcommand = meta.subcommands!.find(
-                    (sub) => sub.toLowerCase() === singleWord && !sub.includes(' '),
+                    (sub) => sub.toLowerCase() === singleWordLower && !sub.includes(' '),
                 );
 
                 if (directSubcommand) {
@@ -444,7 +446,7 @@ export class HelpCommand extends HelpDefinition {
                 // Si no es subcomando directo, verificar si es un grupo
                 const groupSubcommands = meta.subcommands!.filter((sub) => {
                     const subParts = sub.split(' ');
-                    return subParts.length === 2 && subParts[0].toLowerCase() === singleWord;
+                    return subParts.length === 2 && subParts[0].toLowerCase() === singleWordLower;
                 });
 
                 if (groupSubcommands.length > 0) {

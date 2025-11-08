@@ -11,7 +11,11 @@ import { ReplyError } from '@/error/ReplyError';
 import { ArgumentResolver } from '@/core/resolvers/argument.resolver';
 import { PluginRegistry } from '@/config/plugin.registry';
 import { CommandLoader } from '../loaders/command.loader';
-import { createMissingSubcommandEmbed, getSubcommandMethodName } from '@/utils/CommandUtils';
+import {
+    createMissingSubcommandEmbed,
+    getSubcommandMethodName,
+    detectSubcommandFromArgs,
+} from '@/utils/CommandUtils';
 
 type CommandClass = new (...args: any[]) => BaseCommand;
 
@@ -118,38 +122,16 @@ export class CommandHandler {
                         subcommandName = subcommand;
                     }
                 } else if (textArgs && textArgs.length > 0) {
-                    // Para text commands, necesitamos determinar si es:
-                    // - Nivel 2: "get" (1 palabra)
-                    // - Nivel 3: "alpha first" (2 palabras - grupo + subcomando)
+                    // Para text commands, detectar subcomando usando función centralizada
+                    const detected = detectSubcommandFromArgs(textArgs, cmdMeta.subcommands!);
 
-                    // Intentar con 2 palabras primero (grupo + subcomando)
-                    if (
-                        textArgs.length >= 2 &&
-                        typeof textArgs[0] === 'string' &&
-                        typeof textArgs[1] === 'string'
-                    ) {
-                        const potentialTwoWords = `${textArgs[0]} ${textArgs[1]}`.toLowerCase();
-
-                        if (cmdMeta.subcommands!.includes(potentialTwoWords)) {
-                            subcommandName = potentialTwoWords;
-                        }
-                    }
-
-                    // Si no se encontró con 2 palabras, intentar con 1 palabra
-                    if (!subcommandName && typeof textArgs[0] === 'string') {
-                        const potentialOneWord = textArgs[0].toLowerCase();
-
-                        if (cmdMeta.subcommands!.includes(potentialOneWord)) {
-                            subcommandName = potentialOneWord;
-                        }
-                    }
-
-                    // Si aún no se encontró, es inválido
-                    if (!subcommandName) {
+                    if (!detected) {
                         throw new ValidationError(
                             `Subcomando "${textArgs[0]}" no válido. Disponibles: ${cmdMeta.subcommands?.join(', ')}`,
                         );
                     }
+
+                    subcommandName = detected.subcommand;
                 }
 
                 if (subcommandName) {

@@ -5,7 +5,7 @@ import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command
 import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
 import { CommandCategoryTag } from '@/utils/CommandCategories';
 import { getPrefix } from '@/core/resolvers/prefix.resolver';
-import { getSubcommandMethodName } from '@/utils/CommandUtils';
+import { getSubcommandMethodName, validateCommandLevels } from '@/utils/CommandUtils';
 
 type CommandClass = new (...args: any[]) => BaseCommand;
 
@@ -189,17 +189,8 @@ export class CommandLoader {
                 // Validar que el nombre del comando sea válido según Discord
                 const nameParts = meta.name.split(' ');
 
-                if (nameParts.length > 3) {
-                    throw new Error(
-                        `❌ El comando "${meta.name}" (archivo: ${path.basename(filePath)}) tiene demasiadas palabras (${nameParts.length}).\n` +
-                            `Discord solo soporta hasta 3 niveles: comando → grupo → subcomando\n\n` +
-                            `Ejemplos válidos:\n` +
-                            `  • 1 nivel: "ping"\n` +
-                            `  • 2 niveles: "user info"\n` +
-                            `  • 3 niveles: "server config get"\n\n` +
-                            `Ejemplo inválido: "${meta.name}" (${nameParts.length} niveles)`,
-                    );
-                }
+                // Validar niveles usando función centralizada
+                validateCommandLevels(meta.name, `archivo: ${path.basename(filePath)}`);
 
                 // Validar que cada parte del nombre sea válida
                 const validNameRegex = /^[a-z0-9-]+$/;

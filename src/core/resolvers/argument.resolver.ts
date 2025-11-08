@@ -5,6 +5,7 @@ import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command
 import { ValidationError } from '@/error/ValidationError';
 import { TypeResolver } from './type.resolver';
 import { getPrefix } from './prefix.resolver';
+import { detectSubcommandFromArgs } from '@/utils/CommandUtils';
 
 export class ArgumentResolver {
     /**
@@ -25,40 +26,21 @@ export class ArgumentResolver {
 
         let currentSubcommand: string | undefined;
 
-        // Para comandos de texto con subcomandos, procesar el subcomando (sin validar aquí)
+        // Para comandos de texto con subcomandos, procesar el subcomando usando función centralizada
         if (!ctx.isInteraction && hasSubcommands && textArgs) {
-            // Intentar detectar subcomando de 2 palabras primero (ej: "alpha first")
-            if (
-                textArgs.length >= 2 &&
-                typeof textArgs[0] === 'string' &&
-                typeof textArgs[1] === 'string'
-            ) {
-                const twoWordSubcommand = `${textArgs[0]} ${textArgs[1]}`.toLowerCase();
+            const detected = detectSubcommandFromArgs(textArgs, cmdMeta.subcommands!);
 
-                if (cmdMeta.subcommands!.includes(twoWordSubcommand)) {
-                    currentSubcommand = twoWordSubcommand;
-                    // Eliminar las 2 palabras del subcomando
-                    textArgs = textArgs.slice(2);
-                }
+            if (detected) {
+                currentSubcommand = detected.subcommand;
+                // Eliminar las palabras del subcomando
+                textArgs = textArgs.slice(detected.wordsConsumed);
+            } else if (textArgs.length > 0) {
+                // Hay algo pero no es válido - lanzar error
+                throw new ValidationError(
+                    `Subcomando "${textArgs[0]}" no válido. Disponibles: ${cmdMeta.subcommands!.join(', ')}`,
+                );
             }
-
-            // Si no se encontró con 2 palabras, intentar con 1 palabra
-            if (!currentSubcommand && textArgs.length >= 1 && typeof textArgs[0] === 'string') {
-                const oneWordSubcommand = textArgs[0].toLowerCase();
-
-                if (cmdMeta.subcommands!.includes(oneWordSubcommand)) {
-                    currentSubcommand = oneWordSubcommand;
-                    // Eliminar la 1 palabra del subcomando
-                    textArgs = textArgs.slice(1);
-                } else if (textArgs[0]) {
-                    // Hay algo pero no es válido - lanzar error
-                    throw new ValidationError(
-                        `Subcomando "${textArgs[0]}" no válido. Disponibles: ${cmdMeta.subcommands!.join(', ')}`,
-                    );
-                }
-            }
-            // Si no hay subcomando (textArgs vacío), no lanzamos error aquí
-            // El command.handler se encargará de mostrar el mensaje naranja
+            // Si textArgs está vacío, el command.handler mostrará el mensaje naranja
         } else if (ctx.isInteraction && hasSubcommands) {
             // Para slash commands, obtener el subcomando y grupo de la interacción
             const interaction = source as ChatInputCommandInteraction;

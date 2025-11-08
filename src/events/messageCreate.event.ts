@@ -53,8 +53,8 @@ export function registerMessageCreateEvent(
                         // Hay subcomandos disponibles con este prefijo - usar función centralizada
                         // Extraer solo los subcomandos (eliminar el prefijo del nombre completo)
                         const subcommandNames = subcommands.map((fullName) => {
-                            const parts = fullName.split(' ');
-                            return parts.slice(1).join(' '); // Eliminar primera palabra (prefijo)
+                            const nameParts = fullName.split(' ');
+                            return nameParts.slice(1).join(' '); // Eliminar primera palabra (prefijo)
                         });
 
                         const embed = createMissingSubcommandEmbed(

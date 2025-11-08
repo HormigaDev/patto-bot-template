@@ -6,6 +6,7 @@ import { PLUGIN_METADATA_KEY } from '@/core/decorators/plugin.decorator';
 import { PluginRegistry } from '@/config/plugin.registry';
 import { BasePlugin } from '@/core/structures/BasePlugin';
 import { Env } from '@/utils/Env';
+import { validateCommandLevels } from '@/utils/CommandUtils';
 
 export class SlashCommandLoader {
     constructor(
@@ -107,16 +108,8 @@ export class SlashCommandLoader {
                     commandName,
                 });
             } else if (nameParts.length > 3) {
-                // Discord no soporta más de 3 niveles
-                throw new Error(
-                    `❌ El comando "${commandName}" tiene demasiados niveles (${nameParts.length}).\n` +
-                        `Discord solo soporta hasta 3 niveles: comando → grupo → subcomando\n` +
-                        `Ejemplos válidos:\n` +
-                        `  • 1 nivel: "ping"\n` +
-                        `  • 2 niveles: "user info"\n` +
-                        `  • 3 niveles: "server config get"\n` +
-                        `\nEjemplo inválido: "${commandName}" (${nameParts.length} niveles)`,
-                );
+                // Discord no soporta más de 3 niveles - usar función centralizada
+                validateCommandLevels(commandName);
             }
         }
 
@@ -212,7 +205,7 @@ export class SlashCommandLoader {
 
                     if (parts.length > 2) {
                         throw new Error(
-                            `Subcomando "${subName}" en comando "${cmdMeta.name}" tiene más de 2 palabras. Máximo permitido: "grupo subcomando"`,
+                            `Subcomando "${subName}" en comando "${cmdMeta.name}" tiene más de 2 niveles. Máximo permitido: "grupo subcomando"`,
                         );
                     }
 
