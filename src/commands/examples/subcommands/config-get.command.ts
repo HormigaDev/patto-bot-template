@@ -11,6 +11,7 @@ export class ConfigGetCommand extends BaseCommand {
     @Arg({
         name: 'clave',
         description: 'La clave del valor a buscar',
+        required: true,
     })
     key!: string;
 

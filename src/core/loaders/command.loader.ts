@@ -16,7 +16,16 @@ import { getPrefix } from '@/core/resolvers/prefix.resolver';
 
 type CommandClass = new (...args: any[]) => BaseCommand;
 
-// Umbral para decidir entre carga completa en memoria vs caching
+/**
+ * Umbral para decidir entre carga completa en memoria vs caching.
+ *
+ * Razonamiento:
+ * - Cada comando ocupa aproximadamente 10KB de metadata en memoria.
+ * - En la mayoría de despliegues, el número de comandos no supera los 100, lo que implica un uso de ~1MB de RAM.
+ * - Por encima de 100 comandos (~1MB), el beneficio de cargar toda la metadata en memoria disminuye y puede afectar el rendimiento en sistemas con recursos limitados.
+ * - El valor 100 fue elegido como un punto de equilibrio entre rendimiento (acceso rápido en memoria) y consumo de recursos, basado en pruebas internas y escenarios de crecimiento.
+ * - Si el número de comandos aumenta significativamente, se recomienda ajustar este valor y considerar benchmarks específicos del entorno de producción.
+ */
 const MEMORY_THRESHOLD = 100;
 
 type CommandMetadata =

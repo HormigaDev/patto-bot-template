@@ -17,14 +17,15 @@ export class ServerUserInfoCommand extends BaseCommand {
     targetUser!: User;
 
     async run() {
+        const user = this.targetUser || this.user;
         const embed = this.getEmbed('info');
-        embed.setTitle(`Información de usuario: ${this.targetUser.tag}`);
-        embed.setThumbnail(this.targetUser.displayAvatarURL({ forceStatic: false }));
+        embed.setTitle(`Información de usuario: ${user.tag}`);
+        embed.setThumbnail(user.displayAvatarURL({ forceStatic: false }));
         embed.addFields(
-            { name: 'ID', value: this.targetUser.id, inline: true },
+            { name: 'ID', value: user.id, inline: true },
             {
                 name: 'Creado el',
-                value: `<t:${Math.floor(this.targetUser.createdTimestamp / 1000)}:F>`,
+                value: `<t:${Math.floor(user.createdTimestamp / 1000)}:F>`,
                 inline: true,
             },
         );

@@ -49,6 +49,90 @@ export class SlashCommandLoader {
     }
 
     /**
+     * Agrega subcomandos simples a un comando
+     */
+    private addSubcommandsToCommand(commandJson: any, parentName: string): void {
+        const subcommands = this.commandLoader.getSubcommands(parentName);
+        for (const [_key, subEntry] of subcommands) {
+            if (subEntry.metadata.type === 'subcommand') {
+                const subOptions = this.buildCommandOptions(subEntry.class);
+                commandJson.options.push({
+                    type: ApplicationCommandOptionType.Subcommand,
+                    name: subEntry.metadata.meta.name,
+                    description: subEntry.metadata.meta.description,
+                    options: subOptions,
+                });
+            }
+        }
+    }
+
+    /**
+     * Agrega grupos de subcomandos a un comando
+     */
+    private addSubcommandGroupsToCommand(commandJson: any, parentName: string): void {
+        const subcommandGroups = this.commandLoader.getSubcommandGroups(parentName);
+        for (const [groupName, groupCommands] of subcommandGroups) {
+            const groupOption: any = {
+                type: ApplicationCommandOptionType.SubcommandGroup,
+                name: groupName,
+                description: `Comandos de ${groupName}`,
+                options: [],
+            };
+
+            for (const [_key, groupEntry] of groupCommands) {
+                if (groupEntry.metadata.type === 'subcommand-group') {
+                    const subOptions = this.buildCommandOptions(groupEntry.class);
+                    groupOption.options.push({
+                        type: ApplicationCommandOptionType.Subcommand,
+                        name: groupEntry.metadata.meta.subcommand,
+                        description: groupEntry.metadata.meta.description,
+                        options: subOptions,
+                    });
+                }
+            }
+
+            commandJson.options.push(groupOption);
+        }
+    }
+
+    /**
+     * Construye la estructura de un comando (real o fantasma)
+     */
+    private buildCommandStructure(
+        commandName: string,
+        commandClass: (new (...args: any[]) => any) | null,
+        commandPath: string,
+    ): { json: any; class: (new (...args: any[]) => any) | null; path: string; isGhost: boolean } {
+        const description = commandClass
+            ? Reflect.getMetadata(COMMAND_METADATA_KEY, commandClass).description
+            : `Comandos de ${commandName}`;
+
+        const commandJson: any = {
+            name: commandName,
+            description,
+            options: [],
+        };
+
+        // Agregar subcomandos simples
+        this.addSubcommandsToCommand(commandJson, commandName);
+
+        // Agregar grupos de subcomandos
+        this.addSubcommandGroupsToCommand(commandJson, commandName);
+
+        // Si es un comando real sin subcomandos, agregar opciones directamente
+        if (commandClass && commandJson.options.length === 0) {
+            commandJson.options = this.buildCommandOptions(commandClass);
+        }
+
+        return {
+            json: commandJson,
+            class: commandClass,
+            path: commandPath,
+            isGhost: !commandClass,
+        };
+    }
+
+    /**
      * Registra todos los slash commands en Discord
      */
     async registerSlashCommands(): Promise<void> {
@@ -81,117 +165,20 @@ export class SlashCommandLoader {
 
             parentNames.delete(cmdMeta.name.toLowerCase()); // Ya existe, no es fantasma
 
-            const commandJson: any = {
-                name: cmdMeta.name,
-                description: cmdMeta.description,
-                options: [],
-            };
+            const commandData = this.buildCommandStructure(
+                cmdMeta.name,
+                commandClass,
+                this.commandLoader.getCommandPath(commandName) || '',
+            );
 
-            // Agregar subcomandos simples
-            const subcommands = this.commandLoader.getSubcommands(cmdMeta.name);
-            for (const [_key, subEntry] of subcommands) {
-                if (subEntry.metadata.type === 'subcommand') {
-                    const subOptions = this.buildCommandOptions(subEntry.class);
-                    commandJson.options.push({
-                        type: ApplicationCommandOptionType.Subcommand,
-                        name: subEntry.metadata.meta.name,
-                        description: subEntry.metadata.meta.description,
-                        options: subOptions,
-                    });
-                }
-            }
-
-            // Agregar grupos de subcomandos
-            const subcommandGroups = this.commandLoader.getSubcommandGroups(cmdMeta.name);
-            for (const [groupName, groupCommands] of subcommandGroups) {
-                const groupOption: any = {
-                    type: ApplicationCommandOptionType.SubcommandGroup,
-                    name: groupName,
-                    description: `Comandos de ${groupName}`,
-                    options: [],
-                };
-
-                for (const [_key, groupEntry] of groupCommands) {
-                    if (groupEntry.metadata.type === 'subcommand-group') {
-                        const subOptions = this.buildCommandOptions(groupEntry.class);
-                        groupOption.options.push({
-                            type: ApplicationCommandOptionType.Subcommand,
-                            name: groupEntry.metadata.meta.subcommand,
-                            description: groupEntry.metadata.meta.description,
-                            options: subOptions,
-                        });
-                    }
-                }
-
-                commandJson.options.push(groupOption);
-            }
-
-            // Si no hay subcomandos, agregar opciones directamente
-            if (commandJson.options.length === 0) {
-                commandJson.options = this.buildCommandOptions(commandClass);
-            }
-
-            commandStructure.set(cmdMeta.name, {
-                json: commandJson,
-                class: commandClass,
-                path: this.commandLoader.getCommandPath(commandName) || '',
-            });
+            commandStructure.set(cmdMeta.name, commandData);
         }
 
         // Paso 3: Crear comandos "fantasma" para padres sin comando base
         for (const parentName of parentNames) {
-            const commandJson: any = {
-                name: parentName,
-                description: `Comandos de ${parentName}`,
-                options: [],
-            };
+            const commandData = this.buildCommandStructure(parentName, null, '');
 
-            // Agregar subcomandos simples
-            const subcommands = this.commandLoader.getSubcommands(parentName);
-            for (const [_key, subEntry] of subcommands) {
-                if (subEntry.metadata.type === 'subcommand') {
-                    const subOptions = this.buildCommandOptions(subEntry.class);
-                    commandJson.options.push({
-                        type: ApplicationCommandOptionType.Subcommand,
-                        name: subEntry.metadata.meta.name,
-                        description: subEntry.metadata.meta.description,
-                        options: subOptions,
-                    });
-                }
-            }
-
-            // Agregar grupos de subcomandos
-            const subcommandGroups = this.commandLoader.getSubcommandGroups(parentName);
-            for (const [groupName, groupCommands] of subcommandGroups) {
-                const groupOption: any = {
-                    type: ApplicationCommandOptionType.SubcommandGroup,
-                    name: groupName,
-                    description: `Comandos de ${groupName}`,
-                    options: [],
-                };
-
-                for (const [_key, groupEntry] of groupCommands) {
-                    if (groupEntry.metadata.type === 'subcommand-group') {
-                        const subOptions = this.buildCommandOptions(groupEntry.class);
-                        groupOption.options.push({
-                            type: ApplicationCommandOptionType.Subcommand,
-                            name: groupEntry.metadata.meta.subcommand,
-                            description: groupEntry.metadata.meta.description,
-                            options: subOptions,
-                        });
-                    }
-                }
-
-                commandJson.options.push(groupOption);
-            }
-
-            // Los comandos fantasma SIEMPRE tienen subcomandos/grupos
-            commandStructure.set(parentName, {
-                json: commandJson,
-                class: null, // No hay clase para comandos fantasma
-                path: '',
-                isGhost: true, // Marcar como fantasma
-            });
+            commandStructure.set(parentName, commandData);
 
             console.log(
                 `👻 Comando fantasma creado: "${parentName}" (solo contenedor de subcomandos)`,
