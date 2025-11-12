@@ -5,6 +5,94 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-11-12
+
+### 🎉 Soporte para Subcomandos y Grupos de Subcomandos
+
+Implementación completa del sistema de subcomandos de Discord con hasta 3 niveles de anidamiento.
+
+### ✨ Added
+
+#### 🎯 Sistema de Subcomandos
+
+- **Nuevos Decoradores**
+    - `@Subcommand` - Definir subcomandos simples (2 niveles: `comando subcomando`)
+    - `@SubcommandGroup` - Definir grupos de subcomandos (3 niveles: `comando grupo subcomando`)
+- **Jerarquía de Decoradores** - Prioridad automática: `@SubcommandGroup` > `@Subcommand` > `@Command`
+- **Keys en Kebab-Case** - Sistema de identificación consistente para recuperación
+    - Comando base: `help`
+    - Subcomando: `config-get` (parent: config, name: get)
+    - Grupo: `server-config-get` (parent: server, name: config, subcommand: get)
+- **Soporte en Text Commands** - Los comandos de texto (`!comando`) soportan subcomandos
+- **Soporte en Slash Commands** - Agrupación automática en formato Discord
+- **Estructura de 3 Niveles**:
+    - Nivel 1: `<comando>`
+    - Nivel 2: `<comando> <subcomando>` o `<comando> <grupo>`
+    - Nivel 3: `<comando> <grupo> <subcomando>`
+
+#### ⚡ Optimizaciones del CommandLoader
+
+- **Sistema Inteligente de Almacenamiento**
+    - Umbral configurable (default: 100 comandos)
+    - ≤ 100 comandos: Toda la metadata en memoria (máximo rendimiento)
+    - \> 100 comandos: Sistema de caching con Map (optimización de memoria)
+- **Nuevos Métodos de Recuperación**
+    - `getSubcommands(parentName)` - Obtiene subcomandos de un comando padre
+    - `getSubcommandGroups(parentName)` - Obtiene grupos de subcomandos organizados
+    - `getCommandEntry(key)` - Recupera comando por kebab-case key con metadata completa
+
+#### 🤖 Registro Inteligente de Slash Commands
+
+- **Comandos Fantasma** - Creación automática de comandos padre cuando no existen
+    - Detecta subcomandos/grupos sin comando base
+    - Genera automáticamente el comando padre como contenedor
+    - Descripción generada: `"Comandos de {nombre}"`
+    - Log distintivo: `👻 Comando fantasma creado: "{nombre}" (solo contenedor de subcomandos)`
+- **Sin Modificaciones Requeridas** - Los subcomandos funcionan automáticamente sin crear comando base
+- **Soporte de Plugins** - Los comandos fantasma se omiten del ciclo de plugins (no tienen clase asociada)
+
+#### 📚 Documentación
+
+- **docs/Subcommands.README.md** - Guía completa de subcomandos simples
+- **docs/SubcommandGroups.README.md** - Guía completa de grupos de subcomandos
+- **Mejores Prácticas** - Recomendaciones de organización de archivos y carpetas
+- **Ejemplos Actualizados** - Comandos de ejemplo con subcomandos y grupos
+
+### 🔧 Changed
+
+- **CommandLoader** - Refactorizado para soportar jerarquía de comandos
+- **SlashCommandLoader** - Agrupación automática por parent con construcción correcta de JSON
+- **CommandHandler** - Soporte para comandos anidados con path tracking
+- **Events** (`messageCreate`, `interactionCreate`) - Recuperación por kebab-case keys
+
+### 🐛 Fixed
+
+- **Registro de Slash Commands** - Los subcomandos y grupos ahora se registran correctamente en Discord API
+    - Problema: Subcomandos/grupos sin comando base no se registraban
+    - Solución: Sistema de "comandos fantasma" que crea automáticamente el comando padre
+    - Efecto: Los comandos de ejemplo `config` y `server` ahora funcionan como slash commands
+- **Help Command** - Corregido error al mostrar información de subcomandos
+    - Problema: `TypeError: Cannot read properties of undefined (reading 'name')` al ejecutar `!help config get`
+    - Causa: Metadata retrieval usaba solo `COMMAND_METADATA_KEY` para todos los tipos
+    - Solución: Detección inteligente del tipo de comando con uso correcto de metadata keys
+
+### 📖 Documentation
+
+- Actualizado `README.md` con mejores prácticas de organización
+- Actualizado `src/commands/README.md` con referencias a subcomandos
+- Actualizado `ARCHITECTURE.md` con nueva estructura de comandos
+- Nuevas guías detalladas en `docs/`
+
+### ✅ Testing
+
+- Sistema verificado con 7 comandos de ejemplo
+- 2 comandos base, 2 subcomandos simples, 2 grupos con 3 subcomandos
+- Recuperación correcta por keys kebab-case
+- Compilación sin errores TypeScript
+- Sin errores de ESLint
+
+---
+
 ## [1.0.0] - 2025-11-05
 
 ### 🎉 Lanzamiento Inicial

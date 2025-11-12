@@ -18,7 +18,18 @@ export function registerInteractionCreateEvent(
             try {
                 // Manejar slash commands
                 if (interaction.isChatInputCommand()) {
-                    const commandEntry = commandLoader.getCommandEntry(interaction.commandName);
+                    const subcommandGroup = interaction.options.getSubcommandGroup(false);
+                    const subcommand = interaction.options.getSubcommand(false);
+                    let key: string = interaction.commandName;
+
+                    if (subcommand && subcommandGroup) {
+                        key = `${interaction.commandName}-${subcommandGroup}-${subcommand}`;
+                    }
+                    if (subcommand && !subcommandGroup) {
+                        key = `${interaction.commandName}-${subcommand}`;
+                    }
+
+                    const commandEntry = commandLoader.getCommandEntry(key);
                     if (!commandEntry) return;
 
                     await commandHandler.executeCommand(

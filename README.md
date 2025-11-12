@@ -26,6 +26,8 @@
 - ✅ **Decoradores TypeScript** para definición declarativa de comandos
 - ✅ **Slash Commands** (/comando) - Siempre disponibles
 - ✅ **Text Commands** (!comando) - Opcionales y configurables
+- ✅ **Subcomandos** (`@Subcommand`) - Organiza comandos en 2 niveles: `/config get`
+- ✅ **Grupos de Subcomandos** (`@SubcommandGroup`) - Jerarquía de 3 niveles: `/server config get`
 - ✅ **Resolución automática** de argumentos con validación
 - ✅ **Raw Text Capture** - Captura texto completo sin comillas (ej: `!say Hola mundo`)
 - ✅ **Options/Choices** - Argumentos con valores predefinidos y dropdown en slash commands
@@ -283,7 +285,100 @@ El comando se carga automáticamente. Reinicia el bot y prueba:
 
 ---
 
-## � Ejemplo: Comando con Permisos
+## 🎯 Subcomandos y Grupos de Subcomandos
+
+Este template soporta **subcomandos** y **grupos de subcomandos** para organizar comandos complejos.
+
+> **💡 Nota importante:** NO necesitas crear un archivo base (como `config.command.ts` o `server.command.ts`). El sistema crea automáticamente "comandos fantasma" en Discord cuando detecta subcomandos sin comando base. Esto **reduce overhead, mejora la DX y evita código verboso innecesario**.
+
+### Subcomandos (2 niveles)
+
+Para comandos relacionados simples: `/config get`, `/config set`
+
+```typescript
+// src/commands/config/get.command.ts
+import { Subcommand } from '@/core/decorators/subcommand.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+
+@Subcommand({
+    parent: 'config',
+    name: 'get',
+    description: 'Ver la configuración actual',
+    category: 'Utility',
+})
+export class ConfigGetCommand extends BaseCommand {
+    async run(): Promise<void> {
+        await this.reply('Configuración actual...');
+    }
+}
+```
+
+### Grupos de Subcomandos (3 niveles)
+
+Para sistemas complejos: `/server config get`, `/server user info`
+
+```typescript
+// src/commands/server/config/get.command.ts
+import { SubcommandGroup } from '@/core/decorators/subcommand-group.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+
+@SubcommandGroup({
+    parent: 'server',
+    name: 'config',
+    subcommand: 'get',
+    description: 'Ver la configuración del servidor',
+})
+export class ServerConfigGetCommand extends BaseCommand {
+    async run(): Promise<void> {
+        await this.reply('Configuración del servidor...');
+    }
+}
+```
+
+### 📁 Organización Recomendada
+
+```
+src/commands/
+├── info/                      # Comandos base simples
+│   ├── help.command.ts       # /help
+│   └── ping.command.ts       # /ping
+├── config/                    # Subcomandos (2 niveles)
+│   ├── get.command.ts        # /config get
+│   ├── set.command.ts        # /config set
+│   └── reset.command.ts      # /config reset
+└── server/                    # Grupos de subcomandos (3 niveles)
+    ├── config/               # Grupo: config
+    │   ├── get.command.ts    # /server config get
+    │   └── set.command.ts    # /server config set
+    └── user/                 # Grupo: user
+        ├── info.command.ts   # /server user info
+        └── list.command.ts   # /server user list
+```
+
+### 🤖 Sistema de Comandos Fantasma
+
+Cuando defines subcomandos o grupos **sin un comando base**, el sistema automáticamente:
+
+1. ✅ Detecta que el comando padre no existe
+2. ✅ Crea un "comando fantasma" en Discord como contenedor
+3. ✅ Registra todos los subcomandos/grupos correctamente
+4. ✅ Muestra en logs: `👻 Comando fantasma creado: "config" (solo contenedor de subcomandos)`
+
+**Beneficios:**
+
+- 🚀 Sin overhead de archivos vacíos
+- 🎯 DX mejorada - solo código funcional
+- 📦 Menos verboso y más limpio
+- ⚡ Automático - sin configuración adicional
+
+### 📚 Guías Detalladas
+
+- 📄 [**Guía de Subcomandos**](docs/Subcommands.README.md) - Comandos de 2 niveles
+- 📄 [**Guía de Grupos de Subcomandos**](docs/SubcommandGroups.README.md) - Comandos de 3 niveles
+
+---
+
+## 🔒 Ejemplo: Comando con Permisos
 
 El template incluye un **sistema de permisos** integrado. Usa el decorador `@RequirePermissions`:
 

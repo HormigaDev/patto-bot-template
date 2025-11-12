@@ -13,7 +13,7 @@ export abstract class HelpDefinition extends BaseCommand {
     @Arg({
         name: 'comando',
         description: 'El nombre del comando para obtener ayuda',
-        index: 0,
+        rawText: true,
     })
     commandName!: string;
 }
