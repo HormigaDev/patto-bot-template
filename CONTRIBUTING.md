@@ -104,7 +104,7 @@ Las sugerencias de features también se manejan como Issues:
 5. **Commitea** tus cambios:
 
     ```bash
-    git commit -m "feat: descripción del cambio"
+    git commit -m "feat: agregada la descripción del cambio"
     ```
 
     Ver [Conventional Commits](#conventional-commits)
@@ -157,6 +157,57 @@ Describe las pruebas realizadas
 - [ ] Documentación actualizada
 - [ ] Código sigue guías de estilo
 ```
+
+#### Pull Requests vinculados a Issues
+
+**⚠️ Regla importante**: Si tu Pull Request está vinculado a un issue de GitHub (lo cual es altamente recomendado), debes seguir estas directivas:
+
+1. **En la descripción del PR**: Incluye `Closes #<numero>` para que GitHub cierre automáticamente el issue cuando se haga merge del PR.
+
+2. **En el título del PR**: Debe incluir la referencia al issue **al final** con el formato `@issue/<numero>`
+
+    **Ejemplo**: `feat: implementado el comando de moderación @issue/42`
+
+3. **En el commit principal**: El mensaje del commit debe incluir también la referencia `@issue/<numero>` **al final**
+
+    **Ejemplo**: `feat: implementado el comando de moderación @issue/42`
+
+**⚠️ Patrón de escritura importante**:
+
+- ❌ INCORRECTO: `"agregar comando de moderación..."`
+- ✅ CORRECTO: `"agregado el comando de moderación..."`
+
+Siempre usa participio pasado (implementado, agregado, corregido, actualizado, etc.)
+
+**Ejemplo completo de PR vinculado:**
+
+```markdown
+Título del PR: feat: implementado el sistema de logs @issue/15
+
+Descripción:
+
+## Descripción
+
+Implementado un sistema de logs estructurado con niveles de severidad.
+
+Closes #15
+
+## Tipo de cambio
+
+- [x] Nueva feature
+```
+
+```bash
+# Commit principal
+git commit -m "feat: implementado el sistema de logs @issue/15"
+```
+
+Esta práctica permite:
+
+- ✅ Trazabilidad clara entre issues y cambios
+- ✅ Cierre automático de issues al hacer merge
+- ✅ Mejor organización del historial del proyecto
+- ✅ Facilita encontrar el contexto de cada cambio
 
 ## 🎨 Guías de Estilo
 
@@ -219,27 +270,41 @@ tests/PermissionsTest.ts
 
 Usamos [Conventional Commits](https://www.conventionalcommits.org/) para mensajes de commit:
 
+**⚠️ Importante**: Los mensajes deben usar participio pasado (agregado, implementado, corregido, etc.)
+
 ```bash
 # Features
-git commit -m "feat(commands): agregar comando de moderación"
-git commit -m "feat(plugins): nuevo plugin de cooldowns"
+git commit -m "feat(commands): agregado el comando de moderación"
+git commit -m "feat(plugins): implementado el plugin de cooldowns"
 
 # Fixes
-git commit -m "fix(handlers): corregir error en message handler"
-git commit -m "fix(permissions): validación incorrecta de permisos"
+git commit -m "fix(handlers): corregido el error en message handler"
+git commit -m "fix(permissions): corregida la validación incorrecta de permisos"
 
 # Documentación
-git commit -m "docs(readme): actualizar guía de instalación"
-git commit -m "docs(plugins): documentar sistema de scopes"
+git commit -m "docs(readme): actualizada la guía de instalación"
+git commit -m "docs(plugins): documentado el sistema de scopes"
 
 # Tests
-git commit -m "test(permissions): agregar tests de integración"
+git commit -m "test(permissions): agregados los tests de integración"
 
 # Refactoring
-git commit -m "refactor(core): simplificar command loader"
+git commit -m "refactor(core): simplificado el command loader"
 
 # Chores
-git commit -m "chore(deps): actualizar discord.js a 14.16.3"
+git commit -m "chore(deps): actualizado discord.js a 14.16.3"
+```
+
+**Con referencia a issue:**
+
+```bash
+# Features
+git commit -m "feat(commands): agregado el comando de moderación @issue/42"
+git commit -m "feat(plugins): implementado el plugin de cooldowns @issue/15"
+
+# Fixes
+git commit -m "fix(handlers): corregido el error en message handler @issue/8"
+git commit -m "fix(permissions): corregida la validación de permisos @issue/23"
 ```
 
 **Tipos disponibles:**
@@ -360,7 +425,9 @@ npm test
 
 # 4. Si todo pasa, hacer commit
 git add .
-git commit -m "feat: tu mensaje"
+git commit -m "feat: implementada tu funcionalidad"
+# O si está vinculado a un issue:
+git commit -m "feat: implementada tu funcionalidad @issue/XX"
 ```
 
 **💡 Pro tip**: Considera usar git hooks para automatizar esto (ej: husky + lint-staged).
