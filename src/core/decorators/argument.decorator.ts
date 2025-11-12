@@ -1,3 +1,4 @@
+import { ValidationError } from '@/error/ValidationError';
 import 'reflect-metadata';
 
 export interface IArgumentOption {
@@ -9,7 +10,7 @@ export interface IArgumentOptions {
     name: string;
     normalizedName?: string; // Nombre normalizado (lowercase, sin acentos, solo alfanumérico)
     description: string;
-    index: number;
+    index?: number;
     required?: boolean;
     validate?: (val: any) => boolean | string;
     type?: () => any;
@@ -24,9 +25,13 @@ export const ARGUMENT_METADATA_KEY = Symbol('commandArguments');
 
 export function Arg(options: IArgumentOptions): PropertyDecorator {
     return (target: Object, propertyKey: string | symbol) => {
+        if (options.index !== undefined) {
+            throw new ValidationError('No se permite definir Index manualmente');
+        }
         const designType = Reflect.getMetadata('design:type', target, propertyKey);
 
         const args = Reflect.getOwnMetadata(ARGUMENT_METADATA_KEY, target.constructor) || [];
+        options.index = args.length;
 
         args.push({
             ...options,
@@ -34,7 +39,7 @@ export function Arg(options: IArgumentOptions): PropertyDecorator {
             designType,
         });
 
-        args.sort((a: IArgumentOptions, b: IArgumentOptions) => a.index - b.index);
+        args.sort((a: IArgumentOptions, b: IArgumentOptions) => a.index! - b.index!);
 
         Reflect.defineMetadata(ARGUMENT_METADATA_KEY, args, target.constructor);
     };

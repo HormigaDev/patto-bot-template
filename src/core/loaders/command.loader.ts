@@ -3,21 +3,41 @@ import * as path from 'path';
 import { BaseCommand } from '@/core/structures/BaseCommand';
 import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command.decorator';
 import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
+import {
+    SUBCOMMAND_GROUP_METADATA_KEY,
+    ISubcommandOptions as ISubcommandGroupOptions,
+} from '@/core/decorators/subcommand-group.decorator';
+import {
+    SUBCOMMAND_METADATA_KEY,
+    ISubcommandOptions,
+} from '@/core/decorators/subcommand.decorator';
 import { CommandCategoryTag } from '@/utils/CommandCategories';
 import { getPrefix } from '@/core/resolvers/prefix.resolver';
 
 type CommandClass = new (...args: any[]) => BaseCommand;
 
-interface CommandEntry {
+// Umbral para decidir entre carga completa en memoria vs caching
+const MEMORY_THRESHOLD = 100;
+
+type CommandMetadata =
+    | { type: 'command'; meta: ICommandOptions }
+    | { type: 'subcommand'; meta: ISubcommandOptions }
+    | { type: 'subcommand-group'; meta: ISubcommandGroupOptions };
+
+export interface CommandEntry {
     class: CommandClass;
     path: string; // Ruta relativa a /src/commands/
     category: CommandCategoryTag;
+    metadata: CommandMetadata;
+    key: string; // Clave en kebab-case para recuperación
 }
 
 export class CommandLoader {
     public prefix = getPrefix();
     private commands = new Map<string, CommandEntry>();
     private aliases = new Map<string, string>();
+    private metadataCache = new Map<string, CommandMetadata>();
+    private useMemoryStorage = false;
 
     /**
      * Normaliza un nombre de argumento: lowercase, sin acentos, solo alfanumérico
@@ -28,6 +48,75 @@ export class CommandLoader {
             .normalize('NFD') // Descompone caracteres con acentos
             .replace(/[\u0300-\u036f]/g, '') // Elimina marcas diacríticas (acentos)
             .replace(/[^a-z0-9]/g, ''); // Solo alfanumérico
+    }
+
+    /**
+     * Convierte un array de strings a formato kebab-case
+     */
+    private toKebabCase(...parts: string[]): string {
+        return parts.map((p) => p.toLowerCase()).join('-');
+    }
+
+    /**
+     * Obtiene la metadata de un comando (con jerarquía)
+     * Prioridad: @SubcommandGroup > @Subcommand > @Command
+     */
+    private getCommandMetadata(commandClass: CommandClass): CommandMetadata | null {
+        // 1. Intentar SubcommandGroup
+        const subcommandGroupMeta: ISubcommandGroupOptions | undefined = Reflect.getMetadata(
+            SUBCOMMAND_GROUP_METADATA_KEY,
+            commandClass,
+        );
+        if (subcommandGroupMeta) {
+            return { type: 'subcommand-group', meta: subcommandGroupMeta };
+        }
+
+        // 2. Intentar Subcommand
+        const subcommandMeta: ISubcommandOptions | undefined = Reflect.getMetadata(
+            SUBCOMMAND_METADATA_KEY,
+            commandClass,
+        );
+        if (subcommandMeta) {
+            return { type: 'subcommand', meta: subcommandMeta };
+        }
+
+        // 3. Intentar Command
+        let commandMeta: ICommandOptions | undefined = Reflect.getMetadata(
+            COMMAND_METADATA_KEY,
+            commandClass,
+        );
+
+        // Si no encuentra metadata en la clase, buscar en el prototipo padre
+        if (!commandMeta && commandClass.prototype) {
+            const parentClass = Object.getPrototypeOf(commandClass);
+            if (parentClass && parentClass !== Function.prototype) {
+                commandMeta = Reflect.getMetadata(COMMAND_METADATA_KEY, parentClass);
+            }
+        }
+
+        if (commandMeta) {
+            return { type: 'command', meta: commandMeta };
+        }
+
+        return null;
+    }
+
+    /**
+     * Genera la clave en kebab-case según el tipo de comando
+     */
+    private generateKey(metadata: CommandMetadata): string {
+        switch (metadata.type) {
+            case 'subcommand-group':
+                return this.toKebabCase(
+                    metadata.meta.parent,
+                    metadata.meta.name,
+                    metadata.meta.subcommand,
+                );
+            case 'subcommand':
+                return this.toKebabCase(metadata.meta.parent, metadata.meta.name);
+            case 'command':
+                return this.toKebabCase(metadata.meta.name);
+        }
     }
 
     /**
@@ -85,21 +174,9 @@ export class CommandLoader {
                     continue;
                 }
 
-                // Buscar metadata en la clase actual y en su cadena de herencia
-                let meta: ICommandOptions | undefined = Reflect.getMetadata(
-                    COMMAND_METADATA_KEY,
-                    commandClass,
-                );
-
-                // Si no encuentra metadata en la clase, buscar en el prototipo padre (clase abstracta)
-                if (!meta && commandClass.prototype) {
-                    const parentClass = Object.getPrototypeOf(commandClass);
-                    if (parentClass && parentClass !== Function.prototype) {
-                        meta = Reflect.getMetadata(COMMAND_METADATA_KEY, parentClass);
-                    }
-                }
-
-                if (!meta) {
+                // Obtener metadata con jerarquía
+                const metadata = this.getCommandMetadata(commandClass);
+                if (!metadata) {
                     errorCount++;
                     continue;
                 }
@@ -123,19 +200,36 @@ export class CommandLoader {
                     .replace(/\\/g, '/')
                     .replace(/\.command\.(ts|js)$/, '');
 
-                // Obtener categoría desde metadata, usar 'Other' como fallback
-                const category = (meta.category as CommandCategoryTag) || CommandCategoryTag.Other;
+                // Obtener categoría según el tipo de metadata
+                let category: CommandCategoryTag = CommandCategoryTag.Other;
+                if (metadata.type === 'command' && metadata.meta.category) {
+                    category = metadata.meta.category;
+                } else if (metadata.type === 'subcommand' && metadata.meta.category) {
+                    category = metadata.meta.category;
+                } else if (metadata.type === 'subcommand-group' && metadata.meta.category) {
+                    category = metadata.meta.category;
+                }
 
-                this.commands.set(meta.name, {
+                // Generar clave en kebab-case
+                const key = this.generateKey(metadata);
+
+                // Crear entrada de comando
+                const entry: CommandEntry = {
                     class: commandClass,
                     path: relativePath,
-                    category: category, // Almacenar categoría
-                });
+                    category,
+                    metadata,
+                    key,
+                };
+
+                this.commands.set(key, entry);
                 loadedCount++;
 
-                // Registrar aliases
-                if (meta.aliases && meta.aliases.length > 0) {
-                    meta.aliases.forEach((alias) => this.aliases.set(alias, meta.name));
+                // Registrar aliases solo para comandos base
+                if (metadata.type === 'command' && metadata.meta.aliases) {
+                    metadata.meta.aliases.forEach((alias) =>
+                        this.aliases.set(alias.toLowerCase(), key),
+                    );
                 }
             } catch (error) {
                 errorCount++;
@@ -147,6 +241,19 @@ export class CommandLoader {
                     );
                 }
             }
+        }
+
+        // Decidir estrategia de storage según umbral
+        this.useMemoryStorage = loadedCount <= MEMORY_THRESHOLD;
+
+        if (this.useMemoryStorage) {
+            console.log('💾 Usando almacenamiento en memoria (comandos <= umbral)');
+            // Cargar toda la metadata en memoria
+            for (const [_key, entry] of this.commands) {
+                this.metadataCache.set(entry.key, entry.metadata);
+            }
+        } else {
+            console.log('🔄 Usando caché simple (comandos > umbral)');
         }
 
         console.log(`\n✅ Comandos cargados exitosamente: ${loadedCount}`);
@@ -168,9 +275,12 @@ export class CommandLoader {
         return entry?.class;
     }
 
+    /**
+     * Obtiene comandos por categoría (incluye comandos base, subcomandos y grupos)
+     */
     getCommandsByCategory(category: CommandCategoryTag): CommandClass[] {
         const result: CommandClass[] = [];
-        for (const [_name, entry] of this.commands) {
+        for (const [_key, entry] of this.commands) {
             if (entry.category === category) {
                 result.push(entry.class);
             }
@@ -195,14 +305,55 @@ export class CommandLoader {
     }
 
     /**
-     * Obtiene todos los comandos
+     * Obtiene todos los comandos base (sin subcomandos)
      */
     getAllCommands(): Map<string, CommandClass> {
         const result = new Map<string, CommandClass>();
-        for (const [name, entry] of this.commands) {
-            result.set(name, entry.class);
+        for (const [key, entry] of this.commands) {
+            // Solo incluir comandos base
+            if (entry.metadata.type === 'command') {
+                result.set(key, entry.class);
+            }
         }
         return result;
+    }
+
+    /**
+     * Obtiene todos los subcomandos de un comando base
+     */
+    getSubcommands(parentName: string): Map<string, CommandEntry> {
+        const result = new Map<string, CommandEntry>();
+        const normalizedParent = parentName.toLowerCase();
+
+        for (const [key, entry] of this.commands) {
+            if (entry.metadata.type === 'subcommand') {
+                if (entry.metadata.meta.parent.toLowerCase() === normalizedParent) {
+                    result.set(key, entry);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Obtiene todos los grupos de subcomandos de un comando base
+     */
+    getSubcommandGroups(parentName: string): Map<string, Map<string, CommandEntry>> {
+        const groups = new Map<string, Map<string, CommandEntry>>();
+        const normalizedParent = parentName.toLowerCase();
+
+        for (const [key, entry] of this.commands) {
+            if (entry.metadata.type === 'subcommand-group') {
+                if (entry.metadata.meta.parent.toLowerCase() === normalizedParent) {
+                    const groupName = entry.metadata.meta.name.toLowerCase();
+                    if (!groups.has(groupName)) {
+                        groups.set(groupName, new Map());
+                    }
+                    groups.get(groupName)!.set(key, entry);
+                }
+            }
+        }
+        return groups;
     }
 
     /**

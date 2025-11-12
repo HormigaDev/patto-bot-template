@@ -198,10 +198,10 @@ if (interaction.isModalSubmit()) {
 
 **Tipos de interacciones soportadas:**
 
--   ✅ **Chat Input Commands** - Slash commands (`/comando`)
--   ✅ **Buttons** - Botones interactivos creados con `Button` wrapper
--   ✅ **Select Menus** - Menús desplegables creados con `Select` wrapper
--   ✅ **Modals** - Formularios creados con `Modal` wrapper
+- ✅ **Chat Input Commands** - Slash commands (`/comando`)
+- ✅ **Buttons** - Botones interactivos creados con `Button` wrapper
+- ✅ **Select Menus** - Menús desplegables creados con `Select` wrapper
+- ✅ **Modals** - Formularios creados con `Modal` wrapper
 
 ### Flujo
 
@@ -269,11 +269,11 @@ parseTextArguments(input: string)
 
 **Características:**
 
--   Soporta strings entre comillas dobles: `"texto con espacios"`
--   Soporta strings entre comillas simples: `'texto con espacios'`
--   Convierte números automáticamente: `"123"` → `123`
--   Soporta decimales: `"45.67"` → `45.67`
--   Soporta negativos: `"-10"` → `-10`
+- Soporta strings entre comillas dobles: `"texto con espacios"`
+- Soporta strings entre comillas simples: `'texto con espacios'`
+- Convierte números automáticamente: `"123"` → `123`
+- Soporta decimales: `"45.67"` → `45.67`
+- Soporta negativos: `"-10"` → `-10`
 
 **Ejemplos:**
 
@@ -376,16 +376,16 @@ GatewayIntentBits.GuildMembers;
 
 Algunos eventos útiles:
 
--   `ClientReady` - Bot conectado (usado)
--   `InteractionCreate` - Interacciones recibidas (usado)
--   `MessageCreate` - Mensajes recibidos (usado)
--   `MessageDelete` - Mensaje eliminado
--   `MessageUpdate` - Mensaje editado
--   `GuildMemberAdd` - Miembro se unió
--   `GuildMemberRemove` - Miembro salió
--   `VoiceStateUpdate` - Estado de voz cambió
--   `ChannelCreate` - Canal creado
--   `GuildBanAdd` - Usuario baneado
+- `ClientReady` - Bot conectado (usado)
+- `InteractionCreate` - Interacciones recibidas (usado)
+- `MessageCreate` - Mensajes recibidos (usado)
+- `MessageDelete` - Mensaje eliminado
+- `MessageUpdate` - Mensaje editado
+- `GuildMemberAdd` - Miembro se unió
+- `GuildMemberRemove` - Miembro salió
+- `VoiceStateUpdate` - Estado de voz cambió
+- `ChannelCreate` - Canal creado
+- `GuildBanAdd` - Usuario baneado
 
 Ver: [Discord.js Events](https://discord.js.org/#/docs/discord.js/main/typedef/Events)
 
@@ -420,7 +420,7 @@ export function registerMessageDeleteEvent() {
 
 ## 📚 Recursos Relacionados
 
--   `/src/bot.ts` - Registra eventos
--   `/src/core/handlers/command.handler.ts` - Ejecuta comandos
--   `/src/core/loaders/` - Loaders usados por eventos
--   [Discord.js Events](https://discord.js.org/#/docs/discord.js/main/typedef/Events) - Lista completa
+- `/src/bot.ts` - Registra eventos
+- `/src/core/handlers/command.handler.ts` - Ejecuta comandos
+- `/src/core/loaders/` - Loaders usados por eventos
+- [Discord.js Events](https://discord.js.org/#/docs/discord.js/main/typedef/Events) - Lista completa

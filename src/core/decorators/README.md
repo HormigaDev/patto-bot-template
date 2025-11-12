@@ -2,16 +2,27 @@
 
 ## 📖 Descripción
 
-Esta carpeta contiene los **decoradores TypeScript** que se utilizan para definir metadatos de comandos y argumentos. Los decoradores permiten escribir código declarativo y legible.
+Esta carpeta contiene los **decoradores TypeScript** que se utilizan para definir metadatos de comandos, subcomandos, grupos de subcomandos, argumentos, plugins y permisos. Los decoradores permiten escribir código declarativo y legible.
+
+### Tipos de Decoradores
+
+- **`@Command`**: Define comandos base (1 nivel)
+- **`@Subcommand`**: Define subcomandos (2 niveles: `comando subcomando`)
+- **`@SubcommandGroup`**: Define grupos de subcomandos (3 niveles: `comando grupo subcomando`)
+- **`@Arg`**: Define argumentos con validación y tipos
+- **`@UsePlugins`**: Aplica plugins específicos a un comando
+- **`@RequirePermissions`**: Requiere permisos de Discord para usar el comando
 
 ## 🏗️ Estructura
 
 ```
 decorators/
-├── command.decorator.ts     # Decorador @Command
-├── argument.decorator.ts    # Decorador @Arg
-├── plugin.decorator.ts      # Decorador @UsePlugins
-└── permission.decorator.ts  # Decorador @RequirePermissions
+├── command.decorator.ts           # Decorador @Command (comandos base)
+├── subcommand.decorator.ts        # Decorador @Subcommand (2 niveles)
+├── subcommand-group.decorator.ts  # Decorador @SubcommandGroup (3 niveles)
+├── argument.decorator.ts          # Decorador @Arg
+├── plugin.decorator.ts            # Decorador @UsePlugins
+└── permission.decorator.ts        # Decorador @RequirePermissions
 ```
 
 ## 🎨 Decorador @Command
@@ -88,8 +99,8 @@ Este símbolo se usa para almacenar y recuperar los metadatos del comando usando
 
 El decorador NO valida los datos. Las validaciones se hacen en:
 
--   **CommandLoader**: Al cargar el comando
--   **SlashCommandLoader**: Al registrar en Discord
+- **CommandLoader**: Al cargar el comando
+- **SlashCommandLoader**: Al registrar en Discord
 
 ### Ejemplo Completo
 
@@ -103,6 +114,251 @@ export abstract class UserInfoDefinition extends BaseCommand {
     // Los argumentos van aquí con @Arg
 }
 ```
+
+---
+
+## 🎯 Decorador @Subcommand
+
+Define un **subcomando** (2 niveles: `comando subcomando`).
+
+### Ubicación
+
+```typescript
+// src/core/decorators/subcommand.decorator.ts
+```
+
+### Interfaz
+
+```typescript
+interface ISubcommandOptions {
+    parent: string; // Nombre del comando padre (requerido)
+    name: string; // Nombre del subcomando (requerido)
+    description: string; // Descripción del subcomando (requerido)
+    category?: CommandCategoryTag; // Categoría opcional (default: Other)
+}
+```
+
+### Uso
+
+```typescript
+import { Subcommand } from '@/core/decorators/subcommand.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+
+@Subcommand({
+    parent: 'config',
+    name: 'get',
+    description: 'Ver la configuración actual',
+    category: 'Utility',
+})
+export class ConfigGetCommand extends BaseCommand {
+    async execute(): Promise<void> {
+        await this.ctx.reply('Configuración actual...');
+    }
+}
+```
+
+### Metadata Key
+
+```typescript
+export const SUBCOMMAND_METADATA_KEY = Symbol('subcommandMetadata');
+```
+
+### Jerarquía
+
+El loader prioriza automáticamente:
+
+1. `@SubcommandGroup` (máxima prioridad)
+2. `@Subcommand`
+3. `@Command` (si no hay otros)
+
+### Key en Kebab-Case
+
+Los subcomandos se identifican con keys en kebab-case:
+
+```typescript
+parent: 'config', name: 'get' → Key: "config-get"
+```
+
+### Ejemplo Completo
+
+```typescript
+import { Subcommand } from '@/core/decorators/subcommand.decorator';
+import { Arg } from '@/core/decorators/argument.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+
+@Subcommand({
+    parent: 'config',
+    name: 'set',
+    description: 'Cambiar la configuración',
+    category: 'Utility',
+})
+export class ConfigSetCommand extends BaseCommand {
+    @Arg({
+        name: 'key',
+        description: 'Clave de configuración',
+        index: 0,
+        required: true,
+        options: [
+            { label: 'Tema', value: 'theme' },
+            { label: 'Idioma', value: 'language' },
+        ],
+    })
+    key!: string;
+
+    @Arg({
+        name: 'value',
+        description: 'Nuevo valor',
+        index: 1,
+        required: true,
+    })
+    value!: string;
+
+    async execute(): Promise<void> {
+        await this.updateConfig(this.key, this.value);
+        await this.ctx.reply(`✅ ${this.key} = ${this.value}`);
+    }
+}
+```
+
+**Uso en Discord:**
+
+- Slash: `/config set key:theme value:dark`
+- Text: `!config set theme dark`
+
+📚 **Ver guía completa:** [Subcomandos](../../../docs/Subcommands.README.md)
+
+---
+
+## 🎯 Decorador @SubcommandGroup
+
+Define un **grupo de subcomandos** (3 niveles: `comando grupo subcomando`).
+
+### Ubicación
+
+```typescript
+// src/core/decorators/subcommand-group.decorator.ts
+```
+
+### Interfaz
+
+```typescript
+interface ISubcommandGroupOptions {
+    parent: string; // Nombre del comando padre (requerido)
+    name: string; // Nombre del grupo (requerido)
+    subcommand: string; // Nombre del subcomando dentro del grupo (requerido)
+    description: string; // Descripción del subcomando (requerido)
+    category?: CommandCategoryTag; // Categoría opcional (default: Other)
+}
+```
+
+> **Nota:** Si no especificas `category`, el loader asignará automáticamente `CommandCategoryTag.Other`.
+
+### Uso
+
+```typescript
+import { SubcommandGroup } from '@/core/decorators/subcommand-group.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+
+@SubcommandGroup({
+    parent: 'server',
+    name: 'config',
+    subcommand: 'get',
+    description: 'Ver la configuración del servidor',
+})
+export class ServerConfigGetCommand extends BaseCommand {
+    async execute(): Promise<void> {
+        await this.ctx.reply('Configuración del servidor...');
+    }
+}
+```
+
+### Metadata Key
+
+```typescript
+export const SUBCOMMAND_GROUP_METADATA_KEY = Symbol('subcommandMetadata');
+```
+
+### Jerarquía
+
+Este decorador tiene **máxima prioridad**:
+
+1. `@SubcommandGroup` ✅ (se usa primero)
+2. `@Subcommand` (ignorado si existe SubcommandGroup)
+3. `@Command` (ignorado si existe SubcommandGroup)
+
+### Key en Kebab-Case
+
+Los grupos se identifican con keys en kebab-case de 3 partes:
+
+```typescript
+parent: 'server', name: 'config', subcommand: 'get' → Key: "server-config-get"
+```
+
+### Ejemplo Completo
+
+```typescript
+import { SubcommandGroup } from '@/core/decorators/subcommand-group.decorator';
+import { Arg } from '@/core/decorators/argument.decorator';
+import { BaseCommand } from '@/core/structures/BaseCommand';
+import { User } from 'discord.js';
+
+@SubcommandGroup({
+    parent: 'server',
+    name: 'user',
+    subcommand: 'info',
+    description: 'Ver información de un usuario del servidor',
+})
+export class ServerUserInfoCommand extends BaseCommand {
+    @Arg({
+        name: 'user',
+        description: 'Usuario a consultar',
+        index: 0,
+        required: true,
+        type: () => User,
+    })
+    user!: User;
+
+    async execute(): Promise<void> {
+        const member = await this.guild?.members.fetch(this.user.id);
+
+        await this.ctx.reply({
+            embeds: [
+                {
+                    title: `👤 ${this.user.tag}`,
+                    thumbnail: { url: this.user.displayAvatarURL() },
+                    fields: [
+                        { name: 'ID', value: this.user.id },
+                        { name: 'Se unió', value: member?.joinedAt?.toLocaleDateString() || 'N/A' },
+                        { name: 'Roles', value: member?.roles.cache.size.toString() || '0' },
+                    ],
+                },
+            ],
+        });
+    }
+}
+```
+
+**Uso en Discord:**
+
+- Slash: `/server user info user:@Usuario`
+- Text: `!server user info @Usuario`
+
+### Organización de Archivos
+
+Se recomienda crear una estructura de carpetas que refleje la jerarquía:
+
+```
+commands/
+└── server/                    # Comando padre
+    ├── config/               # Grupo: config
+    │   ├── get.command.ts    # /server config get
+    │   └── set.command.ts    # /server config set
+    └── user/                 # Grupo: user
+        ├── info.command.ts   # /server user info
+        └── list.command.ts   # /server user list
+```
+
+📚 **Ver guía completa:** [Grupos de Subcomandos](../../../docs/SubcommandGroups.README.md)
 
 ---
 
@@ -142,10 +398,10 @@ interface IArgumentOptions {
 
 **Notas importantes:**
 
--   ✅ **El `name` se mantiene intacto** para mostrar en ayudas y mensajes de error
--   ✅ **`normalizedName` se genera automáticamente** al cargar el comando: lowercase, sin acentos, sin espacios, solo alfanumérico
--   ✅ **Ejemplo:** `name: "Usuario Objetivo"` → `normalizedName: "usuarioobjetivo"`
--   ✅ **El CommandLoader normaliza automáticamente** todos los nombres al cargar comandos
+- ✅ **El `name` se mantiene intacto** para mostrar en ayudas y mensajes de error
+- ✅ **`normalizedName` se genera automáticamente** al cargar el comando: lowercase, sin acentos, sin espacios, solo alfanumérico
+- ✅ **Ejemplo:** `name: "Usuario Objetivo"` → `normalizedName: "usuarioobjetivo"`
+- ✅ **El CommandLoader normaliza automáticamente** todos los nombres al cargar comandos
 
 **Propiedades importantes:**
 
@@ -261,9 +517,9 @@ public edad!: number;
 
 **Reglas:**
 
--   Retorna `true` si la validación es exitosa
--   Retorna un `string` con el mensaje de error si falla
--   Retorna `false` para usar mensaje de error genérico
+- Retorna `true` si la validación es exitosa
+- Retorna un `string` con el mensaje de error si falla
+- Retorna `false` para usar mensaje de error genérico
 
 ### Parser Personalizado para Tipos Complejos
 
@@ -272,7 +528,10 @@ Para tipos que **no son primitivos** (string, number, boolean) **ni Discord** (U
 ```typescript
 // Clase personalizada
 class MinecraftPlayer {
-    constructor(public username: string, public uuid: string) {}
+    constructor(
+        public username: string,
+        public uuid: string,
+    ) {}
 
     static fromString(input: string): MinecraftPlayer {
         // Validar formato: "username:uuid"
@@ -359,22 +618,22 @@ La propiedad `rawText` permite capturar **todo el texto restante** después del 
 
 #### ✅ Cuándo usar `rawText`
 
--   Comandos que replican texto: `!say`, `!announce`, `!embed`
--   Descripciones largas: `!setstatus`, `!bio`
--   Mensajes personalizados sin formato estricto
+- Comandos que replican texto: `!say`, `!announce`, `!embed`
+- Descripciones largas: `!setstatus`, `!bio`
+- Mensajes personalizados sin formato estricto
 
 #### 🔧 Comportamiento
 
 **Text Commands (`!comando`):**
 
--   ✅ Captura todo el texto después del comando (o después de argumentos previos)
--   ✅ No requiere comillas
--   ✅ Puede combinarse con otros argumentos
+- ✅ Captura todo el texto después del comando (o después de argumentos previos)
+- ✅ No requiere comillas
+- ✅ Puede combinarse con otros argumentos
 
 **Slash Commands (`/comando`):**
 
--   ⚠️ Se comporta como un argumento de texto normal
--   ⚠️ No captura "todo el texto", solo su propio valor
+- ⚠️ Se comporta como un argumento de texto normal
+- ⚠️ No captura "todo el texto", solo su propio valor
 
 #### 📖 Ejemplo Básico: Comando Say
 
@@ -528,10 +787,10 @@ export class SetStatusCommand extends SetStatusDefinition {
                 activityType === 'playing'
                     ? 0
                     : activityType === 'watching'
-                    ? 3
-                    : activityType === 'listening'
-                    ? 2
-                    : 5,
+                      ? 3
+                      : activityType === 'listening'
+                        ? 2
+                        : 5,
         });
 
         await this.reply(`✅ Estado cambiado: ${this.tipo} ${this.texto}`);
@@ -566,25 +825,25 @@ interface IArgumentOption {
 
 #### ✅ Cuándo usar `options`
 
--   Comandos con valores predefinidos (idiomas, modos, tipos)
--   Prevenir valores inválidos
--   Mejorar UX con autocompletado en slash commands
--   Validación automática de valores (tanto text como slash commands)
+- Comandos con valores predefinidos (idiomas, modos, tipos)
+- Prevenir valores inválidos
+- Mejorar UX con autocompletado en slash commands
+- Validación automática de valores (tanto text como slash commands)
 
 #### 🔧 Comportamiento
 
 **Text Commands (`!comando`):**
 
--   ✅ Valida que el valor ingresado coincida con uno de los `value` definidos
--   ✅ Lanza `ValidationError` si el valor no es válido
--   ✅ Case-sensitive por defecto
+- ✅ Valida que el valor ingresado coincida con uno de los `value` definidos
+- ✅ Lanza `ValidationError` si el valor no es válido
+- ✅ Case-sensitive por defecto
 
 **Slash Commands (`/comando`):**
 
--   ✅ Se convierte automáticamente en **choices** de Discord
--   ✅ El usuario ve un dropdown con las opciones
--   ✅ Discord previene valores inválidos automáticamente
--   ✅ Muestra `label` al usuario pero envía `value` al bot
+- ✅ Se convierte automáticamente en **choices** de Discord
+- ✅ El usuario ve un dropdown con las opciones
+- ✅ Discord previene valores inválidos automáticamente
+- ✅ Muestra `label` al usuario pero envía `value` al bot
 
 #### 📖 Ejemplo Básico: Comando Language
 
@@ -881,15 +1140,15 @@ public modo!: string;
 
 **Slash Commands:**
 
--   ✅ Aparecen como menú desplegable (choices)
--   ✅ El usuario solo puede elegir una opción
--   ✅ No puede escribir valores personalizados
+- ✅ Aparecen como menú desplegable (choices)
+- ✅ El usuario solo puede elegir una opción
+- ✅ No puede escribir valores personalizados
 
 **Text Commands:**
 
--   ✅ El usuario escribe el `value` de la opción
--   ✅ Se valida automáticamente contra las opciones
--   ✅ Error si el valor no coincide
+- ✅ El usuario escribe el `value` de la opción
+- ✅ Se valida automáticamente contra las opciones
+- ✅ Error si el valor no coincide
 
 #### 📖 Estructura
 
@@ -900,8 +1159,8 @@ options: [
 ];
 ```
 
--   **`label`**: Texto que ve el usuario (en slash commands)
--   **`value`**: Valor real que recibe el comando (string o number)
+- **`label`**: Texto que ve el usuario (en slash commands)
+- **`value`**: Valor real que recibe el comando (string o number)
 
 #### 📝 Ejemplo Básico: Idioma
 
@@ -1409,7 +1668,6 @@ export const REQUIRE_PERMISSIONS_METADATA_KEY = Symbol('REQUIRE_PERMISSIONS_META
 El decorador `@RequirePermissions` trabaja en conjunto con el **PermissionsPlugin** para:
 
 1. **Fase de Registro** (`onBeforeRegisterCommand`):
-
     - Modifica el JSON del comando antes de enviarlo a Discord
     - Agrega el campo `default_member_permissions` con los permisos requeridos
     - Discord automáticamente oculta el comando a usuarios sin permisos
@@ -1627,12 +1885,27 @@ Para que los decoradores funcionen, necesitas estas opciones en `tsconfig.json`:
 }
 ```
 
--   **experimentalDecorators**: Habilita el uso de decoradores
--   **emitDecoratorMetadata**: Emite metadata de tipos de diseño
+- **experimentalDecorators**: Habilita el uso de decoradores
+- **emitDecoratorMetadata**: Emite metadata de tipos de diseño
 
 ## 📚 Recursos Relacionados
 
--   `/src/definition/` - Uso de los decoradores
--   `/src/core/loaders/command.loader.ts` - Lee metadata de @Command
--   `/src/core/resolvers/argument.resolver.ts` - Usa metadata de @Arg
--   [reflect-metadata](https://github.com/rbuckton/reflect-metadata) - Librería de metadata
+### Documentación Interna
+
+- [`/src/commands/README.md`](../../commands/README.md) - Patrones de implementación de comandos
+- [`/src/definition/`](../../definition/README.md) - Uso de los decoradores en definiciones
+- [`/src/core/loaders/command.loader.ts`](../loaders/command.loader.ts) - Carga metadata de comandos
+- [`/src/core/loaders/slash-command.loader.ts`](../loaders/slash-command.loader.ts) - Registra en Discord
+- [`/src/core/resolvers/argument.resolver.ts`](../resolvers/argument.resolver.ts) - Resuelve argumentos
+- [`/src/core/handlers/command.handler.ts`](../handlers/command.handler.ts) - Ejecuta comandos con plugins
+- [`/src/plugins/README.md`](../../plugins/README.md) - Sistema de plugins
+
+### Guías de Comandos
+
+- 📄 [**Guía de Subcomandos**](../../../docs/Subcommands.README.md) - Comandos de 2 niveles
+- 📄 [**Guía de Grupos de Subcomandos**](../../../docs/SubcommandGroups.README.md) - Comandos de 3 niveles
+
+### Recursos Externos
+
+- [reflect-metadata](https://github.com/rbuckton/reflect-metadata) - Librería de metadata
+- [TypeScript Decorators](https://www.typescriptlang.org/docs/handbook/decorators.html) - Documentación oficial

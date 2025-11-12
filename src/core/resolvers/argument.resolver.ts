@@ -33,7 +33,7 @@ export class ArgumentResolver {
                 const interaction = source as ChatInputCommandInteraction;
                 rawValue = interaction.options.get(meta.name)?.value;
             } else {
-                rawValue = textArgs ? textArgs[meta.index] : undefined;
+                rawValue = textArgs && meta.index !== undefined ? textArgs[meta.index] : undefined;
             }
 
             // Validar si es requerido
@@ -209,7 +209,11 @@ export class ArgumentResolver {
 
         // Si no hay argumentos previos con menor índice, retornar todo el texto restante
         const previousArgs = allArgsMeta.filter(
-            (arg) => arg.index < currentMeta.index && !arg.rawText,
+            (arg) =>
+                arg.index !== undefined &&
+                currentMeta.index !== undefined &&
+                arg.index < currentMeta.index &&
+                !arg.rawText,
         );
 
         if (previousArgs.length === 0) {
@@ -219,7 +223,7 @@ export class ArgumentResolver {
         // Calcular cuántas palabras/tokens saltar basado en argumentos previos
         let tokensToSkip = 0;
 
-        for (const prevArg of previousArgs.sort((a, b) => a.index - b.index)) {
+        for (const prevArg of previousArgs.sort((a, b) => (a.index ?? 0) - (b.index ?? 0))) {
             const resolvedValue = resolvedArgs.get(prevArg.propertyName as string);
 
             if (resolvedValue !== undefined && resolvedValue !== null) {

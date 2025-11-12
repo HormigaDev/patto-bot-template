@@ -4,7 +4,10 @@ import { CommandCategories, CommandCategoryTag } from '@/utils/CommandCategories
 import { Times } from '@/utils/Times';
 import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command.decorator';
 import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
+import { ISubcommandOptions } from '@/core/decorators/subcommand.decorator';
+import { ISubcommandOptions as ISubcommandGroupOptions } from '@/core/decorators/subcommand-group.decorator';
 import { EmbedBuilder } from 'discord.js';
+import type { CommandEntry } from '@/core/loaders/command.loader';
 
 export class HelpCommand extends HelpDefinition {
     async run(): Promise<void> {
@@ -52,10 +55,43 @@ export class HelpCommand extends HelpDefinition {
 
             // Obtener metadatos de los comandos
             const commandsInfo = commands.map((cmdClass) => {
-                const meta = Reflect.getMetadata(COMMAND_METADATA_KEY, cmdClass) as ICommandOptions;
+                // Intentar obtener metadata de cualquier tipo de comando
+                const commandMeta = Reflect.getMetadata(
+                    COMMAND_METADATA_KEY,
+                    cmdClass,
+                ) as ICommandOptions;
+
+                if (commandMeta) {
+                    return {
+                        name: commandMeta.name,
+                        description: commandMeta.description,
+                    };
+                }
+
+                // Si no es comando base, buscar en los entries
+                const entry = Array.from(this.loader.getAllCommandEntries().values()).find(
+                    (e) => e.class === cmdClass,
+                );
+
+                if (entry) {
+                    const meta = entry.metadata.meta as any;
+                    // Construir el nombre completo basado en el tipo
+                    let fullName = '';
+                    if (entry.metadata.type === 'subcommand') {
+                        fullName = `${meta.parent} ${meta.name}`;
+                    } else if (entry.metadata.type === 'subcommand-group') {
+                        fullName = `${meta.parent} ${meta.name} ${meta.subcommand}`;
+                    }
+
+                    return {
+                        name: fullName,
+                        description: meta.description,
+                    };
+                }
+
                 return {
-                    name: meta.name,
-                    description: meta.description,
+                    name: 'unknown',
+                    description: 'Sin descripción',
                 };
             });
 
@@ -149,8 +185,32 @@ export class HelpCommand extends HelpDefinition {
     }
 
     private async showCommandHelp(commandName: string): Promise<void> {
-        const commandClass = this.loader.getCommand(commandName);
+        // Normalizar el nombre: convertir espacios a guiones y lowercase
+        const normalizedName = commandName.toLowerCase().replace(/\s+/g, '-');
+
+        // Intentar obtener el comando directamente por key kebab-case
+        const commandClass = this.loader.getCommand(normalizedName);
+
         if (!commandClass) {
+            // Si no se encuentra, verificar si es un comando padre con subcomandos o grupos
+            const parts = normalizedName.split('-');
+            const parentName = parts[0];
+
+            // Verificar si tiene grupos de subcomandos
+            const groups = this.loader.getSubcommandGroups(parentName);
+            if (groups.size > 0) {
+                await this.showSubcommandGroupsList(parentName, groups);
+                return;
+            }
+
+            // Verificar si tiene subcomandos simples
+            const subcommands = this.loader.getSubcommands(parentName);
+            if (subcommands.size > 0) {
+                await this.showSubcommandsList(parentName, subcommands);
+                return;
+            }
+
+            // No existe ni como comando, ni como grupo, ni como subcomando
             const embed = this.getEmbed('error')
                 .setTitle('Comando no encontrado')
                 .setDescription(`No se encontró el comando \`${commandName}\`.`);
@@ -159,39 +219,77 @@ export class HelpCommand extends HelpDefinition {
             return;
         }
 
-        const meta: ICommandOptions = Reflect.getMetadata(COMMAND_METADATA_KEY, commandClass);
+        // Obtener metadata según el tipo de comando
+        const entry = this.loader.getCommandEntry(normalizedName);
+        if (!entry) {
+            const embed = this.getEmbed('error')
+                .setTitle('Comando no encontrado')
+                .setDescription(`No se encontró el comando \`${commandName}\`.`);
+            await this.reply({ embeds: [embed] });
+            return;
+        }
+
         const argsMeta: IArgumentOptions[] =
             Reflect.getMetadata(ARGUMENT_METADATA_KEY, commandClass) || [];
 
-        // Construir el uso del comando
+        // Construir información del comando según su tipo
+        let commandTitle = '';
+        let commandDescription = '';
         let usage = '';
-        if (this.ctx.isInteraction) {
-            // Slash command: /comando
-            usage = `/${meta.name}`;
-        } else {
-            // Text command: !comando <arg1> <arg2>
-            usage = `${this.loader.prefix}${meta.name}`;
-            if (argsMeta.length > 0) {
-                const argsText = argsMeta
-                    .sort((a, b) => a.index - b.index)
-                    .map((arg) => {
-                        const bracket = arg.required ? '<>' : '[]';
-                        return bracket[0] + arg.name + bracket[1];
-                    })
-                    .join(' ');
-                usage += ` ${argsText}`;
+
+        if (entry.metadata.type === 'command') {
+            const meta = entry.metadata.meta as ICommandOptions;
+            commandTitle = meta.name;
+            commandDescription = meta.description;
+
+            if (this.ctx.isInteraction) {
+                usage = `/${meta.name}`;
+            } else {
+                usage = `${this.loader.prefix}${meta.name}`;
+            }
+        } else if (entry.metadata.type === 'subcommand') {
+            const meta = entry.metadata.meta as ISubcommandOptions;
+            commandTitle = `${meta.parent} ${meta.name}`;
+            commandDescription = meta.description;
+
+            if (this.ctx.isInteraction) {
+                usage = `/${meta.parent} ${meta.name}`;
+            } else {
+                usage = `${this.loader.prefix}${meta.parent} ${meta.name}`;
+            }
+        } else if (entry.metadata.type === 'subcommand-group') {
+            const meta = entry.metadata.meta as ISubcommandGroupOptions;
+            commandTitle = `${meta.parent} ${meta.name} ${meta.subcommand}`;
+            commandDescription = meta.description;
+
+            if (this.ctx.isInteraction) {
+                usage = `/${meta.parent} ${meta.name} ${meta.subcommand}`;
+            } else {
+                usage = `${this.loader.prefix}${meta.parent} ${meta.name} ${meta.subcommand}`;
             }
         }
 
+        // Agregar argumentos al uso si existen
+        if (!this.ctx.isInteraction && argsMeta.length > 0) {
+            const argsText = argsMeta
+                .sort((a, b) => a.index! - b.index!)
+                .map((arg) => {
+                    const bracket = arg.required ? '<>' : '[]';
+                    return bracket[0] + arg.name + bracket[1];
+                })
+                .join(' ');
+            usage += ` ${argsText}`;
+        }
+
         const embed = this.getEmbed('info')
-            .setTitle(`Ayuda: ${meta.name}`)
-            .setDescription(meta.description || '*Sin descripción*')
+            .setTitle(`Ayuda: ${commandTitle}`)
+            .setDescription(commandDescription || '*Sin descripción*')
             .addFields({ name: 'Uso', value: `\`${usage}\`` });
 
         // Agregar información de argumentos si existen
         if (argsMeta.length > 0) {
             const argsDescription = argsMeta
-                .sort((a, b) => a.index - b.index)
+                .sort((a, b) => a.index! - b.index!)
                 .map((arg) => {
                     return `**${arg.name}**: ${arg.description}`;
                 })
@@ -200,16 +298,77 @@ export class HelpCommand extends HelpDefinition {
             embed.addFields({ name: 'Argumentos', value: argsDescription });
         }
 
-        // Agregar aliases si existen
-        if (meta.aliases && meta.aliases.length > 0) {
-            embed.addFields({
-                name: 'Alias',
-                value: meta.aliases.map((a) => `\`${a}\``).join(', '),
-            });
+        // Agregar aliases si existen (solo para comandos base)
+        if (entry.metadata.type === 'command') {
+            const meta = entry.metadata.meta as ICommandOptions;
+            if (meta.aliases && meta.aliases.length > 0) {
+                embed.addFields({
+                    name: 'Alias',
+                    value: meta.aliases.map((a: string) => `\`${a}\``).join(', '),
+                });
+            }
         }
         if (!this.ctx.isInteraction) {
             embed.setFooter({ text: `<> = obligatorio, [] = opcional` });
         }
+        await this.reply({ embeds: [embed] });
+    }
+
+    /**
+     * Muestra la lista de grupos de subcomandos disponibles para un comando padre
+     */
+    private async showSubcommandGroupsList(
+        parentName: string,
+        groups: Map<string, Map<string, CommandEntry>>,
+    ): Promise<void> {
+        const prefix = this.ctx.isInteraction ? '/' : this.loader.prefix;
+
+        let description = `El comando \`${parentName}\` tiene los siguientes grupos de subcomandos:\n\n`;
+
+        for (const [groupName, subcommands] of groups) {
+            const subcommandsList = Array.from(subcommands.values())
+                .map((entry) => {
+                    const meta = entry.metadata.meta as ISubcommandGroupOptions;
+                    return `  • \`${prefix}${parentName} ${groupName} ${meta.subcommand}\` - ${meta.description}`;
+                })
+                .join('\n');
+
+            description += `**${groupName}**\n${subcommandsList}\n\n`;
+        }
+
+        const embed = this.getEmbed('info')
+            .setTitle(`📚 Ayuda: ${parentName}`)
+            .setDescription(description.trim())
+            .setFooter({
+                text: `Usa ${prefix}help ${parentName} <grupo> <subcomando> para más información`,
+            });
+
+        await this.reply({ embeds: [embed] });
+    }
+
+    /**
+     * Muestra la lista de subcomandos disponibles para un comando padre
+     */
+    private async showSubcommandsList(
+        parentName: string,
+        subcommands: Map<string, CommandEntry>,
+    ): Promise<void> {
+        const prefix = this.ctx.isInteraction ? '/' : this.loader.prefix;
+
+        let description = `El comando \`${parentName}\` tiene los siguientes subcomandos:\n\n`;
+
+        for (const [, entry] of subcommands) {
+            const meta = entry.metadata.meta as ISubcommandOptions;
+            description += `• \`${prefix}${parentName} ${meta.name}\` - ${meta.description}\n`;
+        }
+
+        const embed = this.getEmbed('info')
+            .setTitle(`📚 Ayuda: ${parentName}`)
+            .setDescription(description.trim())
+            .setFooter({
+                text: `Usa ${prefix}help ${parentName} <subcomando> para más información`,
+            });
+
         await this.reply({ embeds: [embed] });
     }
 }

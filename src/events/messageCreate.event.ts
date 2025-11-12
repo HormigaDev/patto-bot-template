@@ -26,6 +26,42 @@ export function registerMessageCreateEvent(
                 .trim()
                 .split(/ +/g);
 
+            // Si existe un grupo de subcomando entonces lo ejecuta.
+            const subcommandGroup = args
+                .slice(0, 3)
+                .map((arg) => String(arg).toLowerCase())
+                .join('-');
+            const subcommandGroupEntry = commandLoader.getCommandEntry(subcommandGroup);
+            if (subcommandGroupEntry) {
+                args = parseTextArguments(args.slice(3).join(' '));
+                await commandHandler.executeCommand(
+                    message,
+                    subcommandGroupEntry.class,
+                    commandLoader,
+                    args,
+                    subcommandGroupEntry.path,
+                );
+                return;
+            }
+
+            // Si existe un subcomando lo ejecuta por preferencia
+            const subcommand = args
+                .slice(0, 2)
+                .map((arg) => String(arg).toLowerCase())
+                .join('-');
+            const subcommandEntry = commandLoader.getCommandEntry(subcommand);
+            if (subcommandEntry) {
+                args = parseTextArguments(args.slice(2).join(' '));
+                await commandHandler.executeCommand(
+                    message,
+                    subcommandEntry.class,
+                    commandLoader,
+                    args,
+                    subcommandEntry.path,
+                );
+                return;
+            }
+
             const commandName = (args.shift() as string)?.toLowerCase();
             if (!commandName) return;
 

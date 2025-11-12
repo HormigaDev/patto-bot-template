@@ -4,6 +4,70 @@
 
 Esta carpeta contiene las **implementaciones** de los comandos del bot. Cada archivo representa la lógica de ejecución de un comando específico.
 
+## Tipos de Comandos
+
+Este template soporta tres niveles de comandos:
+
+### 1. **Comandos Base** (`@Command`)
+
+Comandos simples de un solo nivel: `/ping`, `/help`
+
+### 2. **Subcomandos** (`@Subcommand`)
+
+Comandos de 2 niveles para agrupar funcionalidades relacionadas: `/config get`, `/config set`
+
+> **� No necesitas crear un comando base**: El sistema crea automáticamente el comando padre en Discord.
+
+�📚 **[Ver guía completa de Subcomandos →](../../docs/Subcommands.README.md)**
+
+### 3. **Grupos de Subcomandos** (`@SubcommandGroup`)
+
+Comandos de 3 niveles para sistemas complejos: `/server config get`, `/server user info`
+
+> **💡 No necesitas crear un comando base**: El sistema crea automáticamente el comando padre en Discord.
+
+📚 **[Ver guía completa de Grupos de Subcomandos →](../../docs/SubcommandGroups.README.md)**
+
+---
+
+## 📁 Organización de Archivos
+
+### Estructura Recomendada
+
+```
+src/commands/
+├── info/                      # Comandos base simples
+│   ├── help.command.ts       # /help
+│   └── ping.command.ts       # /ping
+├── config/                    # Subcomandos (2 niveles)
+│   ├── get.command.ts        # /config get
+│   ├── set.command.ts        # /config set
+│   └── reset.command.ts      # /config reset
+└── server/                    # Grupos de subcomandos (3 niveles)
+    ├── config/               # Grupo: config
+    │   ├── get.command.ts    # /server config get
+    │   └── set.command.ts    # /server config set
+    └── user/                 # Grupo: user
+        ├── info.command.ts   # /server user info
+        └── list.command.ts   # /server user list
+```
+
+### Mejores Prácticas
+
+✅ **Comandos base**: Guarda en carpetas por categoría (`info/`, `moderation/`, etc.)  
+✅ **Subcomandos**: Crea carpeta con el nombre del padre (`config/`) - **SIN archivo base**  
+✅ **Grupos**: Crea carpeta padre + subcarpetas por grupo (`server/config/`) - **SIN archivo base**  
+✅ **Nomenclatura**: Usa nombres descriptivos: `get.command.ts`, `set.command.ts`  
+✅ **Un archivo por comando**: Cada archivo debe exportar un solo comando  
+✅ **Sin overhead**: No crees archivos padre vacíos (`config.command.ts`, `server.command.ts`)
+
+❌ **Evita**: Mezclar comandos no relacionados en la misma carpeta  
+❌ **Evita**: Nombres genéricos como `command1.ts`, `test.ts`  
+❌ **Evita**: Anidación excesiva (más de 3 niveles de carpetas)  
+❌ **Evita**: Crear archivos base solo como contenedores (el sistema lo hace automáticamente)
+
+---
+
 ## 🎨 Patrones de Implementación
 
 Existen **dos patrones válidos** para crear comandos, según su complejidad:
@@ -31,9 +95,9 @@ export class PingCommand extends BaseCommand {
 
 **Ventajas:**
 
--   ✅ Menos archivos
--   ✅ Ideal para comandos simples
--   ✅ Todo en un solo lugar
+- ✅ Menos archivos
+- ✅ Ideal para comandos simples
+- ✅ Todo en un solo lugar
 
 ### 🔹 Patrón 2: Definición + Implementación (Complejo)
 
@@ -89,10 +153,10 @@ export class BanCommand extends BanDefinition {
 
 **Ventajas:**
 
--   ✅ Separación de responsabilidades
--   ✅ Más fácil de testear
--   ✅ Metadatos reutilizables
--   ✅ Código más limpio
+- ✅ Separación de responsabilidades
+- ✅ Más fácil de testear
+- ✅ Metadatos reutilizables
+- ✅ Código más limpio
 
 ## 🎯 ¿Cuándo Usar Cada Patrón?
 
@@ -404,10 +468,10 @@ Slash Command:
 
 **Notas sobre `rawText`:**
 
--   ✅ Solo afecta comandos de texto (`!comando`)
--   ✅ En slash commands funciona como argumento normal
--   ✅ Debe ser el **último** argumento o después de todos los fijos
--   ✅ No requiere comillas, todo el texto se captura automáticamente
+- ✅ Solo afecta comandos de texto (`!comando`)
+- ✅ En slash commands funciona como argumento normal
+- ✅ Debe ser el **último** argumento o después de todos los fijos
+- ✅ No requiere comillas, todo el texto se captura automáticamente
 
 ---
 
@@ -511,11 +575,11 @@ Bot: ❌ Valor inválido para tipo. Valores permitidos: 0, 3, 2, 5
 
 **Ventajas de usar `options`:**
 
--   ✅ Validación automática en text commands
--   ✅ Dropdown interactivo en slash commands
--   ✅ Previene valores inválidos
--   ✅ Mejor experiencia de usuario
--   ✅ No necesitas implementar validación manual
+- ✅ Validación automática en text commands
+- ✅ Dropdown interactivo en slash commands
+- ✅ Previene valores inválidos
+- ✅ Mejor experiencia de usuario
+- ✅ No necesitas implementar validación manual
 
 ---
 
@@ -525,11 +589,11 @@ El bot incluye un comando `help` que **automáticamente** genera ayuda para todo
 
 ### Características
 
--   ✅ **Muestra uso con argumentos** en text commands: `!comando <arg1> <arg2>`
--   ✅ **Detecta tipo de comando:** Muestra `/` para slash commands, `!` para text commands
--   ✅ **Argumentos normalizados:** Los nombres se normalizan automáticamente (lowercase, sin acentos)
--   ✅ **Paginación automática:** Si hay más de 10 comandos por categoría
--   ✅ **Información completa:** Descripción, uso, argumentos, aliases
+- ✅ **Muestra uso con argumentos** en text commands: `!comando <arg1> <arg2>`
+- ✅ **Detecta tipo de comando:** Muestra `/` para slash commands, `!` para text commands
+- ✅ **Argumentos normalizados:** Los nombres se normalizan automáticamente (lowercase, sin acentos)
+- ✅ **Paginación automática:** Si hay más de 10 comandos por categoría
+- ✅ **Información completa:** Descripción, uso, argumentos, aliases
 
 ### Ejemplo de Salida
 
@@ -570,18 +634,18 @@ Uso: /ban
 
 El `CommandLoader` normaliza automáticamente los nombres de argumentos:
 
--   **Original:** `name: "Usuario Objetivo"`
--   **Normalizado:** `normalizedName: "usuarioobjetivo"`
--   **Proceso:** lowercase → sin acentos → sin espacios → solo alfanumérico
--   **Uso:** El nombre original se mantiene para mostrar en ayudas
+- **Original:** `name: "Usuario Objetivo"`
+- **Normalizado:** `normalizedName: "usuarioobjetivo"`
+- **Proceso:** lowercase → sin acentos → sin espacios → solo alfanumérico
+- **Uso:** El nombre original se mantiene para mostrar en ayudas
 
 ---
 
 ## �📚 Recursos Relacionados
 
--   `/src/definition/` - Definiciones de comandos
--   `/src/core/structures/BaseCommand.ts` - Clase base
--   `/src/core/decorators/` - Decoradores disponibles (@Command, @Arg, @UsePlugins)
--   `/src/plugins/` - Plugins disponibles
--   `/src/config/` - Configuración de plugins por scope
--   `ARCHITECTURE.md` - Arquitectura completa del sistema
+- `/src/definition/` - Definiciones de comandos
+- `/src/core/structures/BaseCommand.ts` - Clase base
+- `/src/core/decorators/` - Decoradores disponibles (@Command, @Arg, @UsePlugins)
+- `/src/plugins/` - Plugins disponibles
+- `/src/config/` - Configuración de plugins por scope
+- `ARCHITECTURE.md` - Arquitectura completa del sistema
