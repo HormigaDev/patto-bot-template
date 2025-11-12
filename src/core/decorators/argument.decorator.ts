@@ -26,7 +26,9 @@ export const ARGUMENT_METADATA_KEY = Symbol('commandArguments');
 export function Arg(options: IArgumentOptions): PropertyDecorator {
     return (target: Object, propertyKey: string | symbol) => {
         if (options.index !== undefined) {
-            throw new ValidationError('No se permite definir Index manualmente');
+            throw new ValidationError(
+                'No se permite definir "index" manualmente. Los índices de argumentos se asignan automáticamente en el orden de definición.',
+            );
         }
         const designType = Reflect.getMetadata('design:type', target, propertyKey);
 

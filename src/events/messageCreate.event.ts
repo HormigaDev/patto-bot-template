@@ -26,41 +26,11 @@ export function registerMessageCreateEvent(
                 .trim()
                 .split(/ +/g);
 
-            // Si existe un grupo de subcomando entonces lo ejecuta.
-            const subcommandGroup = args
-                .slice(0, 3)
-                .map((arg) => String(arg).toLowerCase())
-                .join('-');
-            const subcommandGroupEntry = commandLoader.getCommandEntry(subcommandGroup);
-            if (subcommandGroupEntry) {
-                args = parseTextArguments(args.slice(3).join(' '));
-                await commandHandler.executeCommand(
-                    message,
-                    subcommandGroupEntry.class,
-                    commandLoader,
-                    args,
-                    subcommandGroupEntry.path,
-                );
-                return;
-            }
+            // Intentar ejecutar grupo de subcomandos (3 niveles)
+            if (await tryExecuteSubcommand(args, 3, commandLoader, commandHandler, message)) return;
 
-            // Si existe un subcomando lo ejecuta por preferencia
-            const subcommand = args
-                .slice(0, 2)
-                .map((arg) => String(arg).toLowerCase())
-                .join('-');
-            const subcommandEntry = commandLoader.getCommandEntry(subcommand);
-            if (subcommandEntry) {
-                args = parseTextArguments(args.slice(2).join(' '));
-                await commandHandler.executeCommand(
-                    message,
-                    subcommandEntry.class,
-                    commandLoader,
-                    args,
-                    subcommandEntry.path,
-                );
-                return;
-            }
+            // Intentar ejecutar subcomando (2 niveles)
+            if (await tryExecuteSubcommand(args, 2, commandLoader, commandHandler, message)) return;
 
             const commandName = (args.shift() as string)?.toLowerCase();
             if (!commandName) return;
@@ -82,6 +52,42 @@ export function registerMessageCreateEvent(
             );
         },
     };
+}
+
+/**
+ * Intenta ejecutar un subcomando o grupo de subcomandos
+ * @param args Array de argumentos del mensaje
+ * @param levels Número de niveles a procesar (2 para subcomandos, 3 para grupos)
+ * @param commandLoader Loader de comandos
+ * @param commandHandler Handler de comandos
+ * @param message Mensaje original
+ * @returns true si se encontró y ejecutó el comando, false en caso contrario
+ */
+async function tryExecuteSubcommand(
+    args: (string | number)[],
+    levels: number,
+    commandLoader: CommandLoader,
+    commandHandler: CommandHandler,
+    message: Message,
+): Promise<boolean> {
+    const key = args
+        .slice(0, levels)
+        .map((arg) => String(arg).toLowerCase())
+        .join('-');
+    const entry = commandLoader.getCommandEntry(key);
+
+    if (entry) {
+        const newArgs = parseTextArguments(args.slice(levels).join(' '));
+        await commandHandler.executeCommand(
+            message,
+            entry.class,
+            commandLoader,
+            newArgs,
+            entry.path,
+        );
+        return true;
+    }
+    return false;
 }
 
 /**
