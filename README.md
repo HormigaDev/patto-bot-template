@@ -88,20 +88,54 @@
 
 ## 🚀 Instalación
 
-### 1. Clonar el Repositorio
+Tienes dos opciones para instalar Patto Bot Template:
+
+### 🎯 Opción 1: Con Patto CLI (Recomendado)
+
+La forma más rápida y sencilla usando la herramienta oficial:
+
+```bash
+# Instalar Patto CLI globalmente
+npm install -g patto-cli
+
+# Crear un nuevo proyecto
+patto init mi-bot-discord
+
+# Entrar al proyecto
+cd mi-bot-discord
+```
+
+**✨ Ventajas:**
+
+- ✅ Setup automático en 2-3 minutos
+- ✅ Instalación de dependencias automática
+- ✅ Generación de código integrada
+- ✅ Validaciones y mejores prácticas incluidas
+
+**📚 Guía completa:** Ver [`docs/Patto_CLI_Installation.README.md`](docs/Patto_CLI_Installation.README.md)
+
+---
+
+### 📦 Opción 2: Instalación Manual
+
+Si prefieres clonar el repositorio manualmente:
+
+#### 1. Clonar el Repositorio
 
 ```bash
 git clone https://github.com/HormigaDev/patto-bot-template.git
 cd patto-bot-template
 ```
 
-### 2. Instalar Dependencias
+#### 2. Instalar Dependencias
 
 ```bash
 npm install
 ```
 
-### 3. Configurar Variables de Entorno
+---
+
+### 3. Configurar Variables de Entorno (Ambas opciones)
 
 Copia el template de configuración:
 
@@ -763,15 +797,37 @@ intents = [
 
 ---
 
-## 🛠️ Ecosistema Patto (Próximamente)
+## 🛠️ Ecosistema Patto
 
-### Patto Bot Features
+### Patto CLI ✅ (Disponible)
+
+**Patto CLI** es la herramienta oficial de línea de comandos para trabajar con Patto Bot Template. Agiliza el desarrollo de bots con generación automática de código y setup instantáneo.
+
+**Características:**
+
+- 🚀 Inicialización rápida de proyectos
+- 🎨 Generación de comandos, subcomandos y plugins
+- ✅ Validaciones integradas y mejores prácticas
+- 📦 30+ tests garantizando su funcionamiento
+
+**Instalación:**
+
+```bash
+npm install -g patto-cli
+patto init mi-bot-discord
+```
+
+**Enlaces:**
+
+- 📦 [Patto CLI en npm](https://www.npmjs.com/package/patto-cli)
+- 🏠 [Repositorio en GitHub](https://github.com/HormigaDev/patto-cli)
+- 📖 [Guía de instalación detallada](docs/Patto_CLI_Installation.README.md)
+
+---
+
+### Patto Bot Features (Próximamente)
 
 **Patto Bot Features** será un conjunto de paquetes modulares y editables para expandir tu bot de Discord. Podrás agregar funcionalidades como persistencia con MongoDB, sistemas de economía o herramientas de moderación con un simple comando. Cada feature será flexible, integrable con el template y personalizable según tu estilo. ¡En desarrollo para potenciar tu bot!
-
-### Patto CLI
-
-**Patto CLI** será una herramienta de línea de comandos para agilizar el desarrollo de bots. Genera comandos, plugins y tests con comandos como `patto generate`, y gestiona la instalación de features con sus dependencias, actualizando automáticamente el `.env.template`. Diseñada para optimizar tu flujo de trabajo. ¡En camino para simplificar tu experiencia!
 
 ---
 
