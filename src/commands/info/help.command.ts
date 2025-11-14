@@ -1,5 +1,5 @@
 import { RichMessage, Select, Button, ButtonVariant } from '@/core/components';
-import { HelpDefinition } from '@/definition/help.definition';
+import { HelpDefinition } from '@/definitions/help.definition';
 import { CommandCategories, CommandCategoryTag } from '@/utils/CommandCategories';
 import { Times } from '@/utils/Times';
 import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command.decorator';
