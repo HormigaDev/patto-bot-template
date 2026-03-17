@@ -36,6 +36,7 @@ export function registerInteractionCreateEvent(
                         interaction,
                         commandEntry.class,
                         commandLoader,
+                        key,
                         undefined,
                         commandEntry.path,
                     );

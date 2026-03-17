@@ -72,12 +72,12 @@ export class ConfigGetCommand extends BaseCommand {
 
 ### Propiedades del Decorador
 
-| Propiedad     | Tipo                 | Requerido | Descripción                    |
-| ------------- | -------------------- | --------- | ------------------------------ |
-| `parent`      | `string`             | ✅        | Nombre del comando padre       |
-| `name`        | `string`             | ✅        | Nombre del subcomando          |
-| `description` | `string`             | ✅        | Descripción visible en Discord |
-| `category`    | `CommandCategoryTag` | ❌        | Categoría para organización    |
+| Propiedad     | Tipo       | Requerido | Descripción                    |
+| ------------- | ---------- | --------- | ------------------------------ |
+| `parent`      | `string`   | ✅        | Nombre del comando padre       |
+| `name`        | `string`   | ✅        | Nombre del subcomando          |
+| `description` | `string`   | ✅        | Descripción visible en Discord |
+| `category`    | `Category` | ❌        | Categoría para organización    |
 
 ---
 

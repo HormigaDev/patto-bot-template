@@ -1,13 +1,13 @@
 import { Arg } from '@/core/decorators/argument.decorator';
 import { Command } from '@/core/decorators/command.decorator';
 import { BaseCommand } from '@/core/structures/BaseCommand';
-import { CommandCategoryTag } from '@/utils/CommandCategories';
+import { Category } from '@/utils/CommandCategories';
 
 @Command({
     name: 'help',
     description: 'Muestra la ayuda de los comandos disponibles',
     aliases: ['ayuda'],
-    category: CommandCategoryTag.Info,
+    category: Category.Info,
 })
 export abstract class HelpDefinition extends BaseCommand {
     @Arg({

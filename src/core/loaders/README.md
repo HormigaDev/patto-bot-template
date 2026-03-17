@@ -36,10 +36,10 @@ Escanea y carga todos los comandos.
 
 **Normalización de argumentos:**
 
--   El loader normaliza automáticamente el `name` de cada argumento definido con `@Arg`
--   Genera `normalizedName`: lowercase, sin acentos, sin espacios, solo alfanumérico
--   **Ejemplo:** `"Usuario Objetivo"` → `"usuarioobjetivo"`
--   El `name` original se mantiene intacto para mostrar en ayudas y mensajes
+- El loader normaliza automáticamente el `name` de cada argumento definido con `@Arg`
+- Genera `normalizedName`: lowercase, sin acentos, sin espacios, solo alfanumérico
+- **Ejemplo:** `"Usuario Objetivo"` → `"usuarioobjetivo"`
+- El `name` original se mantiene intacto para mostrar en ayudas y mensajes
 
 **Ejemplo:**
 
@@ -56,8 +56,8 @@ Obtiene un comando por nombre o alias.
 
 **Retorna:**
 
--   `CommandClass` si existe
--   `undefined` si no existe
+- `CommandClass` si existe
+- `undefined` si no existe
 
 **Ejemplo:**
 
@@ -72,7 +72,7 @@ Obtiene todos los comandos cargados.
 
 **Retorna:**
 
--   `Map<string, CommandClass>`
+- `Map<string, CommandClass>`
 
 **Ejemplo:**
 
@@ -99,25 +99,25 @@ Obtiene todos los comandos de una categoría específica.
 
 **Parámetros:**
 
--   `category: CommandCategoryTag` - La categoría a filtrar
+- `category: Category` - La categoría a filtrar
 
 **Retorna:**
 
--   `CommandClass[]` - Array de clases de comandos
+- `CommandClass[]` - Array de clases de comandos
 
 **Ejemplo:**
 
 ```typescript
-import { CommandCategoryTag } from '@/utils/CommandCategories';
+import { Category } from '@/utils/CommandCategories';
 
-const infoCommands = loader.getCommandsByCategory(CommandCategoryTag.Info);
+const infoCommands = loader.getCommandsByCategory(Category.Info);
 console.log(`Comandos de información: ${infoCommands.length}`);
 ```
 
 **Nota sobre categorías:**
 
--   Si un comando no especifica `category` en el decorador `@Command`, se asigna automáticamente a `CommandCategoryTag.Other`
--   Las categorías se usan para organizar comandos en menús de ayuda
+- Si un comando no especifica `category` en el decorador `@Command`, se asigna automáticamente a `Category.Other`
+- Las categorías se usan para organizar comandos en menús de ayuda
 
 ### Estructura Interna
 
@@ -126,8 +126,8 @@ private commands = new Map<string, CommandClass>();
 private aliases = new Map<string, string>();
 ```
 
--   **commands**: Mapeo de nombre → clase
--   **aliases**: Mapeo de alias → nombre real
+- **commands**: Mapeo de nombre → clase
+- **aliases**: Mapeo de alias → nombre real
 
 ### Patrón Glob
 
@@ -135,14 +135,14 @@ Usa el patrón: `src/commands/**/*.command.ts`
 
 **Ejemplos que coinciden:**
 
--   `src/commands/ping.command.ts` ✅
--   `src/commands/admin/ban.command.ts` ✅
--   `src/commands/utils/help.command.ts` ✅
+- `src/commands/ping.command.ts` ✅
+- `src/commands/admin/ban.command.ts` ✅
+- `src/commands/utils/help.command.ts` ✅
 
 **Ejemplos que NO coinciden:**
 
--   `src/commands/ping.ts` ❌
--   `src/commands/helpers/util.ts` ❌
+- `src/commands/ping.ts` ❌
+- `src/commands/helpers/util.ts` ❌
 
 ---
 
@@ -228,15 +228,15 @@ public idioma!: string;
 
 **Conversión automática:**
 
--   `label` → `name` (texto mostrado)
--   `value` → `value` (valor enviado al bot)
+- `label` → `name` (texto mostrado)
+- `value` → `value` (valor enviado al bot)
 
 **Ventajas:**
 
--   ✅ Dropdown automático en Discord
--   ✅ Validación nativa por Discord
--   ✅ No permite valores personalizados
--   ✅ Mejor UX para usuarios
+- ✅ Dropdown automático en Discord
+- ✅ Validación nativa por Discord
+- ✅ No permite valores personalizados
+- ✅ Mejor UX para usuarios
 
 ### Formato JSON
 
@@ -303,8 +303,8 @@ Routes.applicationGuildCommands(clientId, guildId);
 **Causa:** Nombre o descripción inválidos
 **Solución:** Revisar que cumplan las reglas de Discord:
 
--   Nombre: 1-32 caracteres, lowercase, sin espacios
--   Descripción: 1-100 caracteres
+- Nombre: 1-32 caracteres, lowercase, sin espacios
+- Descripción: 1-100 caracteres
 
 #### "Rate Limit"
 
@@ -336,6 +336,6 @@ Comandos disponibles en Discord
 
 ## 📚 Recursos Relacionados
 
--   `/src/commands/` - Comandos cargados
--   `/src/core/decorators/` - Metadata de comandos
--   [Discord API Docs](https://discord.com/developers/docs/interactions/application-commands) - Documentación oficial
+- `/src/commands/` - Comandos cargados
+- `/src/core/decorators/` - Metadata de comandos
+- [Discord API Docs](https://discord.com/developers/docs/interactions/application-commands) - Documentación oficial

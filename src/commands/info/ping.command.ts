@@ -1,12 +1,12 @@
 import { Command } from '@/core/decorators/command.decorator';
 import { BaseCommand } from '@/core/structures/BaseCommand';
-import { CommandCategoryTag } from '@/utils/CommandCategories';
+import { Category } from '@/utils/CommandCategories';
 
 @Command({
     name: 'ping',
     description: 'Muestra la latencia del bot',
     aliases: ['latencia', 'pong'],
-    category: CommandCategoryTag.Info,
+    category: Category.Info,
 })
 export class PingCommand extends BaseCommand {
     async run(): Promise<void> {

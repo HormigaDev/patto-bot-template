@@ -71,11 +71,11 @@ Env.load(); // ✅ Valida y muestra logs
 
 **Comportamiento:**
 
--   ✅ Valida variables obligatorias (`BOT_TOKEN`, `CLIENT_ID`)
--   ✅ Asigna valores por defecto a variables opcionales
--   ✅ Convierte tipos (strings a boolean/number)
--   ✅ Muestra configuración cargada (con token enmascarado)
--   ❌ Termina el proceso si falta alguna variable obligatoria
+- ✅ Valida variables obligatorias (`BOT_TOKEN`, `CLIENT_ID`)
+- ✅ Asigna valores por defecto a variables opcionales
+- ✅ Convierte tipos (strings a boolean/number)
+- ✅ Muestra configuración cargada (con token enmascarado)
+- ❌ Termina el proceso si falta alguna variable obligatoria
 
 #### `Env.get()`
 
@@ -96,8 +96,8 @@ console.log(config.COMMAND_PREFIX); // string (default: '!')
 
 #### Variables Obligatorias
 
--   `BOT_TOKEN`: Debe existir y no estar vacío
--   `CLIENT_ID`: Debe existir y no estar vacío
+- `BOT_TOKEN`: Debe existir y no estar vacío
+- `CLIENT_ID`: Debe existir y no estar vacío
 
 #### Variables Opcionales con Defaults
 
@@ -192,12 +192,12 @@ Cuando la configuración se carga correctamente:
 
 ### Ventajas
 
--   ✅ **Tipo seguro**: TypeScript conoce los tipos de cada variable
--   ✅ **Centralizado**: Una sola fuente de verdad para la configuración
--   ✅ **Validación temprana**: Errores detectados al inicio, no en runtime
--   ✅ **Mensajes claros**: Errores descriptivos en español
--   ✅ **Sin accesos directos**: No más `process.env.VAR || 'default'` esparcidos
--   ✅ **Seguridad**: Tokens enmascarados en logs
+- ✅ **Tipo seguro**: TypeScript conoce los tipos de cada variable
+- ✅ **Centralizado**: Una sola fuente de verdad para la configuración
+- ✅ **Validación temprana**: Errores detectados al inicio, no en runtime
+- ✅ **Mensajes claros**: Errores descriptivos en español
+- ✅ **Sin accesos directos**: No más `process.env.VAR || 'default'` esparcidos
+- ✅ **Seguridad**: Tokens enmascarados en logs
 
 ---
 
@@ -414,10 +414,10 @@ Define las categorías disponibles para organizar comandos en el bot. Cada categ
 
 ### Exportaciones
 
-#### `CommandCategoryTag` (Enum)
+#### `Category` (Enum)
 
 ```typescript
-export enum CommandCategoryTag {
+export enum Category {
     Info = 'info',
     Other = 'other',
 }
@@ -425,9 +425,9 @@ export enum CommandCategoryTag {
 
 **Descripción:**
 
--   Enum con las etiquetas únicas de cada categoría
--   Usa valores en `lowercase` para consistencia
--   Se usa en el decorador `@Command`
+- Enum con las etiquetas únicas de cada categoría
+- Usa valores en `lowercase` para consistencia
+- Se usa en el decorador `@Command`
 
 #### `CommandCategory` (Interface)
 
@@ -435,7 +435,7 @@ export enum CommandCategoryTag {
 export interface CommandCategory {
     name: string; // Nombre visible de la categoría
     description: string; // Descripción de qué incluye
-    tag: CommandCategoryTag; // Tag único de la categoría
+    tag: Category; // Tag único de la categoría
     icon?: string; // Emoji o ícono (opcional)
 }
 ```
@@ -447,13 +447,13 @@ export const CommandCategories: CommandCategory[] = [
     {
         name: 'Información',
         description: 'Comandos relacionados con la información del bot y del servidor.',
-        tag: CommandCategoryTag.Info,
+        tag: Category.Info,
         icon: 'ℹ️',
     },
     {
         name: 'Otros',
         description: 'Comandos que no encajan en otras categorías.',
-        tag: CommandCategoryTag.Other,
+        tag: Category.Other,
         icon: '❓',
     },
 ];
@@ -461,20 +461,20 @@ export const CommandCategories: CommandCategory[] = [
 
 **Descripción:**
 
--   Array con todas las categorías disponibles
--   Cada categoría incluye metadatos completos
--   `Other` es la categoría por defecto si no se especifica una
+- Array con todas las categorías disponibles
+- Cada categoría incluye metadatos completos
+- `Other` es la categoría por defecto si no se especifica una
 
 ### Uso en Comandos
 
 ```typescript
 import { Command } from '@/core/decorators/command.decorator';
-import { CommandCategoryTag } from '@/utils/CommandCategories';
+import { Category } from '@/utils/CommandCategories';
 
 @Command({
     name: 'help',
     description: 'Muestra la ayuda del bot',
-    category: CommandCategoryTag.Info, // ✅ Opcional
+    category: Category.Info, // ✅ Opcional
 })
 export class HelpCommand extends HelpDefinition {
     async run(): Promise<void> {
@@ -483,15 +483,15 @@ export class HelpCommand extends HelpDefinition {
 }
 ```
 
-**Nota:** Si no se especifica `category`, el loader asigna automáticamente `CommandCategoryTag.Other`.
+**Nota:** Si no se especifica `category`, el loader asigna automáticamente `Category.Other`.
 
 ### Uso en Sistema de Ayuda
 
 ```typescript
-import { CommandCategories, CommandCategoryTag } from '@/utils/CommandCategories';
+import { CommandCategories, Category } from '@/utils/CommandCategories';
 
 // Obtener categoría por tag
-const category = CommandCategories.find((c) => c.tag === CommandCategoryTag.Info);
+const category = CommandCategories.find((c) => c.tag === Category.Info);
 console.log(category.name); // "Información"
 console.log(category.description); // "Comandos relacionados con..."
 console.log(category.icon); // "ℹ️"
@@ -509,7 +509,7 @@ Para agregar una nueva categoría, sigue estos pasos:
 **Paso 1: Agregar el tag al enum**
 
 ```typescript
-export enum CommandCategoryTag {
+export enum Category {
     Info = 'info',
     Moderation = 'moderation', // ✅ Nueva categoría
     Fun = 'fun', // ✅ Nueva categoría
@@ -524,27 +524,27 @@ export const CommandCategories: CommandCategory[] = [
     {
         name: 'Información',
         description: 'Comandos relacionados con la información del bot y del servidor.',
-        tag: CommandCategoryTag.Info,
+        tag: Category.Info,
         icon: 'ℹ️',
     },
     // ✅ Nueva categoría
     {
         name: 'Moderación',
         description: 'Comandos para moderar el servidor (ban, kick, mute, etc).',
-        tag: CommandCategoryTag.Moderation,
+        tag: Category.Moderation,
         icon: '🛡️',
     },
     // ✅ Nueva categoría
     {
         name: 'Diversión',
         description: 'Comandos de entretenimiento y juegos.',
-        tag: CommandCategoryTag.Fun,
+        tag: Category.Fun,
         icon: '🎮',
     },
     {
         name: 'Otros',
         description: 'Comandos que no encajan en otras categorías.',
-        tag: CommandCategoryTag.Other,
+        tag: Category.Other,
         icon: '❓',
     },
 ];
@@ -556,7 +556,7 @@ export const CommandCategories: CommandCategory[] = [
 @Command({
     name: 'ban',
     description: 'Banea a un usuario',
-    category: CommandCategoryTag.Moderation, // ✅ Usar nueva categoría
+    category: Category.Moderation, // ✅ Usar nueva categoría
 })
 export class BanCommand extends BanDefinition {
     async run(): Promise<void> {
@@ -761,10 +761,10 @@ console.log(formatDuration(Times.minutes(90))); // "0d 1h 30m 0s"
 
 **Beneficios:**
 
--   ✅ **Legibilidad**: Código más claro y auto-documentado
--   ✅ **Mantenibilidad**: Fácil de entender y modificar
--   ✅ **Sin errores**: No más cálculos manuales incorrectos
--   ✅ **Consistencia**: Mismo patrón en todo el proyecto
+- ✅ **Legibilidad**: Código más claro y auto-documentado
+- ✅ **Mantenibilidad**: Fácil de entender y modificar
+- ✅ **Sin errores**: No más cálculos manuales incorrectos
+- ✅ **Consistencia**: Mismo patrón en todo el proyecto
 
 ### Operaciones Matemáticas
 
@@ -792,16 +792,16 @@ const fiftyMinutes = Times.hours(1) - Times.minutes(10);
 
 ### Comandos
 
--   [`/src/commands/`](../commands/README.md) - Implementación de comandos que usan estas utilidades
+- [`/src/commands/`](../commands/README.md) - Implementación de comandos que usan estas utilidades
 
 ### Core
 
--   [`/src/core/components/`](../core/components/README.md) - RichMessage usa Times para timeouts
--   [`/src/core/decorators/`](../core/decorators/README.md) - @Command usa CommandCategoryTag
+- [`/src/core/components/`](../core/components/README.md) - RichMessage usa Times para timeouts
+- [`/src/core/decorators/`](../core/decorators/README.md) - @Command usa Category
 
 ### Plugins
 
--   [`/src/plugins/`](../plugins/README.md) - Plugins usan Times para cooldowns
+- [`/src/plugins/`](../plugins/README.md) - Plugins usan Times para cooldowns
 
 ---
 
@@ -827,16 +827,16 @@ const fiftyMinutes = Times.hours(1) - Times.minutes(10);
 
 ### CommandCategories
 
--   [ ] Sistema de permisos por categoría
--   [ ] Categorías anidadas (subcategorías)
--   [ ] Categorías personalizadas por servidor
+- [ ] Sistema de permisos por categoría
+- [ ] Categorías anidadas (subcategorías)
+- [ ] Categorías personalizadas por servidor
 
 ### Times
 
--   [ ] Método `Times.parse('1d 5h 30m')` para parsing de strings
--   [ ] Método `Times.format(ms)` para formatear a string legible
--   [ ] Soporte para años bisiestos y meses exactos
--   [ ] Zona horaria y localización
+- [ ] Método `Times.parse('1d 5h 30m')` para parsing de strings
+- [ ] Método `Times.format(ms)` para formatear a string legible
+- [ ] Soporte para años bisiestos y meses exactos
+- [ ] Zona horaria y localización
 
 ---
 
@@ -845,7 +845,7 @@ const fiftyMinutes = Times.hours(1) - Times.minutes(10);
 ### Sistema de Categorías Dinámico
 
 ```typescript
-import { CommandCategories, CommandCategoryTag } from '@/utils/CommandCategories';
+import { CommandCategories, Category } from '@/utils/CommandCategories';
 
 // Generar select menu con todas las categorías
 const options = CommandCategories.map((cat) => ({
@@ -904,9 +904,9 @@ export class AdvancedCooldownPlugin extends BasePlugin {
 
 La carpeta `utils/` proporciona utilidades fundamentales para:
 
--   🏷️ **Organización**: Categorías para estructurar comandos
--   ⏱️ **Tiempo**: Conversiones legibles para timeouts y cooldowns
--   🔧 **Reutilización**: Código compartido en todo el proyecto
--   📈 **Escalabilidad**: Fácil agregar nuevas utilidades
+- 🏷️ **Organización**: Categorías para estructurar comandos
+- ⏱️ **Tiempo**: Conversiones legibles para timeouts y cooldowns
+- 🔧 **Reutilización**: Código compartido en todo el proyecto
+- 📈 **Escalabilidad**: Fácil agregar nuevas utilidades
 
 Estas utilidades mejoran la **legibilidad**, **mantenibilidad** y **consistencia** del código en todo el bot.

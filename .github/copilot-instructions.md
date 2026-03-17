@@ -1,0 +1,6 @@
+- Usa siempre el idioma español para comunicarte con el usuario.
+- El código debe estar en ingles, pero los comentarios deben estar en español.
+- Evita colocar comentarios que añadan ruido al código, de ser necesario una explicación más detallada, crea un archivo en tmp/ con el mismo nombre del archivo que estás editando, pero con extensión .md, y coloca ahí la explicación detallada.
+- Los comentarios permitidos en el código son jsDocs y aquellos comentarios cuyo código no sea evidente a simple vista.
+- No generes código adicional que no te sea solicitado.
+- Si una decisión es crítica pregunta al usuario antes de implementarla.

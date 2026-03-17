@@ -2,16 +2,16 @@
  * Ejemplo de test unitario para utilidad CommandCategories
  */
 
-import { CommandCategories, CommandCategoryTag } from '@/utils/CommandCategories';
+import { CommandCategories, Category } from '@/utils/CommandCategories';
 
 describe('Utilidad CommandCategories', () => {
-    describe('enum CommandCategoryTag', () => {
+    describe('enum Category', () => {
         it('debería tener la etiqueta Info', () => {
-            expect(CommandCategoryTag.Info).toBe('info');
+            expect(Category.Info).toBe('info');
         });
 
         it('debería tener la etiqueta Other', () => {
-            expect(CommandCategoryTag.Other).toBe('other');
+            expect(Category.Other).toBe('other');
         });
     });
 
@@ -21,9 +21,7 @@ describe('Utilidad CommandCategories', () => {
         });
 
         it('debería contener la categoría Info', () => {
-            const infoCategory = CommandCategories.find(
-                (cat) => cat.tag === CommandCategoryTag.Info,
-            );
+            const infoCategory = CommandCategories.find((cat) => cat.tag === Category.Info);
 
             expect(infoCategory).toBeDefined();
             expect(infoCategory?.name).toBe('Información');
@@ -31,9 +29,7 @@ describe('Utilidad CommandCategories', () => {
         });
 
         it('debería contener la categoría Other como respaldo', () => {
-            const otherCategory = CommandCategories.find(
-                (cat) => cat.tag === CommandCategoryTag.Other,
-            );
+            const otherCategory = CommandCategories.find((cat) => cat.tag === Category.Other);
 
             expect(otherCategory).toBeDefined();
             expect(otherCategory?.name).toBe('Otros');
@@ -67,7 +63,7 @@ describe('Utilidad CommandCategories', () => {
 
     describe('búsqueda de categoría', () => {
         it('debería poder encontrar una categoría por etiqueta', () => {
-            const category = CommandCategories.find((cat) => cat.tag === CommandCategoryTag.Info);
+            const category = CommandCategories.find((cat) => cat.tag === Category.Info);
 
             expect(category).toBeDefined();
         });

@@ -37,6 +37,7 @@ import { PermissionsPlugin } from '@/plugins/permissions.plugin';
  */
 // import { BanCommand } from '@/commands/ban.command';
 // import { KickCommand } from '@/commands/kick.command';
+import { CooldownPlugin } from '@/plugins/cooldown.plugin';
 //
 // PluginRegistry.register({
 //     plugin: new AuditLogPlugin(),
@@ -58,5 +59,11 @@ import { PermissionsPlugin } from '@/plugins/permissions.plugin';
 PluginRegistry.register({
     plugin: new PermissionsPlugin(),
     scope: PluginScope.DeepFolder,
+    folderPath: '',
+});
+
+PluginRegistry.register({
+    plugin: new CooldownPlugin(),
+    scope: PluginScope.Specified,
     folderPath: '',
 });

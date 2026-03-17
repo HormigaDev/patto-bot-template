@@ -8,25 +8,25 @@ Esta carpeta contiene las **definiciones** de comandos complejos que requieren a
 
 ### ✅ Usa Definición Separada Si:
 
--   Tu comando tiene **argumentos**
--   Necesitas **validaciones complejas**
--   El comando tiene **lógica extensa** (mejor separación)
--   Quieres **reutilizar** la estructura en tests
+- Tu comando tiene **argumentos**
+- Necesitas **validaciones complejas**
+- El comando tiene **lógica extensa** (mejor separación)
+- Quieres **reutilizar** la estructura en tests
 
 ### ❌ No Necesitas Definición Si:
 
--   El comando **no tiene argumentos** (ej: `/ping`, `/help`)
--   Es un comando **muy simple** con lógica mínima
--   Prefieres **rapidez** sobre estructura perfecta
+- El comando **no tiene argumentos** (ej: `/ping`, `/help`)
+- Es un comando **muy simple** con lógica mínima
+- Prefieres **rapidez** sobre estructura perfecta
 
 ## 🎯 Propósito
 
 Separar la **definición** (qué hace el comando, qué argumentos tiene) de la **implementación** (cómo lo hace). Esto permite:
 
--   ✅ Mejor organización del código
--   ✅ Reutilización de definiciones
--   ✅ Documentación clara de la interfaz del comando
--   ✅ Fácil mantenimiento y testing
+- ✅ Mejor organización del código
+- ✅ Reutilización de definiciones
+- ✅ Documentación clara de la interfaz del comando
+- ✅ Fácil mantenimiento y testing
 
 ## 🏗️ Estructura
 
@@ -45,9 +45,9 @@ Los archivos deben seguir el patrón:
 
 **Ejemplos:**
 
--   `ask.definition.ts` → Define el comando `ask`
--   `ban.definition.ts` → Define el comando `ban`
--   `user-info.definition.ts` → Define el comando `user-info`
+- `ask.definition.ts` → Define el comando `ask`
+- `ban.definition.ts` → Define el comando `ban`
+- `user-info.definition.ts` → Define el comando `user-info`
 
 ## 🔨 Anatomía de una Definición
 
@@ -86,22 +86,22 @@ Define los metadatos del comando.
 
 ### Propiedades
 
-| Propiedad     | Tipo                 | Requerido | Descripción                              |
-| ------------- | -------------------- | --------- | ---------------------------------------- |
-| `name`        | `string`             | ✅ Sí     | Nombre del comando (sin espacios)        |
-| `description` | `string`             | ✅ Sí     | Descripción que aparecerá en Discord     |
-| `category`    | `CommandCategoryTag` | ❌ No     | Categoría del comando (default: `Other`) |
-| `aliases`     | `string[]`           | ❌ No     | Aliases para comandos de texto           |
+| Propiedad     | Tipo       | Requerido | Descripción                              |
+| ------------- | ---------- | --------- | ---------------------------------------- |
+| `name`        | `string`   | ✅ Sí     | Nombre del comando (sin espacios)        |
+| `description` | `string`   | ✅ Sí     | Descripción que aparecerá en Discord     |
+| `category`    | `Category` | ❌ No     | Categoría del comando (default: `Other`) |
+| `aliases`     | `string[]` | ❌ No     | Aliases para comandos de texto           |
 
 ### Ejemplo
 
 ```typescript
-import { CommandCategoryTag } from '@/utils/CommandCategories';
+import { Category } from '@/utils/CommandCategories';
 
 @Command({
     name: 'ban',
     description: 'Banea a un usuario del servidor',
-    category: CommandCategoryTag.Moderation, // Opcional
+    category: Category.Moderation, // Opcional
     aliases: ['banear', 'expulsar']
 })
 ```
@@ -358,7 +358,7 @@ public argumento: string;   // ❌ Incorrecto
 
 ## 📚 Recursos Relacionados
 
--   `/src/commands/` - Implementaciones de comandos
--   `/src/core/decorators/` - Código de los decoradores
--   `/src/core/structures/BaseCommand.ts` - Clase base
--   `ARCHITECTURE.md` - Arquitectura completa
+- `/src/commands/` - Implementaciones de comandos
+- `/src/core/decorators/` - Código de los decoradores
+- `/src/core/structures/BaseCommand.ts` - Clase base
+- `ARCHITECTURE.md` - Arquitectura completa

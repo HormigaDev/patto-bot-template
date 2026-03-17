@@ -1,18 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { BaseCommand } from '@/core/structures/BaseCommand';
-import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command.decorator';
-import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
-import {
-    SUBCOMMAND_GROUP_METADATA_KEY,
-    ISubcommandOptions as ISubcommandGroupOptions,
-} from '@/core/decorators/subcommand-group.decorator';
-import {
-    SUBCOMMAND_METADATA_KEY,
-    ISubcommandOptions,
-} from '@/core/decorators/subcommand.decorator';
-import { CommandCategoryTag } from '@/utils/CommandCategories';
+import { ICommandOptions } from '@/core/decorators/command.decorator';
+import { ISubcommandOptions as ISubcommandGroupOptions } from '@/core/decorators/subcommand-group.decorator';
+import { ISubcommandOptions } from '@/core/decorators/subcommand.decorator';
+import { Category } from '@/utils/CommandCategories';
 import { getPrefix } from '@/core/resolvers/prefix.resolver';
+import { metadataHandler, MetadataStore } from '@/core/metadata';
 
 type CommandClass = new (...args: any[]) => BaseCommand;
 
@@ -36,7 +30,7 @@ type CommandMetadata =
 export interface CommandEntry {
     class: CommandClass;
     path: string; // Ruta relativa a /src/commands/
-    category: CommandCategoryTag;
+    category: Category;
     metadata: CommandMetadata;
     key: string; // Clave en kebab-case para recuperación
 }
@@ -49,17 +43,6 @@ export class CommandLoader {
     private useMemoryStorage = false;
 
     /**
-     * Normaliza un nombre de argumento: lowercase, sin acentos, solo alfanumérico
-     */
-    private normalizeArgumentName(name: string): string {
-        return name
-            .toLowerCase()
-            .normalize('NFD') // Descompone caracteres con acentos
-            .replace(/[\u0300-\u036f]/g, '') // Elimina marcas diacríticas (acentos)
-            .replace(/[^a-z0-9]/g, ''); // Solo alfanumérico
-    }
-
-    /**
      * Convierte un array de strings a formato kebab-case
      */
     private toKebabCase(...parts: string[]): string {
@@ -69,45 +52,23 @@ export class CommandLoader {
     /**
      * Obtiene la metadata de un comando (con jerarquía)
      * Prioridad: @SubcommandGroup > @Subcommand > @Command
+     * Usa el MetadataStore centralizado para mejor rendimiento
      */
     private getCommandMetadata(commandClass: CommandClass): CommandMetadata | null {
-        // 1. Intentar SubcommandGroup
-        const subcommandGroupMeta: ISubcommandGroupOptions | undefined = Reflect.getMetadata(
-            SUBCOMMAND_GROUP_METADATA_KEY,
-            commandClass,
-        );
-        if (subcommandGroupMeta) {
-            return { type: 'subcommand-group', meta: subcommandGroupMeta };
+        // Usar el metadataHandler centralizado
+        const result = metadataHandler.getCommandMetadataWithInheritance(commandClass);
+
+        if (!result) return null;
+
+        // Convertir al formato esperado por CommandLoader
+        switch (result.type) {
+            case 'subcommand-group':
+                return { type: 'subcommand-group', meta: result.meta as ISubcommandGroupOptions };
+            case 'subcommand':
+                return { type: 'subcommand', meta: result.meta };
+            case 'command':
+                return { type: 'command', meta: result.meta };
         }
-
-        // 2. Intentar Subcommand
-        const subcommandMeta: ISubcommandOptions | undefined = Reflect.getMetadata(
-            SUBCOMMAND_METADATA_KEY,
-            commandClass,
-        );
-        if (subcommandMeta) {
-            return { type: 'subcommand', meta: subcommandMeta };
-        }
-
-        // 3. Intentar Command
-        let commandMeta: ICommandOptions | undefined = Reflect.getMetadata(
-            COMMAND_METADATA_KEY,
-            commandClass,
-        );
-
-        // Si no encuentra metadata en la clase, buscar en el prototipo padre
-        if (!commandMeta && commandClass.prototype) {
-            const parentClass = Object.getPrototypeOf(commandClass);
-            if (parentClass && parentClass !== Function.prototype) {
-                commandMeta = Reflect.getMetadata(COMMAND_METADATA_KEY, parentClass);
-            }
-        }
-
-        if (commandMeta) {
-            return { type: 'command', meta: commandMeta };
-        }
-
-        return null;
     }
 
     /**
@@ -190,19 +151,6 @@ export class CommandLoader {
                     continue;
                 }
 
-                // Normalizar nombres de argumentos
-                const argsMeta: IArgumentOptions[] =
-                    Reflect.getMetadata(ARGUMENT_METADATA_KEY, commandClass) || [];
-
-                for (const arg of argsMeta) {
-                    arg.normalizedName = this.normalizeArgumentName(arg.name);
-                }
-
-                // Actualizar metadata con argumentos normalizados
-                if (argsMeta.length > 0) {
-                    Reflect.defineMetadata(ARGUMENT_METADATA_KEY, argsMeta, commandClass);
-                }
-
                 // Calcular ruta relativa a /src/commands/
                 const relativePath = path
                     .relative(commandsDir, filePath)
@@ -210,7 +158,7 @@ export class CommandLoader {
                     .replace(/\.command\.(ts|js)$/, '');
 
                 // Obtener categoría según el tipo de metadata
-                let category: CommandCategoryTag = CommandCategoryTag.Other;
+                let category: Category = Category.Other;
                 if (metadata.type === 'command' && metadata.meta.category) {
                     category = metadata.meta.category;
                 } else if (metadata.type === 'subcommand' && metadata.meta.category) {
@@ -273,6 +221,10 @@ export class CommandLoader {
         if (loadedCount === 0 && commandFiles.length > 0) {
             throw new Error('No se pudo cargar ningún comando. Revisa los errores anteriores.');
         }
+
+        // Marcar el MetadataStore como inicializado
+        MetadataStore.markInitialized();
+        console.log(`📊 MetadataStore: ${MetadataStore.getStats().commands} comandos registrados`);
     }
 
     /**
@@ -287,7 +239,7 @@ export class CommandLoader {
     /**
      * Obtiene comandos por categoría (incluye comandos base, subcomandos y grupos)
      */
-    getCommandsByCategory(category: CommandCategoryTag): CommandClass[] {
+    getCommandsByCategory(category: Category): CommandClass[] {
         const result: CommandClass[] = [];
         for (const [_key, entry] of this.commands) {
             if (entry.category === category) {

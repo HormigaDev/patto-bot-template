@@ -3,13 +3,13 @@ import { ChatInputCommandInteraction, Message, EmbedBuilder, ColorResolvable } f
 import { BaseCommand } from '@/core/structures/BaseCommand';
 import { BasePlugin } from '@/core/structures/BasePlugin';
 import { CommandContext } from '@/core/structures/CommandContext';
-import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
-import { PLUGIN_METADATA_KEY } from '@/core/decorators/plugin.decorator';
+import { IArgumentOptions } from '@/core/decorators/argument.decorator';
 import { ValidationError } from '@/error/ValidationError';
 import { ReplyError } from '@/error/ReplyError';
 import { ArgumentResolver } from '@/core/resolvers/argument.resolver';
 import { PluginRegistry } from '@/config/plugin.registry';
 import { CommandLoader } from '../loaders/command.loader';
+import { metadataHandler } from '@/core/metadata';
 
 type CommandClass = new (...args: any[]) => BaseCommand;
 
@@ -28,6 +28,7 @@ export class CommandHandler {
         source: Message | ChatInputCommandInteraction,
         TCommandClass: CommandClass,
         commandLoader: CommandLoader,
+        commandId: string,
         textArgs?: any[],
         commandPath?: string,
     ): Promise<void> {
@@ -35,6 +36,7 @@ export class CommandHandler {
         const ctx = new CommandContext(source);
 
         // Inyectar contexto en el comando
+        (command as any).id = commandId;
         (command as any).ctx = ctx;
         (command as any).user = ctx.user;
         (command as any).channel = ctx.channel;
@@ -42,8 +44,8 @@ export class CommandHandler {
         (command as any).client = ctx.client;
         (command as any).loader = commandLoader;
 
-        const argsMeta: IArgumentOptions[] =
-            Reflect.getMetadata(ARGUMENT_METADATA_KEY, TCommandClass) || [];
+        // Usar metadataHandler centralizado para obtener argumentos
+        const argsMeta: IArgumentOptions[] = metadataHandler.getArguments(TCommandClass);
 
         try {
             // Resolver todos los argumentos
@@ -102,9 +104,9 @@ export class CommandHandler {
     private getPluginsForCommand(TCommandClass: CommandClass, commandPath: string): BasePlugin[] {
         const plugins: BasePlugin[] = [];
 
-        // 1. Plugins de @UsePlugins (máxima prioridad)
-        const decoratorPlugins: BasePlugin[] =
-            Reflect.getMetadata(PLUGIN_METADATA_KEY, TCommandClass) || [];
+        // 1. Plugins de @UsePlugins (máxima prioridad) - usando metadataHandler
+        const decoratorPluginClasses = metadataHandler.getPlugins(TCommandClass);
+        const decoratorPlugins = decoratorPluginClasses.map((PluginClass) => new PluginClass());
         plugins.push(...decoratorPlugins);
 
         // 2. Plugins de scope (registry)

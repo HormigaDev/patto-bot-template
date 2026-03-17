@@ -22,14 +22,16 @@ export abstract class BasePlugin {
      * @example
      * # Modificar comando basado en metadata
      * ```typescript
+     * import { metadataHandler } from '@/core/metadata';
+     *
      * async onBeforeRegisterCommand(
      *     commandClass: new (...args: any[]) => BaseCommand,
      *     commandJson: any
      * ): Promise<any | false | null> {
-     *     // Acceder a metadata del comando
-     *     const metadata = Reflect.getMetadata(COMMAND_METADATA_KEY, commandClass);
+     *     // Acceder a metadata del comando usando el handler centralizado
+     *     const metadata = metadataHandler.getCommand(commandClass);
      *
-     *     commandJson.description = `[${metadata.category}] ${commandJson.description}`;
+     *     commandJson.description = `[${metadata?.category}] ${commandJson.description}`;
      *     return commandJson; // Usar versión modificada
      * }
      * ```

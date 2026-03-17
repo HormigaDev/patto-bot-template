@@ -41,7 +41,7 @@ Define los metadatos de un comando.
 interface ICommandOptions {
     name: string; // Nombre del comando (requerido)
     description: string; // Descripción del comando (requerido)
-    category?: CommandCategoryTag; // Categoría del comando (opcional, default: Other)
+    category?: Category; // Categoría del comando (opcional, default: Other)
     aliases?: string[]; // Aliases opcionales
 }
 ```
@@ -51,12 +51,12 @@ interface ICommandOptions {
 ```typescript
 import { Command } from '@/core/decorators/command.decorator';
 import { BaseCommand } from '@/core/structures/BaseCommand';
-import { CommandCategoryTag } from '@/utils/CommandCategories';
+import { Category } from '@/utils/CommandCategories';
 
 @Command({
     name: 'ping',
     description: 'Verifica la latencia del bot',
-    category: CommandCategoryTag.Info, // Opcional
+    category: Category.Info, // Opcional
     aliases: ['latencia', 'pong'],
 })
 export abstract class PingDefinition extends BaseCommand {
@@ -64,7 +64,7 @@ export abstract class PingDefinition extends BaseCommand {
 }
 ```
 
-> **Nota:** Si no especificas `category`, el loader asignará automáticamente `CommandCategoryTag.Other`.
+> **Nota:** Si no especificas `category`, el loader asignará automáticamente `Category.Other`.
 
 ### Metadata Key
 
@@ -134,7 +134,7 @@ interface ISubcommandOptions {
     parent: string; // Nombre del comando padre (requerido)
     name: string; // Nombre del subcomando (requerido)
     description: string; // Descripción del subcomando (requerido)
-    category?: CommandCategoryTag; // Categoría opcional (default: Other)
+    category?: Category; // Categoría opcional (default: Other)
 }
 ```
 
@@ -247,11 +247,11 @@ interface ISubcommandGroupOptions {
     name: string; // Nombre del grupo (requerido)
     subcommand: string; // Nombre del subcomando dentro del grupo (requerido)
     description: string; // Descripción del subcomando (requerido)
-    category?: CommandCategoryTag; // Categoría opcional (default: Other)
+    category?: Category; // Categoría opcional (default: Other)
 }
 ```
 
-> **Nota:** Si no especificas `category`, el loader asignará automáticamente `CommandCategoryTag.Other`.
+> **Nota:** Si no especificas `category`, el loader asignará automáticamente `Category.Other`.
 
 ### Uso
 

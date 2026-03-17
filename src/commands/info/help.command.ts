@@ -1,13 +1,14 @@
 import { RichMessage, Select, Button, ButtonVariant } from '@/core/components';
 import { HelpDefinition } from '@/definitions/help.definition';
-import { CommandCategories, CommandCategoryTag } from '@/utils/CommandCategories';
+import { CommandCategories, Category } from '@/utils/CommandCategories';
 import { Times } from '@/utils/Times';
-import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command.decorator';
-import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
+import { ICommandOptions } from '@/core/decorators/command.decorator';
+import { IArgumentOptions } from '@/core/decorators/argument.decorator';
 import { ISubcommandOptions } from '@/core/decorators/subcommand.decorator';
 import { ISubcommandOptions as ISubcommandGroupOptions } from '@/core/decorators/subcommand-group.decorator';
 import { EmbedBuilder } from 'discord.js';
 import type { CommandEntry } from '@/core/loaders/command.loader';
+import { metadataHandler } from '@/core/metadata';
 
 export class HelpCommand extends HelpDefinition {
     async run(): Promise<void> {
@@ -34,7 +35,7 @@ export class HelpCommand extends HelpDefinition {
             placeholder: 'Selecciona una categoría',
             options,
         }).onChange(async (interaction, values) => {
-            const selectedTag = values[0] as CommandCategoryTag;
+            const selectedTag = values[0] as Category;
             const commands = this.loader.getCommandsByCategory(selectedTag);
             const category = CommandCategories.find((cat) => cat.tag === selectedTag);
             const categoryName = `${category?.icon || '❓'} ${category?.name || 'Categoría'}`;
@@ -53,13 +54,10 @@ export class HelpCommand extends HelpDefinition {
                 return;
             }
 
-            // Obtener metadatos de los comandos
+            // Obtener metadatos de los comandos usando metadataHandler centralizado
             const commandsInfo = commands.map((cmdClass) => {
                 // Intentar obtener metadata de cualquier tipo de comando
-                const commandMeta = Reflect.getMetadata(
-                    COMMAND_METADATA_KEY,
-                    cmdClass,
-                ) as ICommandOptions;
+                const commandMeta = metadataHandler.getCommand(cmdClass);
 
                 if (commandMeta) {
                     return {
@@ -229,8 +227,8 @@ export class HelpCommand extends HelpDefinition {
             return;
         }
 
-        const argsMeta: IArgumentOptions[] =
-            Reflect.getMetadata(ARGUMENT_METADATA_KEY, commandClass) || [];
+        // Usar metadataHandler centralizado para obtener argumentos
+        const argsMeta: IArgumentOptions[] = metadataHandler.getArguments(commandClass);
 
         // Construir información del comando según su tipo
         let commandTitle = '';

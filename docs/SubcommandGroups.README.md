@@ -74,13 +74,13 @@ export class ServerConfigGetCommand extends BaseCommand {
 
 ### Propiedades del Decorador
 
-| Propiedad     | Tipo                 | Requerido | Descripción                                  |
-| ------------- | -------------------- | --------- | -------------------------------------------- |
-| `parent`      | `string`             | ✅        | Nombre del comando padre (nivel 1)           |
-| `name`        | `string`             | ✅        | Nombre del grupo (nivel 2)                   |
-| `subcommand`  | `string`             | ✅        | Nombre del subcomando (nivel 3)              |
-| `description` | `string`             | ✅        | Descripción visible en Discord               |
-| `category`    | `CommandCategoryTag` | ❌        | Categoría para organización (default: Other) |
+| Propiedad     | Tipo       | Requerido | Descripción                                  |
+| ------------- | ---------- | --------- | -------------------------------------------- |
+| `parent`      | `string`   | ✅        | Nombre del comando padre (nivel 1)           |
+| `name`        | `string`   | ✅        | Nombre del grupo (nivel 2)                   |
+| `subcommand`  | `string`   | ✅        | Nombre del subcomando (nivel 3)              |
+| `description` | `string`   | ✅        | Descripción visible en Discord               |
+| `category`    | `Category` | ❌        | Categoría para organización (default: Other) |
 
 ---
 

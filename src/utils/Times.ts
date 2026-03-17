@@ -29,3 +29,20 @@ export class Times {
         return this.year * t;
     }
 }
+
+export class CustomDate extends Date {
+    public toDiscordTimestamp(format: 't' | 'T' | 'd' | 'D' | 'f' | 'F' | 'R' = 'R'): string {
+        const unixTimestamp = Math.floor(this.getTime() / 1000);
+        return `<t:${unixTimestamp}:${format}>`;
+    }
+
+    public static fromDiscordTimestamp(discordTimestamp: string): CustomDate {
+        const regex = /<t:(\d+)(?::[tTdDfFR])?>/;
+        const match = discordTimestamp.match(regex);
+        if (!match) {
+            throw new Error('Invalid Discord timestamp format');
+        }
+        const unixTimestamp = parseInt(match[1], 10) * 1000;
+        return new CustomDate(unixTimestamp);
+    }
+}

@@ -10,23 +10,23 @@
  *
  * @example
  * ```typescript
- * import { CommandCategoryTag } from '@/utils/CommandCategories';
+ * import { Category } from '@/utils/CommandCategories';
  *
  * @Command({
  *     name: 'help',
  *     description: 'Muestra la ayuda',
- *     category: CommandCategoryTag.Info, // Opcional
+ *     category: Category.Info, // Opcional
  * })
  * ```
  *
  * ## Agregar nuevas categorías
  *
- * 1. Agrega el tag al enum `CommandCategoryTag`
+ * 1. Agrega el tag al enum `Category`
  * 2. Agrega la definición completa al array `CommandCategories`
  *
  * @example
  * ```typescript
- * export enum CommandCategoryTag {
+ * export enum Category {
  *     Info = 'info',
  *     Moderation = 'moderation', // Nueva categoría
  *     Other = 'other',
@@ -34,15 +34,19 @@
  * ```
  */
 
-export enum CommandCategoryTag {
+export enum Category {
     Info = 'info',
+    Utils = 'utils',
+    Moderation = 'moderation',
+    Settings = 'settings',
+    Economy = 'economy',
     Other = 'other',
 }
 
 export interface CommandCategory {
     name: string;
     description: string;
-    tag: CommandCategoryTag;
+    tag: Category;
     icon?: string; // Emoji o ícono representativo
 }
 
@@ -50,13 +54,13 @@ export const CommandCategories: CommandCategory[] = [
     {
         name: 'Información',
         description: 'Comandos relacionados con la información del bot y del servidor.',
-        tag: CommandCategoryTag.Info,
+        tag: Category.Info,
         icon: 'ℹ️',
     },
     {
         name: 'Otros',
         description: 'Comandos que no encajan en otras categorías.',
-        tag: CommandCategoryTag.Other,
+        tag: Category.Other,
         icon: '❓',
     },
 ];
