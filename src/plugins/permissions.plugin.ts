@@ -1,6 +1,6 @@
-import { REQUIRE_PERMISSIONS_METADATA_KEY } from '@/core/decorators/permission.decorator';
 import { BaseCommand } from '@/core/structures/BaseCommand';
 import { BasePlugin } from '@/core/structures/BasePlugin';
+import { metadataHandler } from '@/core/metadata';
 
 /**
  * @docs docs/plugins/permissions.plugin.README.md
@@ -10,11 +10,9 @@ export class PermissionsPlugin extends BasePlugin {
         commandClass: new (...args: any[]) => BaseCommand,
         commandJson: any,
     ): Promise<any | false | null | undefined> {
-        const requiredPermissions = Reflect.getMetadata(
-            REQUIRE_PERMISSIONS_METADATA_KEY,
-            commandClass,
-        ) as bigint[] | undefined;
-        if (requiredPermissions) {
+        // Usar metadataHandler centralizado
+        const requiredPermissions = metadataHandler.getRequiredPermissions(commandClass);
+        if (requiredPermissions && requiredPermissions.length > 0) {
             const modifiedJson = {
                 ...commandJson,
                 default_member_permissions: requiredPermissions
@@ -27,11 +25,11 @@ export class PermissionsPlugin extends BasePlugin {
     }
 
     async onBeforeExecute(command: BaseCommand): Promise<boolean> {
-        const requiredPermissions = Reflect.getMetadata(
-            REQUIRE_PERMISSIONS_METADATA_KEY,
-            command.constructor,
-        ) as bigint[] | undefined;
-        if (requiredPermissions) {
+        // Usar metadataHandler centralizado
+        const requiredPermissions = metadataHandler.getRequiredPermissions(
+            command.constructor as new (...args: any[]) => any,
+        );
+        if (requiredPermissions && requiredPermissions.length > 0) {
             const member = command.ctx.member;
 
             for (const permission of requiredPermissions) {

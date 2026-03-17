@@ -1,11 +1,11 @@
 import 'reflect-metadata';
-import { CommandCategoryTag } from '@/utils/CommandCategories';
+import { Category } from '@/utils/CommandCategories';
 
 export interface ISubcommandOptions {
     parent: string;
     name: string;
     description: string;
-    category?: CommandCategoryTag;
+    category?: Category;
 }
 
 export const SUBCOMMAND_METADATA_KEY = Symbol('subcommandMetadata');

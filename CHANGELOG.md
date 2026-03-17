@@ -5,6 +5,59 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-17
+
+### 🎯 Refactor de Metadata y Plugins
+
+Esta versión consolida el acceso a metadata en una capa centralizada y agrega control de cooldown como plugin global configurable.
+
+### ✨ Added
+
+- **Módulo de metadata centralizada** (`src/core/metadata/`)
+    - `MetadataStore` con caché por clase para evitar múltiples lecturas repetidas de `Reflect.getMetadata`
+    - `metadataHandler` como API tipada de alto nivel para comandos, argumentos, permisos, cooldown, plugins y servicios
+- **Nuevos decoradores de control**
+    - `@Cooldown` para definir cooldown por comando
+    - `@BotPermissions` para declarar permisos requeridos del bot
+- **Nuevo plugin** `CooldownPlugin`
+    - Bloquea ejecución durante cooldown y responde con timestamp de Discord para informar cuándo reintentar
+
+### 🔧 Changed
+
+- **Infraestructura de comandos y ejecución**
+    - `CommandHandler`, `CommandLoader`, `SlashCommandLoader`, `ArgumentResolver`, `TypeResolver`, `HelpCommand` y `PermissionsPlugin` migran a `metadataHandler` como fuente de metadata
+    - Se propaga explícitamente el `commandId` en eventos (`interactionCreate`, `messageCreate`) para identificar mejor la ejecución
+- **Base de comandos mejorada** (`BaseCommand`)
+    - Exposición de `id` del comando
+    - Helpers reutilizables para validaciones frecuentes (`validateUserIsNotAuthor`, `validateUserIsNotBot`) y `authorName`
+- **Categorías de comandos**
+    - Renombre de enum de `CommandCategoryTag` a `Category`
+    - Ampliación del enum con categorías adicionales (`Utils`, `Moderation`, `Settings`, `Economy`)
+- **Configuración de plugins**
+    - Registro de `CooldownPlugin` junto a `PermissionsPlugin`
+
+### 📚 Documentation
+
+- Nuevas guías del módulo de metadata y actualización de documentación en:
+    - `README.md`
+    - `src/core/decorators/README.md`
+    - `src/core/loaders/README.md`
+    - `src/definitions/README.md`
+    - `src/utils/README.md`
+    - `docs/Subcommands.README.md`
+    - `docs/SubcommandGroups.README.md`
+- Se añade soporte de seguridad documentado para `1.2.x` en `SECURITY.md`
+
+### 🧪 Testing
+
+- Actualizados tests unitarios relacionados con:
+    - `PermissionsPlugin` (flujo con metadata centralizada)
+    - `CommandCategories` (nuevo enum `Category`)
+
+### ⚠️ Notas
+
+- En `plugins.config.ts` el `CooldownPlugin` se registra con `PluginScope.Specified` sin lista de comandos explícita; revisar si el alcance deseado es global o por comandos concretos.
+
 ## [1.1.0] - 2025-11-12
 
 ### 🎉 Soporte para Subcomandos y Grupos de Subcomandos

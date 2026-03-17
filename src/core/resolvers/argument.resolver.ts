@@ -3,7 +3,6 @@ import { CommandContext } from '@/core/structures/CommandContext';
 import { IArgumentOptions } from '@/core/decorators/argument.decorator';
 import { ValidationError } from '@/error/ValidationError';
 import { TypeResolver } from './type.resolver';
-import { getPrefix } from './prefix.resolver';
 
 export class ArgumentResolver {
     /**
@@ -18,15 +17,12 @@ export class ArgumentResolver {
     ): Promise<Map<string, any>> {
         const resolvedArgs = new Map<string, any>();
 
-        // Para comandos de texto, obtener el contenido completo del mensaje
-        const fullMessageContent = source instanceof Message ? source.content.trim() : undefined;
-
         for (const meta of argsMeta) {
             let rawValue: any;
 
             // Manejar rawText (solo para text commands)
             if (meta.rawText && !ctx.isInteraction) {
-                rawValue = this.extractRawText(fullMessageContent!, argsMeta, meta, resolvedArgs);
+                rawValue = this.extractRawText(textArgs, meta);
             }
             // Obtener valor raw dependiendo del tipo de fuente (comportamiento normal)
             else if (ctx.isInteraction) {
@@ -46,14 +42,9 @@ export class ArgumentResolver {
                 continue;
             }
 
-            // Obtener tipo esperado
-            const designType = Reflect.getMetadata(
-                'design:type',
-                TCommandClass.prototype,
-                (meta as any).propertyName,
-            );
-
-            const typeName = designType.name.toLowerCase();
+            // Obtener tipo esperado (ya está almacenado en la metadata del argumento)
+            const designType = (meta as any).designType;
+            const typeName = designType?.name?.toLowerCase() || 'string';
             let value: any;
 
             // Tipos personalizados con parser
@@ -81,7 +72,7 @@ export class ArgumentResolver {
             // Resolver tipos de Discord para slash commands
             else if (
                 ctx.isInteraction &&
-                ['user', 'channel', 'role', 'member'].includes(typeName)
+                ['user', 'channel', 'textchannel', 'role', 'guildmember'].includes(typeName)
             ) {
                 value = await this.resolveDiscordTypeFromInteraction(
                     source as ChatInputCommandInteraction,
@@ -96,7 +87,7 @@ export class ArgumentResolver {
             // Resolver tipos de Discord para mensajes de texto
             else if (
                 !ctx.isInteraction &&
-                ['user', 'channel', 'role', 'member'].includes(typeName)
+                ['user', 'channel', 'textchannel', 'role', 'guildmember'].includes(typeName)
             ) {
                 const msg = source as Message;
                 value = await TypeResolver.resolveDiscordType(rawValue, typeName, msg, ctx);
@@ -111,9 +102,13 @@ export class ArgumentResolver {
             else {
                 // Verificar si es un tipo personalizado sin parser
                 const isPrimitive = ['string', 'number', 'boolean', 'array'].includes(typeName);
-                const isDiscordType = ['user', 'channel', 'role', 'member', 'guildmember'].includes(
-                    typeName,
-                );
+                const isDiscordType = [
+                    'user',
+                    'channel',
+                    'textchannel',
+                    'role',
+                    'guildmember',
+                ].includes(typeName);
 
                 if (!isPrimitive && !isDiscordType) {
                     throw new ValidationError(
@@ -174,9 +169,11 @@ export class ArgumentResolver {
         switch (typeName) {
             case 'user':
                 return option?.user;
-            case 'member':
+            case 'guildmember':
                 return option?.member;
             case 'channel':
+                return option?.channel;
+            case 'textchannel':
                 return option?.channel;
             case 'role':
                 return option?.role;
@@ -186,55 +183,28 @@ export class ArgumentResolver {
     }
 
     /**
-     * Extrae texto crudo desde el mensaje completo
-     * Salta el prefijo, nombre del comando y argumentos anteriores
+     * Extrae texto crudo desde los argumentos parseados
+     * Toma todos los elementos desde el índice del argumento rawText y los une
      */
     private static extractRawText(
-        fullMessageContent: string,
-        allArgsMeta: IArgumentOptions[],
+        textArgs: any[] | undefined,
         currentMeta: IArgumentOptions,
-        resolvedArgs: Map<string, any>,
     ): string {
-        // Remover prefijo (por defecto "!")
-        const PREFIX = getPrefix();
-        let content = fullMessageContent;
-
-        if (content.startsWith(PREFIX)) {
-            content = content.slice(PREFIX.length).trim();
+        if (!textArgs || textArgs.length === 0) {
+            return '';
         }
 
-        // Remover nombre del comando (primera palabra)
-        const parts = content.split(/\s+/);
-        parts.shift(); // Remover nombre del comando
+        // El índice del argumento rawText indica desde dónde empezar
+        const startIndex = currentMeta.index ?? 0;
 
-        // Si no hay argumentos previos con menor índice, retornar todo el texto restante
-        const previousArgs = allArgsMeta.filter(
-            (arg) =>
-                arg.index !== undefined &&
-                currentMeta.index !== undefined &&
-                arg.index < currentMeta.index &&
-                !arg.rawText,
-        );
+        // Tomar todos los elementos desde startIndex y unirlos con espacio
+        const remainingArgs = textArgs.slice(startIndex);
 
-        if (previousArgs.length === 0) {
-            return parts.join(' ');
+        if (remainingArgs.length === 0) {
+            return '';
         }
 
-        // Calcular cuántas palabras/tokens saltar basado en argumentos previos
-        let tokensToSkip = 0;
-
-        for (const prevArg of previousArgs.sort((a, b) => (a.index ?? 0) - (b.index ?? 0))) {
-            const resolvedValue = resolvedArgs.get(prevArg.propertyName as string);
-
-            if (resolvedValue !== undefined && resolvedValue !== null) {
-                // Si el argumento previo tenía comillas, solo cuenta como 1 token
-                // Si no, cuenta como 1 token también
-                tokensToSkip++;
-            }
-        }
-
-        // Saltar los tokens de argumentos previos y retornar el resto
-        const remainingParts = parts.slice(tokensToSkip);
-        return remainingParts.join(' ');
+        // Unir todos los argumentos restantes como texto
+        return remainingArgs.map((arg) => String(arg)).join(' ');
     }
 }

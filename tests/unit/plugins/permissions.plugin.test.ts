@@ -6,13 +6,24 @@ import { PermissionsPlugin } from '@/plugins/permissions.plugin';
 import { REQUIRE_PERMISSIONS_METADATA_KEY } from '@/core/decorators/permission.decorator';
 import { BaseCommand } from '@/core/structures/BaseCommand';
 import { Permissions } from '@/utils/Permissions';
+import { MetadataStore } from '@/core/metadata/metadata.store';
 import 'reflect-metadata';
+
+/**
+ * Helper para simular el decorador @RequirePermissions en tests
+ * Solo usa Reflect.defineMetadata ya que MetadataStore lee desde ahí
+ */
+function setRequiredPermissions(target: new (...args: any[]) => any, permissions: bigint[]): void {
+    Reflect.defineMetadata(REQUIRE_PERMISSIONS_METADATA_KEY, permissions, target);
+}
 
 describe('PermissionsPlugin', () => {
     let plugin: PermissionsPlugin;
 
     beforeEach(() => {
         plugin = new PermissionsPlugin();
+        // Limpiar MetadataStore entre tests
+        MetadataStore.clear();
     });
 
     describe('onBeforeRegisterCommand', () => {
@@ -36,12 +47,8 @@ describe('PermissionsPlugin', () => {
                 async run() {}
             }
 
-            // Simular decorador @RequirePermissions
-            Reflect.defineMetadata(
-                REQUIRE_PERMISSIONS_METADATA_KEY,
-                [Permissions.BanMembers],
-                TestCommand,
-            );
+            // Simular decorador @RequirePermissions usando helper
+            setRequiredPermissions(TestCommand, [Permissions.BanMembers]);
 
             const commandJson = {
                 name: 'ban',
@@ -64,7 +71,7 @@ describe('PermissionsPlugin', () => {
             const permissions = [Permissions.BanMembers, Permissions.KickMembers];
             const expected = (Permissions.BanMembers | Permissions.KickMembers).toString();
 
-            Reflect.defineMetadata(REQUIRE_PERMISSIONS_METADATA_KEY, permissions, TestCommand);
+            setRequiredPermissions(TestCommand, permissions);
 
             const commandJson = {
                 name: 'moderate',
@@ -82,11 +89,7 @@ describe('PermissionsPlugin', () => {
                 async run() {}
             }
 
-            Reflect.defineMetadata(
-                REQUIRE_PERMISSIONS_METADATA_KEY,
-                [Permissions.Administrator],
-                TestCommand,
-            );
+            setRequiredPermissions(TestCommand, [Permissions.Administrator]);
 
             const commandJson = {
                 name: 'config',
@@ -104,11 +107,7 @@ describe('PermissionsPlugin', () => {
                 async run() {}
             }
 
-            Reflect.defineMetadata(
-                REQUIRE_PERMISSIONS_METADATA_KEY,
-                [Permissions.ManageMessages],
-                TestCommand,
-            );
+            setRequiredPermissions(TestCommand, [Permissions.ManageMessages]);
 
             const commandJson = {
                 name: 'clear',
@@ -153,11 +152,7 @@ describe('PermissionsPlugin', () => {
                 async run() {}
             }
 
-            Reflect.defineMetadata(
-                REQUIRE_PERMISSIONS_METADATA_KEY,
-                [Permissions.ManageMessages],
-                TestCommand,
-            );
+            setRequiredPermissions(TestCommand, [Permissions.ManageMessages]);
 
             const mockCommand = {
                 constructor: TestCommand,
@@ -185,11 +180,7 @@ describe('PermissionsPlugin', () => {
                 async run() {}
             }
 
-            Reflect.defineMetadata(
-                REQUIRE_PERMISSIONS_METADATA_KEY,
-                [Permissions.BanMembers],
-                TestCommand,
-            );
+            setRequiredPermissions(TestCommand, [Permissions.BanMembers]);
 
             const mockEmbed = {
                 setTitle: jest.fn().mockReturnThis(),
@@ -226,7 +217,7 @@ describe('PermissionsPlugin', () => {
             }
 
             const permissions = [Permissions.BanMembers, Permissions.KickMembers];
-            Reflect.defineMetadata(REQUIRE_PERMISSIONS_METADATA_KEY, permissions, TestCommand);
+            setRequiredPermissions(TestCommand, permissions);
 
             const mockEmbed = {
                 setTitle: jest.fn().mockReturnThis(),
@@ -266,7 +257,7 @@ describe('PermissionsPlugin', () => {
                 Permissions.ManageRoles,
                 Permissions.Administrator,
             ];
-            Reflect.defineMetadata(REQUIRE_PERMISSIONS_METADATA_KEY, permissions, TestCommand);
+            setRequiredPermissions(TestCommand, permissions);
 
             const mockCommand = {
                 constructor: TestCommand,
@@ -298,7 +289,7 @@ describe('PermissionsPlugin', () => {
                 Permissions.KickMembers,
                 Permissions.ManageMessages,
             ];
-            Reflect.defineMetadata(REQUIRE_PERMISSIONS_METADATA_KEY, permissions, TestCommand);
+            setRequiredPermissions(TestCommand, permissions);
 
             const mockEmbed = {
                 setTitle: jest.fn().mockReturnThis(),
@@ -338,7 +329,7 @@ describe('PermissionsPlugin', () => {
 
             // Simular el comportamiento del decorador
             const permissions = [Permissions.Administrator];
-            Reflect.defineMetadata(REQUIRE_PERMISSIONS_METADATA_KEY, permissions, DecoratedCommand);
+            setRequiredPermissions(DecoratedCommand, permissions);
 
             const commandJson = {
                 name: 'admin',

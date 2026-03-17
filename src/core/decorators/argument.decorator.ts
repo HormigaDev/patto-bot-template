@@ -23,6 +23,17 @@ export interface IArgumentOptions {
 
 export const ARGUMENT_METADATA_KEY = Symbol('commandArguments');
 
+/**
+ * Normaliza un nombre de argumento: lowercase, sin acentos, solo alfanumérico
+ */
+function normalizeArgumentName(name: string): string {
+    return name
+        .toLowerCase()
+        .normalize('NFD') // Descompone caracteres con acentos
+        .replace(/[\u0300-\u036f]/g, '') // Elimina marcas diacríticas (acentos)
+        .replace(/[^a-z0-9]/g, ''); // Solo alfanumérico
+}
+
 export function Arg(options: IArgumentOptions): PropertyDecorator {
     return (target: Object, propertyKey: string | symbol) => {
         if (options.index !== undefined) {
@@ -33,14 +44,17 @@ export function Arg(options: IArgumentOptions): PropertyDecorator {
         const designType = Reflect.getMetadata('design:type', target, propertyKey);
 
         const args = Reflect.getOwnMetadata(ARGUMENT_METADATA_KEY, target.constructor) || [];
-        options.index = args.length;
+        const index = args.length;
 
-        args.push({
+        const argEntry: IArgumentOptions = {
             ...options,
+            index,
+            normalizedName: normalizeArgumentName(options.name),
             propertyName: propertyKey,
             designType,
-        });
+        };
 
+        args.push(argEntry);
         args.sort((a: IArgumentOptions, b: IArgumentOptions) => a.index! - b.index!);
 
         Reflect.defineMetadata(ARGUMENT_METADATA_KEY, args, target.constructor);

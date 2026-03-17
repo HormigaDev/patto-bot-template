@@ -1,15 +1,25 @@
 import { CommandContext } from './CommandContext';
-import { User, TextChannel, EmbedBuilder, ColorResolvable, Guild, Client } from 'discord.js';
+import {
+    User,
+    TextChannel,
+    EmbedBuilder,
+    ColorResolvable,
+    Guild,
+    Client,
+    GuildMember,
+} from 'discord.js';
 import { InteractionReplyOptions, MessageReplyOptions } from 'discord.js';
 import { CommandLoader } from '../loaders/command.loader';
+import { ReplyError } from '@/error/ReplyError';
 
 type ReplyOptions = InteractionReplyOptions & MessageReplyOptions;
 
 export abstract class BaseCommand {
+    public readonly id!: string;
     public readonly ctx!: CommandContext;
     public readonly user!: User;
     public readonly channel!: TextChannel | null;
-    public readonly guild!: Guild | null;
+    public readonly guild!: Guild;
     public readonly client!: Client;
     public readonly loader!: CommandLoader;
 
@@ -54,5 +64,21 @@ export abstract class BaseCommand {
 
     public async onAfterExecute(operation: (command: any) => Promise<void>): Promise<void> {
         await operation(this);
+    }
+
+    protected validateUserIsNotAuthor(target: GuildMember | User): void {
+        if (target.id === this.user.id) {
+            throw new ReplyError('No puedes ejecutar este comando sobre ti mismo.');
+        }
+    }
+
+    protected validateUserIsNotBot(target: GuildMember): void {
+        if (target.id === this.client.user?.id) {
+            throw new ReplyError('¿Por qué debería hacer eso conmigo mismo?');
+        }
+    }
+
+    protected get authorName(): string {
+        return this.user.globalName || this.user.username;
     }
 }

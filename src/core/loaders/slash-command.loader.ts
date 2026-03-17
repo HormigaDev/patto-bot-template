@@ -1,11 +1,37 @@
-import { Client, REST, Routes, ApplicationCommandOptionType } from 'discord.js';
+import {
+    Client,
+    REST,
+    Routes,
+    SlashCommandBuilder,
+    SlashCommandSubcommandBuilder,
+    SlashCommandSubcommandGroupBuilder,
+    SlashCommandStringOption,
+    SlashCommandIntegerOption,
+    SlashCommandNumberOption,
+    SlashCommandBooleanOption,
+    SlashCommandUserOption,
+    SlashCommandChannelOption,
+    SlashCommandRoleOption,
+    SlashCommandAttachmentOption,
+    SlashCommandMentionableOption,
+} from 'discord.js';
 import { CommandLoader } from './command.loader';
-import { COMMAND_METADATA_KEY, ICommandOptions } from '@/core/decorators/command.decorator';
-import { ARGUMENT_METADATA_KEY, IArgumentOptions } from '@/core/decorators/argument.decorator';
-import { PLUGIN_METADATA_KEY } from '@/core/decorators/plugin.decorator';
+import { ICommandOptions } from '@/core/decorators/command.decorator';
+import { IArgumentOptions } from '@/core/decorators/argument.decorator';
 import { PluginRegistry } from '@/config/plugin.registry';
-import { BasePlugin } from '@/core/structures/BasePlugin';
 import { Env } from '@/utils/Env';
+import { metadataHandler } from '@/core/metadata';
+
+type SlashCommandOptionBuilder =
+    | SlashCommandStringOption
+    | SlashCommandIntegerOption
+    | SlashCommandNumberOption
+    | SlashCommandBooleanOption
+    | SlashCommandUserOption
+    | SlashCommandChannelOption
+    | SlashCommandRoleOption
+    | SlashCommandAttachmentOption
+    | SlashCommandMentionableOption;
 
 export class SlashCommandLoader {
     constructor(
@@ -14,118 +40,235 @@ export class SlashCommandLoader {
     ) {}
 
     /**
-     * Crea las opciones de un comando a partir de sus argumentos
+     * Agrega opciones a un SlashCommandBuilder o SlashCommandSubcommandBuilder
      */
-    private buildCommandOptions(commandClass: new (...args: any[]) => any): any[] {
-        const argsMeta: IArgumentOptions[] =
-            Reflect.getMetadata(ARGUMENT_METADATA_KEY, commandClass) || [];
+    private addOptionsToBuilder(
+        builder: SlashCommandBuilder | SlashCommandSubcommandBuilder,
+        commandClass: new (...args: any[]) => any,
+    ): void {
+        // Usar metadataHandler centralizado
+        const argsMeta: IArgumentOptions[] = metadataHandler.getArguments(commandClass);
 
-        return argsMeta.map((arg) => {
-            const propType = Reflect.getMetadata(
-                'design:type',
-                commandClass.prototype,
-                (arg as any).propertyName,
-            );
-
-            const optionType = this.getApplicationCommandOptionType(propType.name);
-
-            const option: any = {
-                name: arg.name,
-                description: arg.description,
-                type: optionType,
-                required: arg.required || false,
-            };
-
-            // Agregar choices si existen opciones
-            if (arg.options && arg.options.length > 0) {
-                option.choices = arg.options.map((opt) => ({
-                    name: opt.label,
-                    value: opt.value,
-                }));
-            }
-
-            return option;
-        });
+        for (const arg of argsMeta) {
+            // El designType ya está almacenado en la metadata del argumento
+            const typeName = (arg as any).designType?.name || 'String';
+            this.addOptionByType(builder, arg, typeName);
+        }
     }
 
     /**
-     * Agrega subcomandos simples a un comando
+     * Agrega una opción específica según su tipo
      */
-    private addSubcommandsToCommand(commandJson: any, parentName: string): void {
+    private addOptionByType(
+        builder: SlashCommandBuilder | SlashCommandSubcommandBuilder,
+        arg: IArgumentOptions,
+        typeName: string,
+    ): void {
+        const configureBaseOption = <T extends SlashCommandOptionBuilder>(option: T): T => {
+            option.setName(arg.name).setDescription(arg.description);
+            if ('setRequired' in option) {
+                (option as any).setRequired(arg.required || false);
+            }
+            return option;
+        };
+
+        switch (typeName) {
+            case 'String':
+                builder.addStringOption((option) => {
+                    configureBaseOption(option);
+                    if (arg.options && arg.options.length > 0) {
+                        option.addChoices(
+                            ...arg.options.map((opt) => ({
+                                name: opt.label,
+                                value: String(opt.value),
+                            })),
+                        );
+                    }
+                    return option;
+                });
+                break;
+
+            case 'Number':
+                builder.addNumberOption((option) => {
+                    configureBaseOption(option);
+                    if (arg.options && arg.options.length > 0) {
+                        option.addChoices(
+                            ...arg.options.map((opt) => ({
+                                name: opt.label,
+                                value: Number(opt.value),
+                            })),
+                        );
+                    }
+                    return option;
+                });
+                break;
+
+            case 'BigInt':
+            case 'Integer':
+                builder.addIntegerOption((option) => {
+                    configureBaseOption(option);
+                    if (arg.options && arg.options.length > 0) {
+                        option.addChoices(
+                            ...arg.options.map((opt) => ({
+                                name: opt.label,
+                                value: Number(opt.value),
+                            })),
+                        );
+                    }
+                    return option;
+                });
+                break;
+
+            case 'Boolean':
+                builder.addBooleanOption((option) => {
+                    configureBaseOption(option);
+                    return option;
+                });
+                break;
+
+            case 'User':
+                builder.addUserOption((option) => {
+                    configureBaseOption(option);
+                    return option;
+                });
+                break;
+
+            case 'Channel':
+                builder.addChannelOption((option) => {
+                    configureBaseOption(option);
+                    return option;
+                });
+                break;
+
+            case 'Role':
+                builder.addRoleOption((option) => {
+                    configureBaseOption(option);
+                    return option;
+                });
+                break;
+
+            case 'Attachment':
+                builder.addAttachmentOption((option) => {
+                    configureBaseOption(option);
+                    return option;
+                });
+                break;
+
+            case 'Mentionable':
+                builder.addMentionableOption((option) => {
+                    configureBaseOption(option);
+                    return option;
+                });
+                break;
+
+            default:
+                // Por defecto, usar String
+                builder.addStringOption((option) => {
+                    configureBaseOption(option);
+                    if (arg.options && arg.options.length > 0) {
+                        option.addChoices(
+                            ...arg.options.map((opt) => ({
+                                name: opt.label,
+                                value: String(opt.value),
+                            })),
+                        );
+                    }
+                    return option;
+                });
+                break;
+        }
+    }
+
+    /**
+     * Crea un subcomando usando SlashCommandSubcommandBuilder
+     */
+    private createSubcommand(
+        name: string,
+        description: string,
+        commandClass: new (...args: any[]) => any,
+    ): SlashCommandSubcommandBuilder {
+        const subcommand = new SlashCommandSubcommandBuilder()
+            .setName(name)
+            .setDescription(description);
+
+        this.addOptionsToBuilder(subcommand, commandClass);
+        return subcommand;
+    }
+
+    /**
+     * Agrega subcomandos simples a un SlashCommandBuilder
+     */
+    private addSubcommandsToBuilder(builder: SlashCommandBuilder, parentName: string): void {
         const subcommands = this.commandLoader.getSubcommands(parentName);
         for (const [_key, subEntry] of subcommands) {
             if (subEntry.metadata.type === 'subcommand') {
-                const subOptions = this.buildCommandOptions(subEntry.class);
-                commandJson.options.push({
-                    type: ApplicationCommandOptionType.Subcommand,
-                    name: subEntry.metadata.meta.name,
-                    description: subEntry.metadata.meta.description,
-                    options: subOptions,
-                });
+                const subcommand = this.createSubcommand(
+                    subEntry.metadata.meta.name,
+                    subEntry.metadata.meta.description,
+                    subEntry.class,
+                );
+                builder.addSubcommand(subcommand);
             }
         }
     }
 
     /**
-     * Agrega grupos de subcomandos a un comando
+     * Agrega grupos de subcomandos a un SlashCommandBuilder
      */
-    private addSubcommandGroupsToCommand(commandJson: any, parentName: string): void {
+    private addSubcommandGroupsToBuilder(builder: SlashCommandBuilder, parentName: string): void {
         const subcommandGroups = this.commandLoader.getSubcommandGroups(parentName);
         for (const [groupName, groupCommands] of subcommandGroups) {
-            const groupOption: any = {
-                type: ApplicationCommandOptionType.SubcommandGroup,
-                name: groupName,
-                description: `Comandos de ${groupName}`,
-                options: [],
-            };
+            const groupBuilder = new SlashCommandSubcommandGroupBuilder()
+                .setName(groupName)
+                .setDescription(`Comandos de ${groupName}`);
 
             for (const [_key, groupEntry] of groupCommands) {
                 if (groupEntry.metadata.type === 'subcommand-group') {
-                    const subOptions = this.buildCommandOptions(groupEntry.class);
-                    groupOption.options.push({
-                        type: ApplicationCommandOptionType.Subcommand,
-                        name: groupEntry.metadata.meta.subcommand,
-                        description: groupEntry.metadata.meta.description,
-                        options: subOptions,
-                    });
+                    const subcommand = this.createSubcommand(
+                        groupEntry.metadata.meta.subcommand,
+                        groupEntry.metadata.meta.description,
+                        groupEntry.class,
+                    );
+                    groupBuilder.addSubcommand(subcommand);
                 }
             }
 
-            commandJson.options.push(groupOption);
+            builder.addSubcommandGroup(groupBuilder);
         }
     }
 
     /**
-     * Construye la estructura de un comando (real o fantasma)
+     * Construye la estructura de un comando (real o fantasma) usando SlashCommandBuilder
      */
     private buildCommandStructure(
         commandName: string,
         commandClass: (new (...args: any[]) => any) | null,
         commandPath: string,
     ): { json: any; class: (new (...args: any[]) => any) | null; path: string; isGhost: boolean } {
+        // Usar metadataHandler centralizado
         const description = commandClass
-            ? Reflect.getMetadata(COMMAND_METADATA_KEY, commandClass).description
+            ? metadataHandler.getCommand(commandClass)?.description || `Comandos de ${commandName}`
             : `Comandos de ${commandName}`;
 
-        const commandJson: any = {
-            name: commandName,
-            description,
-            options: [],
-        };
+        const builder = new SlashCommandBuilder().setName(commandName).setDescription(description);
 
-        // Agregar subcomandos simples
-        this.addSubcommandsToCommand(commandJson, commandName);
+        // Verificar si tiene subcomandos o grupos
+        const hasSubcommands = this.commandLoader.getSubcommands(commandName).size > 0;
+        const hasSubcommandGroups = this.commandLoader.getSubcommandGroups(commandName).size > 0;
 
-        // Agregar grupos de subcomandos
-        this.addSubcommandGroupsToCommand(commandJson, commandName);
+        if (hasSubcommands || hasSubcommandGroups) {
+            // Agregar subcomandos simples
+            this.addSubcommandsToBuilder(builder, commandName);
 
-        // Si es un comando real sin subcomandos, agregar opciones directamente
-        if (commandClass && commandJson.options.length === 0) {
-            commandJson.options = this.buildCommandOptions(commandClass);
+            // Agregar grupos de subcomandos
+            this.addSubcommandGroupsToBuilder(builder, commandName);
+        } else if (commandClass) {
+            // Si es un comando real sin subcomandos, agregar opciones directamente
+            this.addOptionsToBuilder(builder, commandClass);
         }
 
         return {
-            json: commandJson,
+            json: builder.toJSON(),
             class: commandClass,
             path: commandPath,
             isGhost: !commandClass,
@@ -158,10 +301,9 @@ export class SlashCommandLoader {
 
         // Paso 2: Procesar comandos base existentes
         for (const [commandName, commandClass] of this.commandLoader.getAllCommands()) {
-            const cmdMeta: ICommandOptions = Reflect.getMetadata(
-                COMMAND_METADATA_KEY,
-                commandClass,
-            );
+            // Usar metadataHandler centralizado
+            const cmdMeta = metadataHandler.getCommand(commandClass);
+            if (!cmdMeta) continue;
 
             parentNames.delete(cmdMeta.name.toLowerCase()); // Ya existe, no es fantasma
 
@@ -198,7 +340,7 @@ export class SlashCommandLoader {
                 continue;
             }
 
-            const plugins = this.getPluginsForCommand(commandClass, commandPath);
+            const plugins = PluginRegistry.getPluginsForCommand(commandClass, commandPath);
             let shouldRegister = true;
 
             for (const plugin of plugins) {
@@ -236,7 +378,10 @@ export class SlashCommandLoader {
                 const commandData = commandStructure.get(registeredCommand.name);
                 if (!commandData || commandData.isGhost) continue;
 
-                const plugins = this.getPluginsForCommand(commandData.class, commandData.path);
+                const plugins = PluginRegistry.getPluginsForCommand(
+                    commandData.class,
+                    commandData.path,
+                );
 
                 for (const plugin of plugins) {
                     if (plugin.onAfterRegisterCommand) {
@@ -246,52 +391,6 @@ export class SlashCommandLoader {
             }
         } catch (error) {
             console.error('❌ Error al registrar comandos Slash:', error);
-        }
-    }
-
-    /**
-     * Obtiene todos los plugins aplicables a un comando
-     * Prioridad: @UsePlugins primero, luego plugins de scope
-     */
-    private getPluginsForCommand(
-        commandClass: new (...args: any[]) => any,
-        commandPath: string,
-    ): BasePlugin[] {
-        const plugins: BasePlugin[] = [];
-
-        // 1. Plugins de @UsePlugins (máxima prioridad)
-        const decoratorPlugins: BasePlugin[] =
-            Reflect.getMetadata(PLUGIN_METADATA_KEY, commandClass) || [];
-        plugins.push(...decoratorPlugins);
-
-        // 2. Plugins de scope (registry)
-        const scopePlugins = PluginRegistry.getPluginsForCommand(commandClass, commandPath);
-        plugins.push(...scopePlugins);
-
-        return plugins;
-    }
-
-    /**
-     * Mapea tipos de TypeScript a tipos de opciones de Discord
-     */
-    private getApplicationCommandOptionType(typeName: string): ApplicationCommandOptionType {
-        switch (typeName) {
-            case 'String':
-                return ApplicationCommandOptionType.String;
-            case 'Number':
-                return ApplicationCommandOptionType.Number;
-            case 'Boolean':
-                return ApplicationCommandOptionType.Boolean;
-            case 'User':
-                return ApplicationCommandOptionType.User;
-            case 'Channel':
-                return ApplicationCommandOptionType.Channel;
-            case 'Role':
-                return ApplicationCommandOptionType.Role;
-            case 'Attachment':
-                return ApplicationCommandOptionType.Attachment;
-            default:
-                return ApplicationCommandOptionType.String;
         }
     }
 }

@@ -8,6 +8,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=for-the-badge&logo=typescript)
 ![Jest](https://img.shields.io/badge/Jest-29-C21325?style=for-the-badge&logo=jest)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+[![Donar con PayPal](https://img.shields.io/badge/Donar-PayPal-005EA6?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/donate/?hosted_button_id=UCL7EE2G44KPQ)
 
 **Template moderno y escalable para bots de Discord con TypeScript**
 
@@ -273,12 +274,12 @@ Crea `src/definition/ping.definition.ts`:
 ```typescript
 import { Command } from '@/core/decorators/command.decorator';
 import { BaseCommand } from '@/core/structures/BaseCommand';
-import { CommandCategoryTag } from '@/utils/CommandCategories';
+import { Category } from '@/utils/CommandCategories';
 
 @Command({
     name: 'ping',
     description: 'Verifica la latencia del bot',
-    category: CommandCategoryTag.Info, // Opcional (default: Other)
+    category: Category.Info, // Opcional (default: Other)
     aliases: ['latencia', 'pong'],
 })
 export abstract class PingDefinition extends BaseCommand {
@@ -777,7 +778,7 @@ intents = [
 
 ### Error: "Missing Access"
 
-**Causa:** Falta el scope `applications.commands`  
+**Causa:** Falta el scope `applications.commands`
 **Solución:** Re-invita el bot con el scope correcto
 
 ### Error: "Unknown interaction"
@@ -890,9 +891,17 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE`](./.licences
 
 ---
 
+## 💝 Apoyar el Proyecto
+
+Si este template te ha sido útil y quieres apoyar su desarrollo continuo, considera hacer una donación. Cada contribución, sin importar el monto, ayuda a mantener el proyecto activo y motivar la creación de nuevas características.
+
 <div align="center">
 
-**⭐ Si te gusta este proyecto, ¡Ayuda a Patto con una estrella en GitHub! ⭐**
+[![Donar con PayPal](https://img.shields.io/badge/Donar-PayPal-005EA6?style=flat-square&logo=paypal&logoColor=white)](https://www.paypal.com/donate/?hosted_button_id=UCL7EE2G44KPQ)
+
+**⭐ También puedes apoyar con una estrella en GitHub ⭐**
+
+---
 
 [Reportar Bug](https://github.com/HormigaDev/patto-bot-template/issues) • [Solicitar Feature](https://github.com/HormigaDev/patto-bot-template/issues)
 

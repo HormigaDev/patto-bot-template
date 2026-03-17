@@ -47,6 +47,7 @@ export function registerMessageCreateEvent(
                 message,
                 commandEntry.class,
                 commandLoader,
+                commandName,
                 args,
                 commandEntry.path,
             );
@@ -82,6 +83,7 @@ async function tryExecuteSubcommand(
             message,
             entry.class,
             commandLoader,
+            key,
             newArgs,
             entry.path,
         );

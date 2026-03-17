@@ -29,11 +29,11 @@ export class CommandContext {
         return this.source.client;
     }
 
-    private get sourceCommand(): CommandInteraction {
+    public get sourceCommand(): CommandInteraction {
         return this.source as CommandInteraction;
     }
 
-    private get sourceMessage(): Message {
+    public get sourceMessage(): Message {
         return this.source as Message;
     }
 

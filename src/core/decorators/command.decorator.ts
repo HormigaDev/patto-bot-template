@@ -1,10 +1,10 @@
 import 'reflect-metadata';
-import { CommandCategoryTag } from '@/utils/CommandCategories';
+import { Category } from '@/utils/CommandCategories';
 
 export interface ICommandOptions {
     name: string;
     description: string;
-    category?: CommandCategoryTag; // Categoría opcional del comando (default: Other)
+    category?: Category; // Categoría opcional del comando (default: Other)
     aliases?: string[];
 }
 

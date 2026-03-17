@@ -106,6 +106,44 @@ export class TypeResolver {
                 return null;
             }
 
+            case 'guildmember': {
+                // Formato: <@123456789> o <@!123456789>
+                const memberMentionMatch = value.match(/^<@!?(\d+)>$/);
+                if (memberMentionMatch) {
+                    const memberId = memberMentionMatch[1];
+                    return (
+                        msg.mentions.members?.get(memberId) ||
+                        (await ctx.guild.members.fetch(memberId).catch(() => null))
+                    );
+                }
+
+                // ID directo
+                if (/^\d+$/.test(value)) {
+                    return await ctx.guild.members.fetch(value).catch(() => null);
+                }
+
+                return null;
+            }
+
+            case 'textchannel': {
+                // Formato: <#123456789>
+                const channelMentionMatch = value.match(/^<#(\d+)>$/);
+                if (channelMentionMatch) {
+                    const channelId = channelMentionMatch[1];
+                    return (
+                        msg.mentions.channels.get(channelId) ||
+                        (await ctx.client.channels.fetch(channelId).catch(() => null))
+                    );
+                }
+
+                // ID directo
+                if (/^\d+$/.test(value)) {
+                    return await ctx.client.channels.fetch(value).catch(() => null);
+                }
+
+                return null;
+            }
+
             case 'role': {
                 // Formato: <@&123456789>
                 const roleMentionMatch = value.match(/^<@&(\d+)>$/);

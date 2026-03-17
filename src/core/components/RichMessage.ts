@@ -42,7 +42,7 @@ export interface RichMessageOptions {
  * });
  *
  * await richMsg.send(channel);
- * // Después de 2 minutos: se eliminan los componentes del mensaje y del registry
+ * * Después de 2 minutos: se eliminan los componentes del mensaje y del registry
  * ```
  */
 export class RichMessage {

@@ -19,10 +19,6 @@ type PluginClass = new (...args: any[]) => BasePlugin;
  */
 export function UsePlugins(...plugins: PluginClass[]): ClassDecorator {
     return (target: Function) => {
-        // Instanciar los plugins
-        const pluginInstances = plugins.map((PluginClass) => new PluginClass());
-
-        // Almacenar en metadata
-        Reflect.defineMetadata(PLUGIN_METADATA_KEY, pluginInstances, target);
+        Reflect.defineMetadata(PLUGIN_METADATA_KEY, plugins, target);
     };
 }

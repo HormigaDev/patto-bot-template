@@ -1,4 +1,4 @@
-export const REQUIRE_PERMISSIONS_METADATA_KEY = Symbol('REQUIRE_PERMISSIONS_METADATA_KEY');
+export const REQUIRE_PERMISSIONS_METADATA_KEY = Symbol('permissionsMetadata');
 
 /**
  * Decorador aplicado a una CLASE para requerir permisos específicos

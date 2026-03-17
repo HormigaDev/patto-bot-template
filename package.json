@@ -1,10 +1,11 @@
 {
     "name": "patto-bot-template",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Template profesional de Discord Bot con TypeScript, decoradores, sistema de plugins, subcomandos y grupos, componentes interactivos (botones, selects, modals), validación de entorno, testing completo y arquitectura modular. Listo para producción.",
     "main": "dist/src/index.js",
     "scripts": {
-        "dev": "ts-node-dev -r tsconfig-paths/register --project tsconfig.json --respawn --transpile-only src/index.ts",
+        "dev": "ts-node -r tsconfig-paths/register src/index.ts",
+        "dev:hot": "ts-node-dev -r tsconfig-paths/register --project tsconfig.json --respawn --transpile-only src/index.ts",
         "build": "tsc && tsc-alias",
         "start": "node -r tsconfig-paths/register dist/src/index.js",
         "test": "jest",
