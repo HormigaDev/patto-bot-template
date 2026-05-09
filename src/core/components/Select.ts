@@ -175,6 +175,10 @@ export class Select<P = unknown> {
      * @param defaultTtl TTL a usar si la instancia no definió uno propio
      */
     public async commit(defaultTtl?: number): Promise<void> {
+        if (this.payload === undefined) {
+            await ComponentRegistry.deletePayload(this.customId);
+            return;
+        }
         await ComponentRegistry.setPayload(this.customId, this.payload, this.ttl ?? defaultTtl);
     }
 

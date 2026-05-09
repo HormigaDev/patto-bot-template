@@ -96,11 +96,10 @@ export function registerInteractionCreateEvent(
                         return;
                     }
 
-                    // Notificar al owner (ej. RichMessage) para que pueda
-                    // resetear su timeout sin envolver callbacks por instancia.
+                    // Notificar al owner (ej. RichMessage) sin bloquear el ack de la interacción.
                     const owner = ComponentRegistry.getOwner(parsed.raw);
                     if (owner) {
-                        await owner.onComponentInteraction(parsed.raw);
+                        void owner.onComponentInteraction(parsed.raw);
                     }
 
                     // Recuperar payload. `undefined` indica que no existe
