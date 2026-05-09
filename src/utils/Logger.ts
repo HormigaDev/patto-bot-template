@@ -171,7 +171,7 @@ export class Logger {
 
     private format(level: LogLevel, message: string): string {
         const timestamp = new Date().toISOString();
-        const levelName = LEVEL_NAMES[level].padEnd(5, '');
+        const levelName = LEVEL_NAMES[level].padEnd(5, ' ');
         const sid = Logger.shardId;
 
         if (!this.useColors) {
