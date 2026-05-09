@@ -4,10 +4,10 @@
 
 Esta carpeta contiene **plugins** que extienden la funcionalidad de los comandos sin modificar su código. Los plugins se ejecutan en diferentes momentos del ciclo de vida de los comandos:
 
--   🟦 **`onBeforeRegisterCommand`**: Antes de registrar el comando en Discord API
--   🟦 **`onAfterRegisterCommand`**: Después de registrar el comando en Discord API
--   🔵 **`onBeforeExecute`**: Antes de ejecutar el comando
--   🟢 **`onAfterExecute`**: Después de ejecutar el comando
+- 🟦 **`onBeforeRegisterCommand`**: Antes de registrar el comando en Discord API
+- 🟦 **`onAfterRegisterCommand`**: Después de registrar el comando en Discord API
+- 🔵 **`onBeforeExecute`**: Antes de ejecutar el comando
+- 🟢 **`onAfterExecute`**: Después de ejecutar el comando
 
 ## 🎯 ¿Qué es un Plugin?
 
@@ -15,22 +15,22 @@ Un plugin es una clase que hereda de `BasePlugin` e implementa uno o más de los
 
 ### 🟦 Eventos de Registro
 
--   **`onBeforeRegisterCommand(commandClass, commandJson)`**: Se ejecuta **antes** de enviar el comando a Discord API
-    -   Recibe la **clase del comando** (sin instanciar) y una **copia** del JSON del comando
-    -   Retorna: JSON modificado | `false` (cancelar registro) | `null`/`undefined` (usar original)
-    -   Útil para: modificar comandos dinámicamente, agregar opciones, traducciones, cancelar registro basado en la clase
--   **`onAfterRegisterCommand(commandClass, registeredCommandJson)`**: Se ejecuta **después** de registrar en Discord API
-    -   Recibe la **clase del comando** y el JSON del comando registrado (con ID de Discord)
-    -   Útil para: logging, analytics, caché, sincronización con BD
+- **`onBeforeRegisterCommand(commandClass, commandJson)`**: Se ejecuta **antes** de enviar el comando a Discord API
+    - Recibe la **clase del comando** (sin instanciar) y una **copia** del JSON del comando
+    - Retorna: JSON modificado | `false` (cancelar registro) | `null`/`undefined` (usar original)
+    - Útil para: modificar comandos dinámicamente, agregar opciones, traducciones, cancelar registro basado en la clase
+- **`onAfterRegisterCommand(commandClass, registeredCommandJson)`**: Se ejecuta **después** de registrar en Discord API
+    - Recibe la **clase del comando** y el JSON del comando registrado (con ID de Discord)
+    - Útil para: logging, analytics, caché, sincronización con BD
 
 ### 🔵 Eventos de Ejecución
 
--   **`onBeforeExecute(command)`**: Se ejecuta **antes** del comando
-    -   `return true`: Continúa con la ejecución del comando
-    -   `return false`: Cancela la ejecución silenciosamente (sin mensaje de error)
-    -   `throw Error`: Cancela la ejecución y muestra un mensaje de error
--   **`onAfterExecute(command)`**: Se ejecuta **después** del comando (solo si no hubo errores)
-    -   Útil para: logging, analytics, cooldowns, recompensas
+- **`onBeforeExecute(command)`**: Se ejecuta **antes** del comando
+    - `return true`: Continúa con la ejecución del comando
+    - `return false`: Cancela la ejecución silenciosamente (sin mensaje de error)
+    - `throw Error`: Cancela la ejecución y muestra un mensaje de error
+- **`onAfterExecute(command)`**: Se ejecuta **después** del comando (solo si no hubo errores)
+    - Útil para: logging, analytics, cooldowns, recompensas
 
 ## 🚀 Casos de Uso
 
@@ -38,34 +38,34 @@ Un plugin es una clase que hereda de `BasePlugin` e implementa uno o más de los
 
 Modificaciones y seguimiento durante el registro de comandos:
 
--   ✅ **Modificar comandos**: Agregar prefijos, sufijos, opciones dinámicas
--   ✅ **Traducciones**: Cambiar descripciones según idioma
--   ✅ **Ambiente**: Ocultar comandos de debug en producción
--   ✅ **Logging**: Registrar qué comandos se registraron
--   ✅ **Analytics**: Seguimiento de comandos disponibles
--   ✅ **Sincronización**: Guardar IDs de comandos en BD
+- ✅ **Modificar comandos**: Agregar prefijos, sufijos, opciones dinámicas
+- ✅ **Traducciones**: Cambiar descripciones según idioma
+- ✅ **Ambiente**: Ocultar comandos de debug en producción
+- ✅ **Logging**: Registrar qué comandos se registraron
+- ✅ **Analytics**: Seguimiento de comandos disponibles
+- ✅ **Sincronización**: Guardar IDs de comandos en BD
 
 ### 🔵 Plugins de Ejecución (`onBeforeExecute`)
 
 Validaciones y verificaciones **antes** de ejecutar el comando:
 
--   ✅ **Cooldowns**: Verificar si el usuario puede usar el comando
--   ✅ **Permisos**: Validar roles o permisos específicos
--   ✅ **Rate Limiting**: Limitar uso por usuario/servidor
--   ✅ **Mantenimiento**: Bloquear comandos durante mantenimiento
--   ✅ **Blacklist**: Prevenir uso de usuarios/servidores bloqueados
--   ✅ **Validaciones custom**: Cualquier validación previa
+- ✅ **Cooldowns**: Verificar si el usuario puede usar el comando
+- ✅ **Permisos**: Validar roles o permisos específicos
+- ✅ **Rate Limiting**: Limitar uso por usuario/servidor
+- ✅ **Mantenimiento**: Bloquear comandos durante mantenimiento
+- ✅ **Blacklist**: Prevenir uso de usuarios/servidores bloqueados
+- ✅ **Validaciones custom**: Cualquier validación previa
 
 ### 🟢 Plugins de Post-Ejecución (`onAfterExecute`)
 
 Acciones **después** de ejecutar exitosamente el comando:
 
--   ✅ **Logging**: Registrar uso de comandos
--   ✅ **Analytics**: Estadísticas de uso
--   ✅ **Cooldown**: Establecer cooldown después de usar comando
--   ✅ **Recompensas**: Dar puntos/experiencia por usar comandos
--   ✅ **Notificaciones**: Alertar admins de comandos críticos
--   ✅ **Cleanup**: Limpiar recursos temporales
+- ✅ **Logging**: Registrar uso de comandos
+- ✅ **Analytics**: Estadísticas de uso
+- ✅ **Cooldown**: Establecer cooldown después de usar comando
+- ✅ **Recompensas**: Dar puntos/experiencia por usar comandos
+- ✅ **Notificaciones**: Alertar admins de comandos críticos
+- ✅ **Cleanup**: Limpiar recursos temporales
 
 ## 🏗️ Estructura de un Plugin
 
@@ -153,6 +153,7 @@ export class CooldownPlugin extends BasePlugin {
     }
 
     async onAfterExecute(command: BaseCommand): Promise<void> {
+        const cooldownMs = 10000; // Ejemplo
         const key = `${command.user.id}-${command.id}`;
         await this.store.set(key, Date.now() + cooldownMs);
     }
@@ -251,9 +252,9 @@ export class BanCommand extends BaseCommand {
 
 **Características clave:**
 
--   ✅ Inmutable: NO modifica el `commandJson` original
--   ✅ Dual validation: En registro (Discord API) y ejecución (runtime)
--   ✅ 20 tests completos garantizando correcto funcionamiento
+- ✅ Inmutable: NO modifica el `commandJson` original
+- ✅ Dual validation: En registro (Discord API) y ejecución (runtime)
+- ✅ 20 tests completos garantizando correcto funcionamiento
 
 **Documentación completa**: Ver [`permissions.plugin.README.md`](./permissions.plugin.README.md)
 
@@ -357,9 +358,9 @@ export class SilentCooldownPlugin extends BasePlugin {
 
 **Comparación:**
 
--   ✅ `return true` → El comando se ejecuta normalmente
--   ❌ `return false` → El comando se cancela sin mensaje de error (silencioso)
--   💥 `throw new ReplyError(...)` → El comando se cancela y se muestra un embed de error
+- ✅ `return true` → El comando se ejecuta normalmente
+- ❌ `return false` → El comando se cancela sin mensaje de error (silencioso)
+- 💥 `throw new ReplyError(...)` → El comando se cancela y se muestra un embed de error
 
 ## �🔧 Cómo Registrar Plugins
 
@@ -371,10 +372,10 @@ Configuración centralizada en `/src/config/plugins.config.ts`.
 
 **Ventajas:**
 
--   ✅ Centralizado en un solo archivo
--   ✅ Aplica a múltiples comandos
--   ✅ Fácil de mantener
--   ✅ Soporte para carpetas y comandos específicos
+- ✅ Centralizado en un solo archivo
+- ✅ Aplica a múltiples comandos
+- ✅ Fácil de mantener
+- ✅ Soporte para carpetas y comandos específicos
 
 ```typescript
 // src/config/plugins.config.ts
@@ -414,9 +415,9 @@ Usando el decorador `@UsePlugins` directamente en el comando.
 
 **Ventajas:**
 
--   ✅ Configuración visible en el comando
--   ✅ Máxima prioridad de ejecución
--   ✅ Ideal para plugins únicos de un comando
+- ✅ Configuración visible en el comando
+- ✅ Máxima prioridad de ejecución
+- ✅ Ideal para plugins únicos de un comando
 
 ```typescript
 // src/commands/ban.command.ts
@@ -585,43 +586,43 @@ export class BanCommand extends BanDefinition {
 
 ### Seguridad
 
--   🔒 **NSFW Filter**: Bloquear comandos NSFW en canales no-NSFW
--   🔒 **Whitelist**: Solo permitir comandos en ciertos servidores
--   🔒 **Maintenance Mode**: Deshabilitar comandos durante mantenimiento
+- 🔒 **NSFW Filter**: Bloquear comandos NSFW en canales no-NSFW
+- 🔒 **Whitelist**: Solo permitir comandos en ciertos servidores
+- 🔒 **Maintenance Mode**: Deshabilitar comandos durante mantenimiento
 
 ### Economía/Gamificación
 
--   💰 **Currency Cost**: Cobrar por usar comandos
--   ⭐ **XP Reward**: Dar experiencia por usar comandos
--   🎁 **Daily Bonus**: Recompensas diarias
+- 💰 **Currency Cost**: Cobrar por usar comandos
+- ⭐ **XP Reward**: Dar experiencia por usar comandos
+- 🎁 **Daily Bonus**: Recompensas diarias
 
 ### Moderación
 
--   📝 **Audit Log**: Registrar comandos de moderación
--   🚫 **Auto-ban**: Banear automáticamente por uso abusivo
--   ⚠️ **Warning System**: Sistema de advertencias
+- 📝 **Audit Log**: Registrar comandos de moderación
+- 🚫 **Auto-ban**: Banear automáticamente por uso abusivo
+- ⚠️ **Warning System**: Sistema de advertencias
 
 ### Analytics
 
--   📊 **Usage Stats**: Estadísticas de uso de comandos
--   📈 **Performance Monitor**: Medir tiempo de ejecución
--   🔍 **Error Tracker**: Rastrear errores comunes
+- 📊 **Usage Stats**: Estadísticas de uso de comandos
+- 📈 **Performance Monitor**: Medir tiempo de ejecución
+- 🔍 **Error Tracker**: Rastrear errores comunes
 
 ### UX
 
--   💬 **Typing Indicator**: Mostrar "escribiendo..." en comandos largos
--   ⏱️ **Timeout Warning**: Avisar si el comando tarda mucho
--   🔄 **Auto-delete**: Eliminar respuestas después de X segundos
+- 💬 **Typing Indicator**: Mostrar "escribiendo..." en comandos largos
+- ⏱️ **Timeout Warning**: Avisar si el comando tarda mucho
+- 🔄 **Auto-delete**: Eliminar respuestas después de X segundos
 
 ## 📚 Recursos Relacionados
 
--   `/src/core/structures/BasePlugin.ts` - Clase base de plugins
--   `/src/core/structures/BaseCommand.ts` - Clase base de comandos
--   `/src/core/decorators/plugin.decorator.ts` - Decorador @UsePlugins
--   `/src/config/` - Configuración de plugins por scope
--   `/src/config/README.md` - Documentación completa de scopes
--   `/src/error/` - Errores personalizados
--   `ARCHITECTURE.md` - Arquitectura del sistema
+- `/src/core/structures/BasePlugin.ts` - Clase base de plugins
+- `/src/core/structures/BaseCommand.ts` - Clase base de comandos
+- `/src/core/decorators/plugin.decorator.ts` - Decorador @UsePlugins
+- `/src/config/` - Configuración de plugins por scope
+- `/src/config/README.md` - Documentación completa de scopes
+- `/src/error/` - Errores personalizados
+- `ARCHITECTURE.md` - Arquitectura del sistema
 
 ---
 

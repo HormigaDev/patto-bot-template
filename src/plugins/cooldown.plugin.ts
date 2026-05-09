@@ -39,7 +39,9 @@ export class CooldownPlugin extends BasePlugin {
     async onAfterExecute(command: BaseCommand): Promise<void> {
         const cooldownKey = `${command.user.id}-${command.id}`;
         const opt = metadataHandler.getCooldown(command.constructor);
-        const expiry = Date.now() + (opt?.time || 0);
+
+        if (!opt?.time || opt.time <= 0) return;
+        const expiry = Date.now() + opt.time;
 
         await this.store.set(cooldownKey, expiry);
     }

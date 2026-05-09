@@ -3,6 +3,7 @@
  */
 
 import { Env } from '@/utils/Env';
+import { Logger, LogLevel } from '@/utils/Logger';
 
 describe('Utilidad Env', () => {
     // Guardar env original
@@ -215,6 +216,306 @@ describe('Utilidad Env', () => {
             const config2 = Env.load();
 
             expect(config1).toBe(config2);
+        });
+    });
+
+    describe('load() - SHARDING_ENABLED y REDIS_URL', () => {
+        let stdoutSpy: jest.SpyInstance;
+        let stderrSpy: jest.SpyInstance;
+        let exitSpy: jest.SpyInstance;
+        let savedLogLevel: LogLevel;
+
+        beforeEach(() => {
+            process.env.BOT_TOKEN = 'test-token';
+            process.env.CLIENT_ID = '123456789';
+            stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+            stderrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+            exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {
+                throw new Error('process.exit called');
+            });
+            savedLogLevel = Logger.getLevel();
+        });
+
+        afterEach(() => {
+            stdoutSpy.mockRestore();
+            stderrSpy.mockRestore();
+            exitSpy.mockRestore();
+            Logger.setLevel(savedLogLevel);
+        });
+
+        it('debería cargar correctamente cuando SHARDING_ENABLED es false sin REDIS_URL', () => {
+            process.env.SHARDING_ENABLED = 'false';
+            delete process.env.REDIS_URL;
+
+            const config = Env.load();
+
+            expect(config.SHARDING_ENABLED).toBe(false);
+            expect(config.REDIS_URL).toBeUndefined();
+        });
+
+        it('debería cargar correctamente cuando SHARDING_ENABLED no está definido', () => {
+            delete process.env.SHARDING_ENABLED;
+            delete process.env.REDIS_URL;
+
+            const config = Env.load();
+
+            expect(config.SHARDING_ENABLED).toBe(false);
+        });
+
+        it('debería lanzar error cuando SHARDING_ENABLED=true y REDIS_URL está ausente', () => {
+            process.env.SHARDING_ENABLED = 'true';
+            delete process.env.REDIS_URL;
+
+            expect(() => Env.load()).toThrow();
+            expect(exitSpy).toHaveBeenCalledWith(1);
+        });
+
+        it('debería lanzar error cuando SHARDING_ENABLED=true y REDIS_URL está vacía', () => {
+            process.env.SHARDING_ENABLED = 'true';
+            process.env.REDIS_URL = '   ';
+
+            expect(() => Env.load()).toThrow();
+            expect(exitSpy).toHaveBeenCalledWith(1);
+        });
+
+        it('debería cargar correctamente con REDIS_URL de esquema redis://', () => {
+            process.env.SHARDING_ENABLED = 'true';
+            process.env.REDIS_URL = 'redis://localhost:6379';
+
+            const config = Env.load();
+
+            expect(config.SHARDING_ENABLED).toBe(true);
+            expect(config.REDIS_URL).toBe('redis://localhost:6379');
+        });
+
+        it('debería cargar correctamente con REDIS_URL de esquema rediss://', () => {
+            process.env.SHARDING_ENABLED = 'true';
+            process.env.REDIS_URL = 'rediss://localhost:6380';
+
+            const config = Env.load();
+
+            expect(config.SHARDING_ENABLED).toBe(true);
+            expect(config.REDIS_URL).toBe('rediss://localhost:6380');
+        });
+
+        it('debería lanzar error cuando REDIS_URL tiene esquema inválido (http://)', () => {
+            process.env.SHARDING_ENABLED = 'true';
+            process.env.REDIS_URL = 'http://localhost:6379';
+
+            expect(() => Env.load()).toThrow();
+            expect(exitSpy).toHaveBeenCalledWith(1);
+        });
+
+        it('debería lanzar error cuando REDIS_URL tiene esquema inválido (postgres://)', () => {
+            process.env.SHARDING_ENABLED = 'true';
+            process.env.REDIS_URL = 'postgres://localhost:5432/db';
+
+            expect(() => Env.load()).toThrow();
+            expect(exitSpy).toHaveBeenCalledWith(1);
+        });
+
+        it('no debería validar REDIS_URL cuando SHARDING_ENABLED=false aunque la URL sea inválida', () => {
+            process.env.SHARDING_ENABLED = 'false';
+            process.env.REDIS_URL = 'not-a-valid-url';
+
+            const config = Env.load();
+
+            expect(config.SHARDING_ENABLED).toBe(false);
+            expect(exitSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('load() - parseo de TOTAL_SHARDS', () => {
+        let stdoutSpy: jest.SpyInstance;
+        let stderrSpy: jest.SpyInstance;
+        let savedLogLevel: LogLevel;
+
+        beforeEach(() => {
+            process.env.BOT_TOKEN = 'test-token';
+            process.env.CLIENT_ID = '123456789';
+            stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+            stderrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+            savedLogLevel = Logger.getLevel();
+        });
+
+        afterEach(() => {
+            stdoutSpy.mockRestore();
+            stderrSpy.mockRestore();
+            Logger.setLevel(savedLogLevel);
+        });
+
+        it('debería devolver "auto" cuando TOTAL_SHARDS no está definido', () => {
+            delete process.env.TOTAL_SHARDS;
+
+            const config = Env.load();
+
+            expect(config.TOTAL_SHARDS).toBe('auto');
+        });
+
+        it('debería devolver "auto" cuando TOTAL_SHARDS es "auto"', () => {
+            process.env.TOTAL_SHARDS = 'auto';
+
+            const config = Env.load();
+
+            expect(config.TOTAL_SHARDS).toBe('auto');
+        });
+
+        it('debería devolver "auto" cuando TOTAL_SHARDS es "AUTO" (case insensitive)', () => {
+            process.env.TOTAL_SHARDS = 'AUTO';
+
+            const config = Env.load();
+
+            expect(config.TOTAL_SHARDS).toBe('auto');
+        });
+
+        it('debería parsear correctamente un número entero positivo', () => {
+            process.env.TOTAL_SHARDS = '4';
+
+            const config = Env.load();
+
+            expect(config.TOTAL_SHARDS).toBe(4);
+        });
+
+        it('debería parsear correctamente TOTAL_SHARDS=1', () => {
+            process.env.TOTAL_SHARDS = '1';
+
+            const config = Env.load();
+
+            expect(config.TOTAL_SHARDS).toBe(1);
+        });
+
+        it('debería devolver "auto" cuando TOTAL_SHARDS es 0 (no válido)', () => {
+            process.env.TOTAL_SHARDS = '0';
+
+            const config = Env.load();
+
+            expect(config.TOTAL_SHARDS).toBe('auto');
+        });
+
+        it('debería devolver "auto" cuando TOTAL_SHARDS es negativo', () => {
+            process.env.TOTAL_SHARDS = '-2';
+
+            const config = Env.load();
+
+            expect(config.TOTAL_SHARDS).toBe('auto');
+        });
+
+        it('debería devolver "auto" cuando TOTAL_SHARDS es un string no numérico', () => {
+            process.env.TOTAL_SHARDS = 'many';
+
+            const config = Env.load();
+
+            expect(config.TOTAL_SHARDS).toBe('auto');
+        });
+
+        it('debería devolver "auto" cuando TOTAL_SHARDS es un decimal', () => {
+            process.env.TOTAL_SHARDS = '2.5';
+
+            const config = Env.load();
+
+            expect(config.TOTAL_SHARDS).toBe('auto');
+        });
+    });
+
+    describe('load() - parseo de LOG_LEVEL', () => {
+        let stdoutSpy: jest.SpyInstance;
+        let stderrSpy: jest.SpyInstance;
+        let savedLogLevel: LogLevel;
+
+        beforeEach(() => {
+            process.env.BOT_TOKEN = 'test-token';
+            process.env.CLIENT_ID = '123456789';
+            stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+            stderrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+            savedLogLevel = Logger.getLevel();
+        });
+
+        afterEach(() => {
+            stdoutSpy.mockRestore();
+            stderrSpy.mockRestore();
+            Logger.setLevel(savedLogLevel);
+        });
+
+        it('debería parsear LOG_LEVEL=INFO correctamente', () => {
+            process.env.LOG_LEVEL = 'INFO';
+
+            const config = Env.load();
+
+            expect(config.LOG_LEVEL).toBe(LogLevel.INFO);
+        });
+
+        it('debería parsear LOG_LEVEL=DEBUG correctamente', () => {
+            process.env.LOG_LEVEL = 'DEBUG';
+
+            const config = Env.load();
+
+            expect(config.LOG_LEVEL).toBe(LogLevel.DEBUG);
+        });
+
+        it('debería parsear LOG_LEVEL=WARN correctamente', () => {
+            process.env.LOG_LEVEL = 'WARN';
+
+            const config = Env.load();
+
+            expect(config.LOG_LEVEL).toBe(LogLevel.WARN);
+        });
+
+        it('debería parsear LOG_LEVEL=ERROR correctamente', () => {
+            process.env.LOG_LEVEL = 'ERROR';
+
+            const config = Env.load();
+
+            expect(config.LOG_LEVEL).toBe(LogLevel.ERROR);
+        });
+
+        it('debería parsear LOG_LEVEL=FATAL correctamente', () => {
+            process.env.LOG_LEVEL = 'FATAL';
+
+            const config = Env.load();
+
+            expect(config.LOG_LEVEL).toBe(LogLevel.FATAL);
+        });
+
+        it('debería parsear LOG_LEVEL=SILENT correctamente', () => {
+            process.env.LOG_LEVEL = 'SILENT';
+
+            const config = Env.load();
+
+            expect(config.LOG_LEVEL).toBe(LogLevel.SILENT);
+        });
+
+        it('debería parsear LOG_LEVEL en minúsculas (case insensitive)', () => {
+            process.env.LOG_LEVEL = 'warn';
+
+            const config = Env.load();
+
+            expect(config.LOG_LEVEL).toBe(LogLevel.WARN);
+        });
+
+        it('debería usar el nivel por defecto del Logger cuando LOG_LEVEL no está definido', () => {
+            delete process.env.LOG_LEVEL;
+            const expectedLevel = Logger.getLevel();
+
+            const config = Env.load();
+
+            expect(config.LOG_LEVEL).toBe(expectedLevel);
+        });
+
+        it('debería usar el nivel por defecto cuando LOG_LEVEL es inválido', () => {
+            process.env.LOG_LEVEL = 'VERBOSE';
+            const expectedLevel = Logger.getLevel();
+
+            const config = Env.load();
+
+            expect(config.LOG_LEVEL).toBe(expectedLevel);
+        });
+
+        it('debería aplicar el nivel al singleton Logger tras cargar', () => {
+            process.env.LOG_LEVEL = 'SILENT';
+
+            Env.load();
+
+            expect(Logger.getLevel()).toBe(LogLevel.SILENT);
         });
     });
 });

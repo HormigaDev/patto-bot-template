@@ -20,7 +20,7 @@ async function bootstrap(): Promise<void> {
     if (config.SHARDING_ENABLED && config.REDIS_URL) {
         // Importaciones dinámicas para garantizar que los stores queden
         // configurados ANTES de que bot.ts evalúe plugins.config (side-effect).
-        const { Redis } = await import('ioredis');
+        const { default: Redis } = await import('ioredis');
         const { RedisPayloadStore } = await import('@/core/store/redis.payload.store');
         const { RedisCooldownStore } = await import('@/core/store/redis.cooldown.store');
         const { ComponentRegistry } = await import('@/core/registry/component.registry');

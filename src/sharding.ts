@@ -23,6 +23,13 @@ import * as path from 'path';
 const log = logger.child('ShardingManager');
 const config = Env.get();
 
+if (!config.SHARDING_ENABLED) {
+    log.fatal(
+        'ShardingManager requiere SHARDING_ENABLED=true. Abortando inicio para evitar shards inconsistentes.',
+    );
+    process.exit(1);
+}
+
 // En desarrollo (ts-node), __filename termina en .ts y se apunta al fuente.
 // En producción (compilado), __filename termina en .js y se apunta al dist.
 const isTypeScript = __filename.endsWith('.ts');
