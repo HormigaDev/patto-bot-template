@@ -16,9 +16,17 @@ core/
 ├── loaders/             # Cargadores de recursos
 │   ├── command.loader.ts
 │   └── slash-command.loader.ts
+├── registry/            # Registros de estado runtime
+│   └── component.registry.ts
 ├── resolvers/           # Resolvedores de tipos
 │   ├── type.resolver.ts
 │   └── argument.resolver.ts
+├── store/               # Contratos e implementaciones de stores
+│   ├── payload.store.ts          # Interface PayloadStore + MemoryPayloadStore
+│   ├── redis.payload.store.ts    # RedisPayloadStore (sharding)
+│   ├── cooldown.store.ts         # Interface CooldownStore + MemoryCooldownStore
+│   ├── redis.cooldown.store.ts   # RedisCooldownStore (sharding)
+│   └── store.registry.ts         # StoreRegistry — configura stores antes del arranque
 └── structures/          # Estructuras base
     ├── BaseCommand.ts
     ├── BasePlugin.ts
@@ -209,6 +217,38 @@ Los resolvers son estrategias intercambiables:
 TypeResolver.coerceType(value, String); // Estrategia para String
 TypeResolver.coerceType(value, Number); // Estrategia para Number
 ```
+
+---
+
+### `/store/`
+
+Contratos e implementaciones de almacenamiento desacopladas del framework.
+
+**Archivos:**
+
+- `payload.store.ts` — Interface `PayloadStore` + `MemoryPayloadStore` (default, in-memory)
+- `redis.payload.store.ts` — `RedisPayloadStore`: payloads de componentes en Redis (sharding)
+- `cooldown.store.ts` — Interface `CooldownStore` + `MemoryCooldownStore` (default, in-memory)
+- `redis.cooldown.store.ts` — `RedisCooldownStore`: cooldowns globales en Redis (sharding)
+- `store.registry.ts` — `StoreRegistry`: punto de configuración central de stores
+
+**Patrón de uso:**
+
+```
+index.ts (bootstrap)
+  └─ Si SHARDING_ENABLED=true:
+       ├─ ComponentRegistry.useStore(new RedisPayloadStore(redis))
+       └─ StoreRegistry.useCooldownStore(new RedisCooldownStore(redis))
+            ↓
+       bot.ts → plugins.config.ts (side-effect)
+            ↓
+       new CooldownPlugin(StoreRegistry.getCooldownStore())
+            → usa RedisCooldownStore (ya configurado)
+```
+
+Sin sharding, los stores por defecto (memoria) se usan sin ninguna configuración.
+
+---
 
 ## 🚫 ¿Qué NO va aquí?
 

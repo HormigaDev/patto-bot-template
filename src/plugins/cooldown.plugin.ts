@@ -1,41 +1,46 @@
 import { metadataHandler } from '@/core/metadata';
 import { BaseCommand } from '@/core/structures/BaseCommand';
 import { BasePlugin } from '@/core/structures/BasePlugin';
+import { MemoryCooldownStore, type CooldownStore } from '@/core/store/cooldown.store';
 import { CustomDate } from '@/utils/Times';
 
 export class CooldownPlugin extends BasePlugin {
-    private cooldowns: Map<string, number>;
+    private readonly store: CooldownStore;
 
-    constructor() {
+    /**
+     * @param store Store de cooldowns. Por defecto usa {@link MemoryCooldownStore}
+     *              (in-memory, válido para single-instance). Para sharding pasar
+     *              un {@link RedisCooldownStore} vía {@link StoreRegistry}.
+     */
+    constructor(store: CooldownStore = new MemoryCooldownStore()) {
         super();
-        this.cooldowns = new Map();
+        this.store = store;
     }
 
     async onBeforeExecute(command: BaseCommand): Promise<boolean> {
         const cooldownKey = `${command.user.id}-${command.id}`;
-        const cooldown = this.cooldowns.get(cooldownKey);
-        if (!cooldown) return true;
+        const expiry = await this.store.get(cooldownKey);
 
-        if (cooldown < Date.now()) {
-            this.cooldowns.delete(cooldownKey);
+        if (expiry === undefined) return true;
+
+        if (expiry < Date.now()) {
+            await this.store.delete(cooldownKey);
             return true;
-        } else {
-            const date = new CustomDate(cooldown);
-            const embed = command
-                .getEmbed('error')
-                .setDescription(
-                    `Espera hasta ${date.toDiscordTimestamp('T')} para usar este comando`,
-                );
-            await command.reply({ embeds: [embed] });
-            return false;
         }
+
+        const date = new CustomDate(expiry);
+        const embed = command
+            .getEmbed('error')
+            .setDescription(`Espera hasta ${date.toDiscordTimestamp('T')} para usar este comando`);
+        await command.reply({ embeds: [embed] });
+        return false;
     }
 
-    async onAfterExecute(command: BaseCommand): Promise<any> {
+    async onAfterExecute(command: BaseCommand): Promise<void> {
         const cooldownKey = `${command.user.id}-${command.id}`;
         const opt = metadataHandler.getCooldown(command.constructor);
-        const cooldown = Date.now() + (opt?.time || 0);
+        const expiry = Date.now() + (opt?.time || 0);
 
-        this.cooldowns.set(cooldownKey, cooldown);
+        await this.store.set(cooldownKey, expiry);
     }
 }

@@ -46,11 +46,15 @@ const config = Env.get();
 
 ```typescript
 interface EnvConfig {
-    BOT_TOKEN: string; // Token del bot (obligatorio)
-    CLIENT_ID: string; // ID del cliente (obligatorio)
+    BOT_TOKEN: string;          // Token del bot (obligatorio)
+    CLIENT_ID: string;          // ID del cliente (obligatorio)
     USE_MESSAGE_CONTENT: boolean; // Habilitar comandos de texto (default: false)
-    COMMAND_PREFIX: string; // Prefijo de comandos (default: '!')
-    INTENTS?: number; // Intents personalizados (opcional)
+    COMMAND_PREFIX: string;     // Prefijo de comandos (default: '!')
+    INTENTS?: number;           // Intents personalizados (opcional)
+    LOG_LEVEL: LogLevel;        // Nivel de log (default: INFO)
+    SHARDING_ENABLED: boolean;  // Activar sharding (default: false)
+    REDIS_URL?: string;         // URL de Redis (obligatorio si SHARDING_ENABLED=true)
+    TOTAL_SHARDS: number | 'auto'; // Shards a lanzar (default: 'auto')
 }
 ```
 
@@ -101,11 +105,22 @@ console.log(config.COMMAND_PREFIX); // string (default: '!')
 
 #### Variables Opcionales con Defaults
 
-| Variable              | Tipo      | Default | Validación                                               |
-| --------------------- | --------- | ------- | -------------------------------------------------------- |
-| `USE_MESSAGE_CONTENT` | `boolean` | `false` | Solo `'true'` (case insensitive) es `true`               |
-| `COMMAND_PREFIX`      | `string`  | `'!'`   | No puede estar vacío                                     |
-| `INTENTS`             | `number`  | `auto`  | Debe ser número válido o se usa configuración automática |
+| Variable              | Tipo              | Default  | Validación                                               |
+| --------------------- | ----------------- | -------- | -------------------------------------------------------- |
+| `USE_MESSAGE_CONTENT` | `boolean`         | `false`  | Solo `'true'` (case insensitive) es `true`               |
+| `COMMAND_PREFIX`      | `string`          | `'!'`    | No puede estar vacío                                     |
+| `INTENTS`             | `number`          | `auto`   | Debe ser número válido o se usa configuración automática |
+| `LOG_LEVEL`           | `string`          | `INFO`   | DEBUG, INFO, WARN, ERROR, FATAL, SILENT                  |
+| `SHARDING_ENABLED`    | `boolean`         | `false`  | Solo `'true'` activa el sharding                         |
+| `REDIS_URL`           | `string`          | —        | **Obligatorio** si `SHARDING_ENABLED=true`. Debe comenzar con `redis://` o `rediss://` |
+| `TOTAL_SHARDS`        | `number\|'auto'` | `'auto'` | Entero ≥ 1 o `'auto'` para que Discord calcule el valor  |
+
+#### Dependencia entre variables
+
+```
+SHARDING_ENABLED=true  →  REDIS_URL es obligatorio
+SHARDING_ENABLED=false →  REDIS_URL ignorada (puede omitirse)
+```
 
 ### Ejemplo Completo
 

@@ -122,42 +122,57 @@ export class MiPlugin extends BasePlugin {
 
 ## 📝 Ejemplo 1: Plugin de Cooldown
 
+El `CooldownPlugin` incluido acepta un `CooldownStore` por inyección de
+dependencia. Por defecto usa `MemoryCooldownStore` (in-memory), y cuando
+el sharding está habilitado recibe automáticamente un `RedisCooldownStore`
+a través de `StoreRegistry`.
+
 ```typescript
 // src/plugins/cooldown.plugin.ts
 import { BasePlugin } from '@/core/structures/BasePlugin';
 import { BaseCommand } from '@/core/structures/BaseCommand';
-import { ReplyError } from '@/error/ReplyError';
+import { MemoryCooldownStore, type CooldownStore } from '@/core/store/cooldown.store';
 
 export class CooldownPlugin extends BasePlugin {
-    private cooldowns = new Map<string, number>();
-    private readonly cooldownTime = 5000; // 5 segundos
+    private readonly store: CooldownStore;
+
+    constructor(store: CooldownStore = new MemoryCooldownStore()) {
+        super();
+        this.store = store;
+    }
 
     async onBeforeExecute(command: BaseCommand): Promise<boolean> {
-        const key = `${command.user.id}-${command.constructor.name}`;
-        const now = Date.now();
-        const cooldownEnd = this.cooldowns.get(key);
-
-        if (cooldownEnd && now < cooldownEnd) {
-            const timeLeft = Math.ceil((cooldownEnd - now) / 1000);
-            throw new ReplyError(
-                `⏱️ Debes esperar ${timeLeft}s antes de usar este comando de nuevo.`,
-            );
+        const key = `${command.user.id}-${command.id}`;
+        const expiry = await this.store.get(key);
+        if (expiry === undefined || expiry < Date.now()) {
+            if (expiry !== undefined) await this.store.delete(key);
+            return true;
         }
-
-        return true; // Continuar con la ejecución
+        // ... mostrar mensaje de cooldown
+        return false;
     }
 
     async onAfterExecute(command: BaseCommand): Promise<void> {
-        const key = `${command.user.id}-${command.constructor.name}`;
-        const cooldownEnd = Date.now() + this.cooldownTime;
-        this.cooldowns.set(key, cooldownEnd);
-
-        // Limpiar cooldown después de tiempo
-        setTimeout(() => {
-            this.cooldowns.delete(key);
-        }, this.cooldownTime);
+        const key = `${command.user.id}-${command.id}`;
+        await this.store.set(key, Date.now() + cooldownMs);
     }
 }
+```
+
+**Para usar con Redis en modo sharding** no hay que cambiar nada en el plugin;
+`StoreRegistry` y `plugins.config.ts` manejan la inyección automáticamente:
+
+```typescript
+// src/config/plugins.config.ts — ya configurado en el template
+import { StoreRegistry } from '@/core/store/store.registry';
+
+PluginRegistry.register({
+    plugin: new CooldownPlugin(StoreRegistry.getCooldownStore()),
+    // ^^ devuelve RedisCooldownStore si SHARDING_ENABLED=true,
+    //    o MemoryCooldownStore en caso contrario
+    scope: PluginScope.Specified,
+    folderPath: '',
+});
 ```
 
 ## 📝 Ejemplo 2: Plugin de Permisos (PermissionsPlugin)

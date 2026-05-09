@@ -6,8 +6,10 @@
     "scripts": {
         "dev": "ts-node -r tsconfig-paths/register src/index.ts",
         "dev:hot": "ts-node-dev -r tsconfig-paths/register --project tsconfig.json --respawn --transpile-only src/index.ts",
+        "dev:sharding": "ts-node -r tsconfig-paths/register src/sharding.ts",
         "build": "tsc && tsc-alias",
         "start": "node -r tsconfig-paths/register dist/src/index.js",
+        "start:sharding": "node -r tsconfig-paths/register dist/src/sharding.js",
         "test": "jest",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",
@@ -48,6 +50,7 @@
     "dependencies": {
         "discord.js": "^14.26.4",
         "dotenv": "^17.4.2",
+        "ioredis": "^5.10.1",
         "nanoid": "^5.1.11",
         "reflect-metadata": "^0.2.2"
     },

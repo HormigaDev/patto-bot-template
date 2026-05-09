@@ -12,6 +12,11 @@ interface EnvConfig {
     COMMAND_PREFIX: string;
     INTENTS?: number;
     LOG_LEVEL: LogLevel;
+    SHARDING_ENABLED: boolean;
+    /** Presente solo cuando SHARDING_ENABLED=true. Contiene la URL completa de Redis. */
+    REDIS_URL?: string;
+    /** Número de shards a lanzar, o 'auto' para que Discord lo calcule. */
+    TOTAL_SHARDS: number | 'auto';
 }
 
 class EnvValidator {
@@ -51,6 +56,17 @@ class EnvValidator {
         const INTENTS = this.parseIntents(process.env.INTENTS);
         const LOG_LEVEL = this.parseLogLevel(process.env.LOG_LEVEL);
 
+        const SHARDING_ENABLED = this.parseBoolean(process.env.SHARDING_ENABLED);
+        const TOTAL_SHARDS = this.parseTotalShards(process.env.TOTAL_SHARDS);
+
+        let REDIS_URL: string | undefined;
+        if (SHARDING_ENABLED) {
+            REDIS_URL = this.validateRequired('REDIS_URL', errors);
+            if (REDIS_URL) {
+                this.validateRedisUrl(REDIS_URL, errors);
+            }
+        }
+
         if (errors.length > 0) {
             this.throwError(errors);
         }
@@ -62,6 +78,9 @@ class EnvValidator {
             COMMAND_PREFIX,
             INTENTS,
             LOG_LEVEL,
+            SHARDING_ENABLED,
+            REDIS_URL,
+            TOTAL_SHARDS,
         };
 
         // Aplicar el nivel de logging al singleton ANTES de imprimir la config,
@@ -145,6 +164,51 @@ class EnvValidator {
     }
 
     /**
+     * Parsea TOTAL_SHARDS. Acepta un número entero positivo o 'auto'.
+     * Valor inválido → usa 'auto' con advertencia.
+     */
+    private parseTotalShards(value: string | undefined): number | 'auto' {
+        if (!value || value.trim().toLowerCase() === 'auto') return 'auto';
+
+        const parsed = parseInt(value.trim(), 10);
+
+        if (isNaN(parsed) || parsed < 1) {
+            envLog.warn(
+                `TOTAL_SHARDS='${value}' no es válido (debe ser un entero ≥ 1 o 'auto'). Se usará 'auto'.`,
+            );
+            return 'auto';
+        }
+
+        return parsed;
+    }
+
+    /**
+     * Valida que REDIS_URL tenga el esquema correcto (redis:// o rediss://).
+     * Agrega error al array si es inválida.
+     */
+    private validateRedisUrl(url: string, errors: string[]): void {
+        if (!url.startsWith('redis://') && !url.startsWith('rediss://')) {
+            errors.push('❌ REDIS_URL debe comenzar con redis:// o rediss://');
+        }
+    }
+
+    /**
+     * Enmascara las credenciales de una URL de Redis para los logs.
+     */
+    private maskRedisUrl(url: string): string {
+        try {
+            const parsed = new URL(url);
+            if (parsed.password) {
+                parsed.username = parsed.username ? '***' : '';
+                parsed.password = '***';
+            }
+            return parsed.toString();
+        } catch {
+            return '(URL inválida)';
+        }
+    }
+
+    /**
      * Parsea LOG_LEVEL. Acepta los nombres de {@link LogLevel} (case-insensitive).
      * Valor inválido → usa el default (DEBUG en dev, INFO en producción).
      */
@@ -180,7 +244,7 @@ class EnvValidator {
     }
 
     /**
-     * Muestra la configuración cargada (sin exponer tokens)
+     * Muestra la configuración cargada (sin exponer tokens ni credenciales)
      */
     private logConfig(): void {
         const cfg = this.config!;
@@ -191,6 +255,11 @@ class EnvValidator {
             COMMAND_PREFIX: cfg.COMMAND_PREFIX,
             INTENTS: cfg.INTENTS ?? 'automático',
             LOG_LEVEL: LogLevel[cfg.LOG_LEVEL],
+            SHARDING_ENABLED: cfg.SHARDING_ENABLED,
+            ...(cfg.SHARDING_ENABLED && {
+                REDIS_URL: this.maskRedisUrl(cfg.REDIS_URL!),
+                TOTAL_SHARDS: cfg.TOTAL_SHARDS,
+            }),
         });
     }
 
