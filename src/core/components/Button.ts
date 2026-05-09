@@ -241,6 +241,10 @@ export class Button<P = unknown> {
      */
     public async commit(defaultTtl?: number): Promise<void> {
         if (this.isLink) return;
+        if (this.payload === undefined) {
+            await ComponentRegistry.deletePayload(this.customId);
+            return;
+        }
         await ComponentRegistry.setPayload(this.customId, this.payload, this.ttl ?? defaultTtl);
     }
 
