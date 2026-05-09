@@ -39,9 +39,27 @@ Se ejecuta cuando el bot se conecta exitosamente a Discord.
 
 ### Responsabilidades
 
-1. Registrar slash commands en Discord API
+1. Registrar slash commands en Discord API (**solo desde shard 0**)
 2. Establecer presencia personalizada del bot
-3. Log de confirmación
+3. Log de confirmación con identificador de shard
+
+### Registro de slash commands y sharding
+
+En modo sharding cada proceso es un shard independiente. Si todos los shards
+registrasen los slash commands al conectar se producirían escrituras paralelas
+innecesarias en la Discord API. Por eso el evento comprueba el shard ID:
+
+```typescript
+const shardId = client.shard?.ids[0] ?? 0;
+if (shardId === 0) {
+    await slashCommandLoader.registerSlashCommands();
+}
+```
+
+- **Sin sharding** (`client.shard === null`): `shardId` vale `0` y los comandos
+  se registran normalmente, sin cambio en el comportamiento.
+- **Con sharding**: solo el proceso con shard ID `0` registra los comandos; el
+  resto los omite y se limita a conectar y establecer presencia.
 
 ### Uso
 

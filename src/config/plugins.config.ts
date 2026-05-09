@@ -1,5 +1,7 @@
 import { PluginRegistry, PluginScope } from './plugin.registry';
 import { PermissionsPlugin } from '@/plugins/permissions.plugin';
+import { CooldownPlugin } from '@/plugins/cooldown.plugin';
+import { StoreRegistry } from '@/core/store/store.registry';
 
 // Aquí defines tus plugins con sus scopes
 
@@ -37,7 +39,6 @@ import { PermissionsPlugin } from '@/plugins/permissions.plugin';
  */
 // import { BanCommand } from '@/commands/ban.command';
 // import { KickCommand } from '@/commands/kick.command';
-import { CooldownPlugin } from '@/plugins/cooldown.plugin';
 //
 // PluginRegistry.register({
 //     plugin: new AuditLogPlugin(),
@@ -62,8 +63,11 @@ PluginRegistry.register({
     folderPath: '',
 });
 
+// StoreRegistry.getCooldownStore() devuelve MemoryCooldownStore por defecto.
+// Cuando SHARDING_ENABLED=true, index.ts lo reemplaza por RedisCooldownStore
+// antes de que este módulo sea evaluado.
 PluginRegistry.register({
-    plugin: new CooldownPlugin(),
+    plugin: new CooldownPlugin(StoreRegistry.getCooldownStore()),
     scope: PluginScope.Specified,
     folderPath: '',
 });

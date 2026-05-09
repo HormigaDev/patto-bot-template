@@ -57,6 +57,7 @@ const Colors = {
     yellow: '\x1b[33m',
     red: '\x1b[31m',
     magenta: '\x1b[35m',
+    blue: '\x1b[34m',
 } as const;
 
 const LEVEL_COLORS: Record<LogLevel, string> = {
@@ -95,6 +96,7 @@ function colorsEnabled(): boolean {
  */
 export class Logger {
     private static globalLevel: LogLevel = defaultLevel();
+    private static shardId: string | null = null;
     private readonly scope?: string;
     private readonly useColors: boolean;
 
@@ -115,6 +117,15 @@ export class Logger {
      */
     public static getLevel(): LogLevel {
         return Logger.globalLevel;
+    }
+
+    /**
+     * Registra el ID del shard actual para que todos los logs lo incluyan.
+     * Llamar una sola vez al inicio del proceso worker, antes de cualquier log.
+     * Sin sharding, no llamar este método y el tag no aparecerá.
+     */
+    public static setShardId(id: string): void {
+        Logger.shardId = id;
     }
 
     /**
@@ -161,17 +172,21 @@ export class Logger {
     private format(level: LogLevel, message: string): string {
         const timestamp = new Date().toISOString();
         const levelName = LEVEL_NAMES[level].padEnd(5, '');
+        const sid = Logger.shardId;
 
         if (!this.useColors) {
+            const shard = sid !== null ? ` [SHARD ${sid}]` : '';
             const scope = this.scope ? ` [${this.scope}]` : '';
-            return `[${timestamp}] [${levelName}]${scope} ${message}`;
+            return `[${timestamp}] [${levelName}]${shard}${scope} ${message}`;
         }
 
         const levelColor = LEVEL_COLORS[level];
         const ts = `${Colors.dim}[${timestamp}]${Colors.reset}`;
         const lvl = `${levelColor}${Colors.bold}[${levelName}]${Colors.reset}`;
+        const shard =
+            sid !== null ? `${Colors.blue}${Colors.bold}[SHARD ${sid}]${Colors.reset}` : '';
         const scope = this.scope ? ` ${Colors.dim}[${this.scope}]${Colors.reset}` : '';
-        return `${ts} ${lvl}${scope} ${message}`;
+        return `${ts} ${shard} ${lvl}${scope} ${message}`;
     }
 
     /**

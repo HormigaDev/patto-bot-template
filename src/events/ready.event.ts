@@ -27,10 +27,17 @@ export function registerReadyEvent(slashCommandLoader: SlashCommandLoader) {
         name: Events.ClientReady,
         once: true,
         async execute(client: Client) {
-            log.info(`Bot conectado como ${client.user?.tag}`);
+            // client.shard es null en modo single-instance y ShardClientUtil en modo sharding.
+            // ids[0] identifica el shard de este proceso; sin sharding se trata como shard 0.
+            const shardId = client.shard?.ids[0] ?? 0;
+            const shardLabel = client.shard ? ` [Shard ${shardId}]` : '';
+            log.info(`Bot conectado como ${client.user?.tag}${shardLabel}`);
 
-            // Registrar slash commands
-            await slashCommandLoader.registerSlashCommands();
+            // Los slash commands se registran una sola vez desde el shard 0.
+            // En modo single-instance (shardId=0 por defecto) siempre se registran.
+            if (shardId === 0) {
+                await slashCommandLoader.registerSlashCommands();
+            }
 
             // Establecer presencia personalizada (Custom Status)
             // Nota: Para presencias personalizadas, NO se necesita el intent de Presences
