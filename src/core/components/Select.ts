@@ -3,7 +3,7 @@ import {
     StringSelectMenuOptionBuilder,
     type APISelectMenuComponent,
 } from 'discord.js';
-import { ComponentRegistry, type SelectCallback } from '@/core/registry/component.registry';
+import { ComponentRegistry } from '@/core/registry/component.registry';
 import { nanoid } from 'nanoid';
 
 /**
@@ -18,47 +18,98 @@ export interface SelectOption {
 }
 
 /**
- * Opciones para crear un select
+ * Opciones para crear un select.
+ *
+ * El handler de un select es un **método estático** del comando, con prefijo
+ * `select*`. La instancia solo guarda un `payload`.
  */
-export interface SelectOptions {
+export interface SelectOptions<P = unknown> {
     placeholder?: string;
     minValues?: number;
     maxValues?: number;
     disabled?: boolean;
     options: SelectOption[];
+    /**
+     * Clave kebab-case del comando que expone el método estático handler
+     * (ej. `'help'`).
+     */
+    command: string;
+    /**
+     * Nombre exacto del método estático que maneja la interacción. Debe
+     * empezar con `select` (ej. `'selectCategory'`).
+     */
+    method: string;
+    /**
+     * Payload asociado a esta instancia. Se persiste en el {@link PayloadStore}
+     * al llamar {@link Select.commit} (RichMessage lo hace automáticamente).
+     */
+    payload?: P;
+    /**
+     * TTL del payload en milisegundos
+     */
+    ttl?: number;
 }
 
 /**
- * Wrapper para crear select menus de Discord con callbacks inline
+ * Wrapper para crear select menus de Discord.
+ *
+ * Los handlers son métodos estáticos en la clase del comando con prefijo
+ * `select*`. La instancia solo guarda payload — cero closures.
  *
  * @example
  * ```ts
- * const select = new Select({
- *     placeholder: 'Selecciona una opción',
- *     options: [
- *         { label: 'Opción 1', value: 'opt1', emoji: '1️⃣' },
- *         { label: 'Opción 2', value: 'opt2', emoji: '2️⃣' },
- *         { label: 'Opción 3', value: 'opt3', emoji: '3️⃣' },
- *     ],
- * }).onChange(async (interaction, values) => {
- *     await interaction.reply(`Seleccionaste: ${values.join(', ')}`);
- * });
+ * export class HelpCommand extends HelpDefinition {
+ *     public static async selectCategory(
+ *         interaction: StringSelectMenuInteraction,
+ *         values: string[],
+ *         payload: HelpCategoryPayload | undefined,
+ *     ) {
+ *         // ...
+ *     }
  *
- * await channel.send({
- *     content: 'Elige una opción',
- *     components: [select.toActionRow()],
- * });
+ *     async run() {
+ *         const select = new Select({
+ *             command: 'help',
+ *             method: 'selectCategory',
+ *             payload: { ... },
+ *             placeholder: 'Selecciona una categoría',
+ *             options: [...],
+ *         });
+ *         // ...
+ *     }
+ * }
  * ```
  */
-export class Select {
+export class Select<P = unknown> {
     private customId: string;
     private builder: StringSelectMenuBuilder;
-    private callback?: SelectCallback;
-    private options: SelectOptions;
+    private command: string;
+    private method: string;
+    private payload?: P;
+    private ttl?: number;
 
-    constructor(options: SelectOptions) {
-        this.options = options;
-        this.customId = `select_${nanoid(10)}`;
+    constructor(options: SelectOptions<P>) {
+        if (!options.command || !options.method) {
+            throw new Error(
+                'Los selects requieren "command" (clave del comando) y "method" (nombre del método estático).',
+            );
+        }
+        if (!options.method.startsWith('select')) {
+            throw new Error(
+                `El método "${options.method}" no es válido para un select: debe empezar con "select".`,
+            );
+        }
+
+        this.command = options.command;
+        this.method = options.method;
+        this.payload = options.payload;
+        this.ttl = options.ttl;
+        this.customId = ComponentRegistry.buildCustomId(
+            options.command,
+            options.method,
+            nanoid(10),
+        );
+
         this.builder = new StringSelectMenuBuilder().setCustomId(this.customId);
 
         if (options.placeholder) {
@@ -102,14 +153,36 @@ export class Select {
     }
 
     /**
-     * Define el callback que se ejecutará cuando se seleccione una opción
-     * @param callback Función que recibe la interaction y los valores seleccionados
+     * Actualiza el payload asociado a esta instancia (en memoria local).
+     * Para persistirlo en el store llamar {@link Select.commit}.
      */
-    public onChange(callback: SelectCallback): this {
-        this.callback = callback;
-        ComponentRegistry.registerSelect(this.customId, callback);
-
+    public setPayload(payload: P): this {
+        this.payload = payload;
         return this;
+    }
+
+    /**
+     * Define el TTL del payload (en milisegundos)
+     */
+    public setTtl(ms: number): this {
+        this.ttl = ms;
+        return this;
+    }
+
+    /**
+     * Persiste el payload en el {@link PayloadStore}.
+     *
+     * @param defaultTtl TTL a usar si la instancia no definió uno propio
+     */
+    public async commit(defaultTtl?: number): Promise<void> {
+        await ComponentRegistry.setPayload(this.customId, this.payload, this.ttl ?? defaultTtl);
+    }
+
+    /**
+     * Elimina el payload del store
+     */
+    public async destroy(): Promise<void> {
+        await ComponentRegistry.deletePayload(this.customId);
     }
 
     /**
@@ -146,7 +219,7 @@ export class Select {
     }
 
     /**
-     * Obtiene el SelectMenuBuilder para usar con ActionRow
+     * Obtiene el SelectMenuBuilder en formato JSON
      */
     public toJSON(): APISelectMenuComponent {
         return this.builder.toJSON() as APISelectMenuComponent;
@@ -167,9 +240,25 @@ export class Select {
     }
 
     /**
-     * Desregistra el select del registry y limpia el timeout
+     * Obtiene la clave del comando handler
      */
-    public destroy(): void {
-        ComponentRegistry.unregisterSelect(this.customId);
+    public getCommand(): string {
+        return this.command;
+    }
+
+    /**
+     * Obtiene el nombre del método estático handler
+     */
+    public getMethod(): string {
+        return this.method;
+    }
+
+    /**
+     * Indica si la instancia tiene un payload definido. `undefined` cuenta
+     * como ausencia; cualquier otro valor (incluyendo `null`/`false`/`0`/`''`)
+     * cuenta como payload presente.
+     */
+    public hasPayload(): boolean {
+        return this.payload !== undefined;
     }
 }

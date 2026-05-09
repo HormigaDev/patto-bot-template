@@ -1,116 +1,212 @@
-import type {
-    ButtonInteraction,
-    StringSelectMenuInteraction,
-    ModalSubmitInteraction,
-} from 'discord.js';
+import { MemoryPayloadStore, type PayloadStore } from '@/core/store/payload.store';
 
 /**
- * Tipo de callback para botones
+ * Tipo de componente interactivo. Sólo se usa para validar consistencia
+ * entre el método estático invocado y la interacción recibida.
  */
-export type ButtonCallback = (interaction: ButtonInteraction) => Promise<void> | void;
+export type ComponentType = 'button' | 'select' | 'modal';
 
 /**
- * Tipo de callback para selects
+ * Owner notificable cuando uno de sus componentes recibe una interacción.
+ * Usado por {@link RichMessage} para resetear su timeout sin necesidad de
+ * envolver callbacks por instancia.
  */
-export type SelectCallback = (
-    interaction: StringSelectMenuInteraction,
-    values: string[],
-) => Promise<void> | void;
+export interface ComponentOwner {
+    onComponentInteraction(customId: string): void | Promise<void>;
+}
 
 /**
- * Tipo de callback para modales
+ * Resultado parseado de un customId con formato `<commandKey>:<methodName>:<id>`
  */
-export type ModalCallback = (interaction: ModalSubmitInteraction) => Promise<void> | void;
+export interface ParsedCustomId {
+    commandKey: string;
+    methodName: string;
+    id: string;
+    raw: string;
+}
 
 /**
- * Registry global para almacenar componentes interactivos y sus callbacks
+ * Registry global de componentes interactivos.
+ *
+ * Arquitectura:
+ * - **Handlers**: NO se registran en runtime. Son **métodos estáticos** del
+ *   comando que crea el componente, con prefijo según el tipo
+ *   (`button*`, `select*`, `modal*`). El dispatcher los localiza vía
+ *   `CommandLoader.getCommand(commandKey)` + lookup directo en la clase.
+ * - **Payloads**: se guardan por instancia en un {@link PayloadStore}
+ *   (in-memory por defecto, swappable por Redis/Mongo sin tocar consumers).
+ * - **Owners**: {@link RichMessage} se asocia a sus componentes mediante
+ *   {@link ComponentRegistry.setOwner} para recibir notificaciones de
+ *   interacción (reset de timeout) sin guardar closures.
+ *
+ * Formato del customId: `<commandKey>:<methodName>:<id>`
+ *   - `commandKey`: clave kebab-case que identifica al comando en
+ *     `CommandLoader` (ej. `help`, `config-set`).
+ *   - `methodName`: nombre exacto del método estático (ej. `buttonNext`,
+ *     `selectCategory`, `modalContact`). El prefijo determina el tipo.
+ *   - `id`: nanoid único de la instancia.
+ *
+ * @example Definir handlers como métodos estáticos
+ * ```ts
+ * export class HelpCommand extends HelpDefinition {
+ *     public static async buttonNext(
+ *         interaction: ButtonInteraction,
+ *         payload: PaginationPayload | undefined,
+ *     ) {
+ *         if (payload === undefined) {
+ *             await BaseCommand.replyEphemeral(interaction, 'Expirado');
+ *             return;
+ *         }
+ *         // ...
+ *     }
+ * }
+ * ```
+ *
+ * @example Crear instancia
+ * ```ts
+ * const btn = new Button({
+ *     label: 'Siguiente',
+ *     command: 'help',
+ *     method: 'buttonNext',
+ *     payload: { page: 1 },
+ * });
+ * ```
  */
 export class ComponentRegistry {
-    private static buttons = new Map<string, ButtonCallback>();
-    private static selects = new Map<string, SelectCallback>();
-    private static modals = new Map<string, ModalCallback>();
+    /** Owners por customId completo (ej. RichMessage que agrupa el componente) */
+    private static owners = new Map<string, ComponentOwner>();
+
+    private static store: PayloadStore = new MemoryPayloadStore();
 
     /**
-     * Registra un botón con su callback
+     * Reemplaza el store de payloads. Útil para usar Redis/Mongo en producción.
+     * Llamar al inicio del bot, antes de crear componentes.
      */
-    public static registerButton(customId: string, callback: ButtonCallback): void {
-        this.buttons.set(customId, callback);
+    public static useStore(store: PayloadStore): void {
+        this.store = store;
     }
 
     /**
-     * Registra un select con su callback
+     * Devuelve el store actual de payloads
      */
-    public static registerSelect(customId: string, callback: SelectCallback): void {
-        this.selects.set(customId, callback);
+    public static getStore(): PayloadStore {
+        return this.store;
     }
 
     /**
-     * Registra un modal con su callback
+     * Guarda el payload de una instancia
+     * @param customId Identificador completo del componente (`<commandKey>:<methodName>:<id>`)
+     * @param payload Datos a asociar a esta instancia
+     * @param ttlMs TTL del payload en milisegundos
      */
-    public static registerModal(customId: string, callback: ModalCallback): void {
-        this.modals.set(customId, callback);
+    public static async setPayload(
+        customId: string,
+        payload: unknown,
+        ttlMs?: number,
+    ): Promise<void> {
+        await this.store.set(customId, payload, ttlMs);
     }
 
     /**
-     * Obtiene el callback de un botón
+     * Recupera el payload de una instancia
+     * @returns Payload guardado, o `undefined` si no existe / expiró.
+     *          IMPORTANTE: `null`, `false`, `0`, `''` son payloads válidos.
+     *          Solo `undefined` indica ausencia.
      */
-    public static getButton(customId: string): ButtonCallback | undefined {
-        return this.buttons.get(customId);
+    public static async getPayload<P = unknown>(customId: string): Promise<P | undefined> {
+        return this.store.get<P>(customId);
     }
 
     /**
-     * Obtiene el callback de un select
+     * Elimina el payload de una instancia
      */
-    public static getSelect(customId: string): SelectCallback | undefined {
-        return this.selects.get(customId);
+    public static async deletePayload(customId: string): Promise<void> {
+        await this.store.delete(customId);
+        this.owners.delete(customId);
     }
 
     /**
-     * Obtiene el callback de un modal
+     * Asocia un owner a un customId. El owner será notificado cuando el
+     * componente reciba una interacción (vía {@link ComponentOwner.onComponentInteraction}).
+     * Usado por {@link RichMessage} para resetear su timeout.
      */
-    public static getModal(customId: string): ModalCallback | undefined {
-        return this.modals.get(customId);
+    public static setOwner(customId: string, owner: ComponentOwner): void {
+        this.owners.set(customId, owner);
     }
 
     /**
-     * Elimina un botón del registry
+     * Obtiene el owner asociado a un customId, si lo hay
      */
-    public static unregisterButton(customId: string): void {
-        this.buttons.delete(customId);
+    public static getOwner(customId: string): ComponentOwner | undefined {
+        return this.owners.get(customId);
     }
 
     /**
-     * Elimina un select del registry
+     * Elimina la asociación de owner para un customId
      */
-    public static unregisterSelect(customId: string): void {
-        this.selects.delete(customId);
+    public static unsetOwner(customId: string): void {
+        this.owners.delete(customId);
     }
 
     /**
-     * Elimina un modal del registry
+     * Construye un customId con el formato `<commandKey>:<methodName>:<id>`
      */
-    public static unregisterModal(customId: string): void {
-        this.modals.delete(customId);
+    public static buildCustomId(commandKey: string, methodName: string, id: string): string {
+        this.assertSegment('commandKey', commandKey);
+        this.assertSegment('methodName', methodName);
+        this.assertSegment('id', id);
+        return `${commandKey}:${methodName}:${id}`;
     }
 
     /**
-     * Limpia todos los componentes registrados
+     * Parsea un customId. Devuelve `undefined` si el formato no coincide.
      */
-    public static clear(): void {
-        this.buttons.clear();
-        this.selects.clear();
-        this.modals.clear();
+    public static parseCustomId(customId: string): ParsedCustomId | undefined {
+        const parts = customId.split(':');
+        if (parts.length !== 3) return undefined;
+
+        const [commandKey, methodName, id] = parts;
+        if (!commandKey || !methodName || !id) return undefined;
+
+        return { commandKey, methodName, id, raw: customId };
     }
 
     /**
-     * Obtiene estadísticas del registry
+     * Devuelve el tipo de componente esperado según el prefijo del nombre del método.
+     * `undefined` si el método no corresponde a ningún tipo conocido.
+     */
+    public static methodType(methodName: string): ComponentType | undefined {
+        if (methodName.startsWith('button')) return 'button';
+        if (methodName.startsWith('select')) return 'select';
+        if (methodName.startsWith('modal')) return 'modal';
+        return undefined;
+    }
+
+    /**
+     * Limpia todos los owners y payloads (útil para tests / shutdown)
+     */
+    public static async clear(): Promise<void> {
+        this.owners.clear();
+        if (this.store instanceof MemoryPayloadStore) {
+            this.store.clear();
+        }
+    }
+
+    /**
+     * Estadísticas del registry
      */
     public static getStats() {
         return {
-            buttons: this.buttons.size,
-            selects: this.selects.size,
-            modals: this.modals.size,
-            total: this.buttons.size + this.selects.size + this.modals.size,
+            owners: this.owners.size,
+            payloads: this.store instanceof MemoryPayloadStore ? this.store.size() : null,
         };
+    }
+
+    private static assertSegment(name: string, value: string): void {
+        if (!value || value.includes(':')) {
+            throw new Error(
+                `Segmento "${name}" inválido ("${value}"): no puede estar vacío ni contener ":" (reservado para el customId).`,
+            );
+        }
     }
 }

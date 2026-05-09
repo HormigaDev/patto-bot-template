@@ -41,15 +41,14 @@
 
 ### 🎨 Componentes Interactivos
 
-- ✅ **Button Wrapper** - Crea botones con callbacks inline (Primary, Success, Danger, Secondary)
-- ✅ **Select Wrapper** - Crea select menus con onChange inline
-- ✅ **Modal Wrapper** - Crea formularios (modales) con onSubmit inline
-- ✅ **RichMessage** - Gestión centralizada de componentes con timeout global único
-- ✅ **Registry Global** - Almacena componentes automáticamente (sin archivos separados)
-- ✅ **Timeout Automático** - Componentes se limpian automáticamente (20 segundos por defecto)
-- ✅ **Type-Safe** - Callbacks con tipos completos de Discord.js
-- ✅ **Sin boilerplate** - No necesitas crear archivos `.button.ts` o `.select.ts`
-- ✅ **Mejor performance** - RichMessage usa 1 timeout para N componentes
+- ✅ **Button / Select / Modal wrappers** - Constructores tipados, sin archivos separados por componente
+- ✅ **Handlers como métodos estáticos** - Vivien en la clase del comando con prefijo `button*` / `select*` / `modal*`. Cero closures por instancia
+- ✅ **Payload por instancia** - Sólo se serializa el dato; las funciones nunca se duplican en memoria
+- ✅ **PayloadStore swappable** - Implementación in-memory por defecto, intercambiable por Redis/Mongo respetando el contrato
+- ✅ **CustomId con routing** - Formato `<commandKey>:<methodName>:<id>` resuelve al handler en O(1) vía `CommandLoader`
+- ✅ **RichMessage** - Agrupa componentes con timeout único y reset automático en cada interacción
+- ✅ **TTL por payload** - Eviction automática; `payload === undefined` marca expiración
+- ✅ **Type-Safe** - Genéricos `<P>` para botones, selects y modales
 
 ### 🏗️ Arquitectura Limpia
 
@@ -674,51 +673,86 @@ export abstract class TransferDefinition extends BaseCommand {
 
 ### Comando con Componentes Interactivos
 
+Los handlers son **métodos estáticos** del comando, con prefijo `button*` / `select*` / `modal*`. Cada instancia sólo guarda un `payload` (datos serializables); las funciones nunca se duplican en memoria por instancia. El `customId` codifica `<commandKey>:<methodName>:<id>` y el dispatcher resuelve el handler en O(1) vía `CommandLoader`.
+
 ```typescript
-// commands/panel.command.ts
-import { RichMessage, Button, Select } from '@/core/components';
+// commands/info/panel.command.ts
+import { RichMessage, Button, ButtonVariant, Select } from '@/core/components';
 import { Times } from '@/utils/Times';
+import { ButtonInteraction, StringSelectMenuInteraction } from 'discord.js';
+
+interface CategoryPayload {
+    label: string;
+}
 
 export class PanelCommand extends PanelDefinition {
+    // Handlers estáticos: viven en la clase, no se registran en runtime
+    public static async buttonInfo(interaction: ButtonInteraction): Promise<void> {
+        await interaction.reply({ content: '📊 Información del servidor…', ephemeral: true });
+    }
+
+    public static async buttonConfig(interaction: ButtonInteraction): Promise<void> {
+        await interaction.reply({ content: '⚙️ Panel de configuración…', ephemeral: true });
+    }
+
+    public static async buttonHelp(interaction: ButtonInteraction): Promise<void> {
+        await interaction.reply({ content: '❓ Visita nuestra guía…', ephemeral: true });
+    }
+
+    public static async selectCategory(
+        interaction: StringSelectMenuInteraction,
+        values: string[],
+        payload: CategoryPayload | undefined,
+    ): Promise<void> {
+        if (payload === undefined) {
+            await interaction.reply({ content: 'Esta interacción expiró.', ephemeral: true });
+            return;
+        }
+        await interaction.reply({
+            content: `Categoría seleccionada en ${payload.label}: **${values[0]}**`,
+            ephemeral: true,
+        });
+    }
+
     public async run(): Promise<void> {
-        // Crear botones con callbacks inline
-        const infoBtn = Button.primary('Ver Info', 'ℹ️').onClick(async (interaction) => {
-            await interaction.reply({
-                content: '📊 Información del servidor...',
-                ephemeral: true,
-            });
+        const COMMAND_KEY = 'panel';
+
+        const infoBtn = new Button({
+            label: 'Ver Info',
+            variant: ButtonVariant.Primary,
+            emoji: 'ℹ️',
+            command: COMMAND_KEY,
+            method: 'buttonInfo',
         });
 
-        const configBtn = Button.secondary('Configurar', '⚙️').onClick(async (interaction) => {
-            await interaction.reply({
-                content: '⚙️ Panel de configuración...',
-                ephemeral: true,
-            });
+        const configBtn = new Button({
+            label: 'Configurar',
+            variant: ButtonVariant.Secondary,
+            emoji: '⚙️',
+            command: COMMAND_KEY,
+            method: 'buttonConfig',
         });
 
-        const helpBtn = Button.success('Ayuda', '❓').onClick(async (interaction) => {
-            await interaction.reply({
-                content: '❓ ¿Necesitas ayuda? Visita nuestra guía...',
-                ephemeral: true,
-            });
+        const helpBtn = new Button({
+            label: 'Ayuda',
+            variant: ButtonVariant.Success,
+            emoji: '❓',
+            command: COMMAND_KEY,
+            method: 'buttonHelp',
         });
 
-        // Crear select menu
-        const categorySelect = new Select({
+        const categorySelect = new Select<CategoryPayload>({
             placeholder: 'Selecciona una categoría',
+            command: COMMAND_KEY,
+            method: 'selectCategory',
+            payload: { label: 'panel-principal' },
             options: [
                 { label: 'Moderación', value: 'mod', emoji: '🛡️' },
                 { label: 'Utilidades', value: 'util', emoji: '🔧' },
                 { label: 'Diversión', value: 'fun', emoji: '🎮' },
             ],
-        }).onChange(async (interaction, values) => {
-            await interaction.reply({
-                content: `Categoría seleccionada: **${values[0]}**`,
-                ephemeral: true,
-            });
         });
 
-        // Crear RichMessage con timeout global de 5 minutos
         const panel = new RichMessage({
             embeds: [
                 this.getEmbed('info')
@@ -726,7 +760,7 @@ export class PanelCommand extends PanelDefinition {
                     .setDescription('Usa los botones y el menú para interactuar'),
             ],
             components: [infoBtn, configBtn, helpBtn, categorySelect],
-            timeout: Times.minutes(5), // Timeout único para todos los componentes
+            timeout: Times.minutes(5),
         });
 
         await panel.send(this.ctx);
@@ -736,11 +770,11 @@ export class PanelCommand extends PanelDefinition {
 
 **Ventajas:**
 
-- ✅ Callbacks inline (sin archivos separados)
-- ✅ RichMessage gestiona un timeout global único
-- ✅ Limpieza automática del registry
+- ✅ Handlers como código fijo en la clase: cero closures vivas por instancia
+- ✅ Sólo se serializa el payload, no la lógica → swappable a Redis/Mongo
+- ✅ `RichMessage` gestiona timeout global, reset automático y limpieza de payloads
 - ✅ Método `edit()` para actualizar mensajes dinámicamente
-- ✅ Type-safe con Discord.js
+- ✅ Type-safe con genéricos `<P>` y tipos de Discord.js
 
 Ver más en [`src/core/components/README.md`](src/core/components/README.md)
 

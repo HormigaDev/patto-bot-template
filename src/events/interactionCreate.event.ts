@@ -1,4 +1,4 @@
-import { Events, Interaction } from 'discord.js';
+import { Events, Interaction, MessageFlags } from 'discord.js';
 import { CommandLoader } from '@/core/loaders/command.loader';
 import { CommandHandler } from '@/core/handlers/command.handler';
 import { ComponentRegistry } from '@/core/registry/component.registry';
@@ -43,46 +43,95 @@ export function registerInteractionCreateEvent(
                     return;
                 }
 
-                // Manejar botones
-                if (interaction.isButton()) {
-                    const callback = ComponentRegistry.getButton(interaction.customId);
-
-                    if (callback) {
-                        await callback(interaction);
-                    } else {
-                        console.warn(
-                            `⚠️ No se encontró callback para el botón: ${interaction.customId}`,
-                        );
+                // Manejar componentes interactivos: el customId tiene formato
+                // `<commandKey>:<methodName>:<id>`. El handler es un método
+                // ESTÁTICO de la clase del comando (resolución vía
+                // CommandLoader, no se registra nada en runtime).
+                if (
+                    interaction.isButton() ||
+                    interaction.isStringSelectMenu() ||
+                    interaction.isModalSubmit()
+                ) {
+                    const parsed = ComponentRegistry.parseCustomId(interaction.customId);
+                    if (!parsed) {
+                        console.warn(`⚠️ customId con formato inválido: ${interaction.customId}`);
+                        return;
                     }
-                    return;
-                }
 
-                // Manejar selects
-                if (interaction.isStringSelectMenu()) {
-                    const callback = ComponentRegistry.getSelect(interaction.customId);
+                    // Validar consistencia entre tipo de interacción y prefijo del método
+                    const expectedType = ComponentRegistry.methodType(parsed.methodName);
+                    const interactionType = interaction.isButton()
+                        ? 'button'
+                        : interaction.isStringSelectMenu()
+                          ? 'select'
+                          : 'modal';
 
-                    if (callback) {
-                        await callback(interaction, interaction.values);
-                    } else {
+                    if (expectedType !== interactionType) {
                         console.warn(
-                            `⚠️ No se encontró callback para el select: ${interaction.customId}`,
+                            `⚠️ Tipo de método "${parsed.methodName}" no coincide con interacción ${interactionType} (customId: ${parsed.raw})`,
                         );
+                        return;
                     }
-                    return;
-                }
 
-                // Manejar modales
-                if (interaction.isModalSubmit()) {
-                    const callback = ComponentRegistry.getModal(interaction.customId);
-
-                    if (callback) {
-                        await callback(interaction);
-                    } else {
+                    // Resolver clase del comando
+                    const commandClass = commandLoader.getCommand(parsed.commandKey);
+                    if (!commandClass) {
                         console.warn(
-                            `⚠️ No se encontró callback para el modal: ${interaction.customId}`,
+                            `⚠️ No se encontró el comando "${parsed.commandKey}" para el customId ${parsed.raw}`,
                         );
+                        return;
                     }
-                    return;
+
+                    // Resolver método estático
+                    const handler = (commandClass as unknown as Record<string, unknown>)[
+                        parsed.methodName
+                    ];
+                    if (typeof handler !== 'function') {
+                        console.warn(
+                            `⚠️ El comando "${parsed.commandKey}" no expone el método estático "${parsed.methodName}"`,
+                        );
+                        return;
+                    }
+
+                    // Notificar al owner (ej. RichMessage) para que pueda
+                    // resetear su timeout sin envolver callbacks por instancia.
+                    const owner = ComponentRegistry.getOwner(parsed.raw);
+                    if (owner) {
+                        await owner.onComponentInteraction(parsed.raw);
+                    }
+
+                    // Recuperar payload. `undefined` indica que no existe
+                    // (expirado o nunca creado). `null`/`false`/`0`/`''` son
+                    // valores válidos.
+                    const payload = await ComponentRegistry.getPayload(parsed.raw);
+
+                    if (interaction.isButton()) {
+                        await (handler as (...args: unknown[]) => unknown).call(
+                            commandClass,
+                            interaction,
+                            payload,
+                        );
+                        return;
+                    }
+
+                    if (interaction.isStringSelectMenu()) {
+                        await (handler as (...args: unknown[]) => unknown).call(
+                            commandClass,
+                            interaction,
+                            interaction.values,
+                            payload,
+                        );
+                        return;
+                    }
+
+                    if (interaction.isModalSubmit()) {
+                        await (handler as (...args: unknown[]) => unknown).call(
+                            commandClass,
+                            interaction,
+                            payload,
+                        );
+                        return;
+                    }
                 }
             } catch (error) {
                 console.error('❌ Error al manejar interacción:', error);
@@ -91,11 +140,12 @@ export function registerInteractionCreateEvent(
                 try {
                     if (interaction.isRepliable()) {
                         const content = '❌ Ocurrió un error al procesar esta acción.';
+                        const payload = { content, flags: [MessageFlags.Ephemeral] as const };
 
                         if (interaction.replied || interaction.deferred) {
-                            await interaction.followUp({ content, ephemeral: true });
+                            await interaction.followUp(payload);
                         } else {
-                            await interaction.reply({ content, ephemeral: true });
+                            await interaction.reply(payload);
                         }
                     }
                 } catch (replyError) {
