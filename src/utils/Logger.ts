@@ -184,9 +184,9 @@ export class Logger {
         const ts = `${Colors.dim}[${timestamp}]${Colors.reset}`;
         const lvl = `${levelColor}${Colors.bold}[${levelName}]${Colors.reset}`;
         const shard =
-            sid !== null ? `${Colors.blue}${Colors.bold}[SHARD ${sid}]${Colors.reset}` : '';
+            sid !== null ? ` ${Colors.blue}${Colors.bold}[SHARD ${sid}]${Colors.reset}` : '';
         const scope = this.scope ? ` ${Colors.dim}[${this.scope}]${Colors.reset}` : '';
-        return `${ts} ${shard} ${lvl}${scope} ${message}`;
+        return `${ts}${shard} ${lvl}${scope} ${message}`;
     }
 
     /**

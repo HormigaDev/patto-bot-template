@@ -168,18 +168,17 @@ class EnvValidator {
      * Valor inválido → usa 'auto' con advertencia.
      */
     private parseTotalShards(value: string | undefined): number | 'auto' {
-        if (!value || value.trim().toLowerCase() === 'auto') return 'auto';
+        if (!value || value.trim().toLocaleLowerCase() === 'auto') return 'auto';
+        const trimmedValue = value.trim();
 
-        const parsed = parseInt(value.trim(), 10);
-
-        if (isNaN(parsed) || parsed < 1) {
+        if (!/^[1-9]\d*$/.test(trimmedValue)) {
             envLog.warn(
                 `TOTAL_SHARDS='${value}' no es válido (debe ser un entero ≥ 1 o 'auto'). Se usará 'auto'.`,
             );
             return 'auto';
         }
 
-        return parsed;
+        return Number(trimmedValue);
     }
 
     /**
