@@ -169,39 +169,46 @@ Se ejecuta cuando el bot recibe una interacción (principalmente slash commands)
 
 ### Filtrado
 
-El evento maneja múltiples tipos de interacciones:
+El evento maneja múltiples tipos de interacciones. Para componentes (botones, selects, modales), el `customId` codifica `<commandKey>:<methodName>:<id>` y el handler es un **método estático** de la clase del comando — no se registran callbacks en runtime.
 
 ```typescript
 // Slash commands
 if (interaction.isChatInputCommand()) {
-    // Ejecutar comando
+    // Ejecutar comando vía CommandLoader + CommandHandler
 }
 
-// Botones (desde ComponentRegistry)
-if (interaction.isButton()) {
-    const callback = ComponentRegistry.getButton(interaction.customId);
-    if (callback) await callback(interaction);
-}
+// Componentes interactivos (botones, selects, modales)
+if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
+    const parsed = ComponentRegistry.parseCustomId(interaction.customId);
+    // parsed = { commandKey, methodName, id, raw }
 
-// Select menus (desde ComponentRegistry)
-if (interaction.isStringSelectMenu()) {
-    const callback = ComponentRegistry.getSelect(interaction.customId);
-    if (callback) await callback(interaction, interaction.values);
-}
+    // 1. Validar que el prefijo del método coincida con el tipo de interacción
+    //    (button* para botones, select* para selects, modal* para modales)
 
-// Modales (desde ComponentRegistry)
-if (interaction.isModalSubmit()) {
-    const callback = ComponentRegistry.getModal(interaction.customId);
-    if (callback) await callback(interaction);
+    // 2. Resolver clase del comando vía CommandLoader.getCommand(commandKey)
+    const commandClass = commandLoader.getCommand(parsed.commandKey);
+
+    // 3. Localizar el método estático en la clase
+    const handler = commandClass[parsed.methodName];
+
+    // 4. Notificar al owner (RichMessage) para reset de timeout
+    const owner = ComponentRegistry.getOwner(parsed.raw);
+    if (owner) await owner.onComponentInteraction(parsed.raw);
+
+    // 5. Recuperar payload del PayloadStore (undefined ⇒ expirado)
+    const payload = await ComponentRegistry.getPayload(parsed.raw);
+
+    // 6. Invocar el método estático
+    await handler.call(commandClass, interaction, /* values, */ payload);
 }
 ```
 
 **Tipos de interacciones soportadas:**
 
 - ✅ **Chat Input Commands** - Slash commands (`/comando`)
-- ✅ **Buttons** - Botones interactivos creados con `Button` wrapper
-- ✅ **Select Menus** - Menús desplegables creados con `Select` wrapper
-- ✅ **Modals** - Formularios creados con `Modal` wrapper
+- ✅ **Buttons** - Handler estático con prefijo `button*` en la clase del comando
+- ✅ **Select Menus** - Handler estático con prefijo `select*` en la clase del comando
+- ✅ **Modals** - Handler estático con prefijo `modal*` en la clase del comando
 
 ### Flujo
 
@@ -209,12 +216,18 @@ if (interaction.isModalSubmit()) {
 Interaction Recibida
     ↓
 ¿Qué tipo es?
-    ├─ ChatInputCommand → Buscar y ejecutar comando
-    ├─ Button → Buscar callback en ComponentRegistry
-    ├─ StringSelectMenu → Buscar callback en ComponentRegistry
-    ├─ ModalSubmit → Buscar callback en ComponentRegistry
-    └─ Otro → Ignorar
+    ├─ ChatInputCommand → CommandLoader → CommandHandler.executeCommand
+    └─ Button / Select / Modal
+        ↓ parseCustomId → commandKey, methodName, id
+        ↓ validar prefijo del método (button*/select*/modal*)
+        ↓ CommandLoader.getCommand(commandKey) → ClaseComando
+        ↓ ClaseComando[methodName] → handler estático
+        ↓ owner.onComponentInteraction(customId) → reset timeout (si aplica)
+        ↓ ComponentRegistry.getPayload(customId) → payload | undefined
+        └─ ClaseComando.method(interaction, [values,] payload)
 ```
+
+**Por qué este diseño:** los handlers son código fijo que vive en la clase del comando. El proceso no acumula closures por cada componente activo, sólo payloads serializables que pueden moverse a Redis/Mongo respetando el contrato `PayloadStore`.
 
 ### Ejemplo de Uso
 

@@ -5,10 +5,9 @@
         "lib": ["ES2021"],
         "sourceMap": true,
         "outDir": "./dist",
-        "baseUrl": "./",
         "paths": {
-            "@/*": ["src/*"],
-            "@tests/*": ["tests/*"]
+            "@/*": ["./src/*"],
+            "@tests/*": ["./tests/*"]
         },
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,

@@ -12,12 +12,15 @@ import { Button } from './Button';
 import { Select } from './Select';
 import { Modal } from './Modal';
 import { Times } from '@/utils/Times';
-import { ComponentRegistry } from '@/core/registry/component.registry';
-import type {
-    ButtonCallback,
-    SelectCallback,
-    ModalCallback,
-} from '@/core/registry/component.registry';
+import { ComponentRegistry, type ComponentOwner } from '@/core/registry/component.registry';
+
+/**
+ * Valor sentinel para indicar que un RichMessage no debe expirar nunca.
+ * Sólo válido cuando ningún componente tiene payload (ver
+ * {@link RichMessageOptions.timeout}).
+ */
+export const NEVER_EXPIRES = null;
+export type RichMessageTimeout = number | typeof NEVER_EXPIRES;
 
 /**
  * Opciones para crear un RichMessage
@@ -26,98 +29,109 @@ export interface RichMessageOptions {
     content?: string;
     embeds?: EmbedBuilder[];
     components?: (Button | Select)[];
-    timeout?: number; // Timeout global para todos los componentes
+    /**
+     * Tiempo en milisegundos antes de que el mensaje expire y se eliminen sus
+     * componentes. El TTL se **refresca automáticamente** en cada interacción
+     * con cualquiera de los componentes del RichMessage.
+     *
+     * Pasar `null` (o {@link NEVER_EXPIRES}) crea un mensaje **permanente**.
+     * Caso de uso típico: paneles públicos como un selector de roles donde
+     * cualquier miembro puede interactuar indefinidamente.
+     *
+     * **Restricción:** un RichMessage permanente NO puede tener componentes
+     * con payload. Un payload requiere expiración (TTL); sin TTL no hay
+     * forma de evitar que la memoria/store crezca sin límite. Si necesitás
+     * estado por interacción, usá un RichMessage con timeout numérico.
+     *
+     * Por defecto: 20 segundos.
+     */
+    timeout?: RichMessageTimeout;
 }
 
 /**
- * Wrapper para mensajes con componentes interactivos
- * Gestiona el ciclo de vida de todos los componentes del mensaje de forma centralizada
+ * Wrapper para mensajes con componentes interactivos.
  *
- * @example
+ * Gestiona el ciclo de vida de los componentes (commit de payloads al
+ * enviar, refresh de TTL en cada interacción, eliminación al expirar)
+ * sin guardar closures por instancia.
+ *
+ * Implementa {@link ComponentOwner}: cuando uno de sus componentes recibe
+ * una interacción, el dispatcher llama a {@link RichMessage.onComponentInteraction}
+ * para refrescar el TTL de los payloads y reiniciar el timeout global.
+ *
+ * @example RichMessage con expiración (caso común)
  * ```ts
  * const richMsg = new RichMessage({
  *     embeds: [embed],
- *     components: [button1, button2, select],
+ *     components: [select],
  *     timeout: Times.minutes(2),
  * });
+ * await richMsg.send(this.ctx);
+ * ```
  *
+ * @example RichMessage permanente (sin payloads)
+ * ```ts
+ * import { RichMessage, NEVER_EXPIRES } from '@/core/components';
+ *
+ * // Selector de roles persistente: los botones no llevan payload, todo lo
+ * // que el handler necesita está codificado en el `method` (ej. buttonAssignAdmin).
+ * const richMsg = new RichMessage({
+ *     embeds: [embed],
+ *     components: [adminBtn, modBtn, memberBtn],
+ *     timeout: NEVER_EXPIRES,
+ * });
  * await richMsg.send(channel);
- * * Después de 2 minutos: se eliminan los componentes del mensaje y del registry
  * ```
  */
-export class RichMessage {
+export class RichMessage implements ComponentOwner {
+    private static readonly DEFAULT_TIMEOUT_MS = Times.seconds(20);
+
     private options: RichMessageOptions;
     private message?: Message | InteractionResponse;
-    private timeoutMs: number;
+    private timeoutMs: RichMessageTimeout;
     private timeoutId?: NodeJS.Timeout;
     private components: (Button | Select | Modal)[] = [];
 
     constructor(options: RichMessageOptions) {
         this.options = options;
-        this.timeoutMs = options.timeout ?? Times.seconds(20); // 20 segundos por defecto
+        this.timeoutMs =
+            options.timeout === undefined ? RichMessage.DEFAULT_TIMEOUT_MS : options.timeout;
 
-        // Extraer componentes
         if (options.components) {
             this.components = options.components;
-            // Wrappear los callbacks para auto-resetear el timeout
-            this.wrapComponentCallbacks();
         }
+
+        this.assertNoPayloadsWhenPermanent();
     }
 
     /**
-     * Wrappea los callbacks de los componentes para interceptar interacciones
-     * y resetear el timeout automáticamente (patrón DRY)
+     * Define el timeout global. `null` deshabilita la expiración (sólo
+     * válido si ningún componente tiene payload).
      */
-    private wrapComponentCallbacks(): void {
-        for (const component of this.components) {
-            const customId = component.getCustomId();
-
-            if (component instanceof Button) {
-                const originalCallback = ComponentRegistry.getButton(customId);
-                if (originalCallback) {
-                    const wrappedCallback: ButtonCallback = async (interaction) => {
-                        await originalCallback(interaction);
-                        this.resetTimeout(); // Auto-reset después de cada interacción
-                    };
-                    ComponentRegistry.registerButton(customId, wrappedCallback);
-                }
-            } else if (component instanceof Select) {
-                const originalCallback = ComponentRegistry.getSelect(customId);
-                if (originalCallback) {
-                    const wrappedCallback: SelectCallback = async (interaction, values) => {
-                        await originalCallback(interaction, values);
-                        this.resetTimeout(); // Auto-reset después de cada interacción
-                    };
-                    ComponentRegistry.registerSelect(customId, wrappedCallback);
-                }
-            } else if (component instanceof Modal) {
-                const originalCallback = ComponentRegistry.getModal(customId);
-                if (originalCallback) {
-                    const wrappedCallback: ModalCallback = async (interaction) => {
-                        await originalCallback(interaction);
-                        this.resetTimeout(); // Auto-reset después de cada interacción
-                    };
-                    ComponentRegistry.registerModal(customId, wrappedCallback);
-                }
-            }
-        }
-    }
-
-    /**
-     * Define el timeout global para todos los componentes
-     */
-    public setTimeout(ms: number): this {
+    public setTimeout(ms: RichMessageTimeout): this {
         this.timeoutMs = ms;
+        this.assertNoPayloadsWhenPermanent();
         return this;
     }
 
     /**
-     * Envía el mensaje y inicia el timeout global
+     * Indica si este RichMessage está configurado para no expirar
+     */
+    public isPermanent(): boolean {
+        return this.timeoutMs === NEVER_EXPIRES;
+    }
+
+    /**
+     * Envía el mensaje, persiste los payloads de los componentes y arranca
+     * el timeout global (si corresponde).
      */
     public async send(target: any): Promise<Message> {
+        // Persistir payloads y registrarse como owner ANTES de mostrar el mensaje,
+        // así si la interacción llega instantáneamente el dispatcher ya tiene todo.
+        await this.commitComponents();
+
         const payload = this.buildPayload();
 
-        // Enviar mensaje
         if (typeof target.followUp === 'function') {
             // Es una interacción - usar followUp para evitar "Este mensaje fue eliminado"
             this.message = await target.followUp(payload);
@@ -131,7 +145,6 @@ export class RichMessage {
             throw new Error('Target inválido: debe ser un canal, interacción o contexto');
         }
 
-        // Iniciar timeout global
         this.startGlobalTimeout();
 
         if (this.message instanceof Message) {
@@ -141,6 +154,43 @@ export class RichMessage {
         }
 
         throw new Error('Error al enviar mensaje');
+    }
+
+    /**
+     * Persiste los payloads de los componentes interactivos en el store
+     * y registra a este RichMessage como owner para reset de timeout.
+     *
+     * En modo permanente (`timeoutMs === NEVER_EXPIRES`) sólo se registra
+     * el owner; no se persiste ningún payload (se garantiza por el assert
+     * en el constructor que ningún componente lo tiene).
+     */
+    private async commitComponents(): Promise<void> {
+        for (const component of this.components) {
+            if (component instanceof Button && component.isLinkButton()) {
+                continue;
+            }
+
+            if (this.timeoutMs !== NEVER_EXPIRES) {
+                await component.commit(this.timeoutMs);
+            }
+            ComponentRegistry.setOwner(component.getCustomId(), this);
+        }
+    }
+
+    /**
+     * Refresca el TTL de los payloads de todos los componentes activos.
+     * Llamado en cada interacción para que los payloads no expiren mientras
+     * el RichMessage esté siendo usado.
+     */
+    private async refreshComponentTtls(): Promise<void> {
+        if (this.timeoutMs === NEVER_EXPIRES) return;
+
+        for (const component of this.components) {
+            if (component instanceof Button && component.isLinkButton()) {
+                continue;
+            }
+            await component.commit(this.timeoutMs);
+        }
     }
 
     /**
@@ -200,26 +250,23 @@ export class RichMessage {
     }
 
     /**
-     * Inicia el timeout global que elimina todos los componentes
+     * Inicia el timeout global que elimina todos los componentes.
+     * No-op en modo permanente.
      */
     private startGlobalTimeout(): void {
+        if (this.timeoutMs === NEVER_EXPIRES) return;
         this.timeoutId = setTimeout(async () => {
             await this.destroyAll();
         }, this.timeoutMs);
     }
 
     /**
-     * Reinicia el timeout global (útil para extender el tiempo en cada interacción)
-     *
-     * @example
-     * ```ts
-     * button.onClick(async (interaction) => {
-     *     await interaction.reply('Clickeado!');
-     *     richMessage.resetTimeout(); // Reinicia el timeout
-     * });
-     * ```
+     * Reinicia el timeout global. Llamado automáticamente por el dispatcher
+     * de interacciones vía {@link RichMessage.onComponentInteraction}.
+     * No-op en modo permanente.
      */
     public resetTimeout(): this {
+        if (this.timeoutMs === NEVER_EXPIRES) return this;
         if (this.timeoutId) {
             clearTimeout(this.timeoutId);
         }
@@ -228,18 +275,29 @@ export class RichMessage {
     }
 
     /**
-     * Elimina todos los componentes del mensaje y del registry
+     * Hook llamado por el dispatcher cuando uno de los componentes de este
+     * RichMessage recibe una interacción. Refresca el TTL de los payloads
+     * y reinicia el timeout global. No-op en modo permanente.
+     */
+    public async onComponentInteraction(_customId: string): Promise<void> {
+        if (this.timeoutMs === NEVER_EXPIRES) return;
+        await this.refreshComponentTtls();
+        this.resetTimeout();
+    }
+
+    /**
+     * Elimina todos los componentes del mensaje y los payloads del registry
      */
     private async destroyAll(): Promise<void> {
-        // 1. Eliminar todos los componentes del registry PRIMERO
+        // 1. Eliminar payloads y owners del registry PRIMERO
         for (const component of this.components) {
-            component.destroy();
+            await component.destroy();
+            ComponentRegistry.unsetOwner(component.getCustomId());
         }
 
         // 2. Intentar actualizar el mensaje para remover los componentes visuales
         if (this.message) {
             try {
-                // Verificar si el mensaje existe antes de intentar editarlo
                 let messageToEdit: Message;
 
                 if (this.message instanceof Message) {
@@ -257,17 +315,14 @@ export class RichMessage {
                     }
                 }
 
-                // Verificar que el mensaje existe
                 if (!messageToEdit) {
                     return;
                 }
 
-                // Construir payload de actualización
                 const updatePayload: MessageEditOptions = {
                     components: [], // Remover todos los componentes
                 };
 
-                // Mantener el contenido y embeds
                 if (this.options.content) {
                     updatePayload.content = this.options.content;
                 }
@@ -275,12 +330,10 @@ export class RichMessage {
                     updatePayload.embeds = this.options.embeds;
                 }
 
-                // Actualizar mensaje
                 await messageToEdit.edit(updatePayload);
             } catch (_error: any) {
                 // Silenciosamente ignorar errores comunes de Discord
                 // (mensaje eliminado, sin permisos, etc.)
-                // Solo errores críticos serían re-lanzados si fuera necesario
             }
         }
 
@@ -302,8 +355,9 @@ export class RichMessage {
     }
 
     /**
-     * Edita el mensaje actual con nuevas opciones
-     * Útil para actualizar contenido, embeds o componentes sin crear un mensaje nuevo
+     * Edita el mensaje actual con nuevas opciones.
+     * Si se cambian los componentes, los payloads previos se eliminan y
+     * los nuevos se persisten en el store.
      *
      * @example
      * ```ts
@@ -318,52 +372,47 @@ export class RichMessage {
             throw new Error('No hay mensaje para editar. Usa send() primero.');
         }
 
-        // Actualizar opciones
         if (options.content !== undefined) {
             this.options.content = options.content;
         }
         if (options.embeds !== undefined) {
             this.options.embeds = options.embeds;
         }
-        if (options.components !== undefined) {
-            // Destruir componentes antiguos del registry
-            for (const component of this.components) {
-                component.destroy();
-            }
-
-            // Actualizar con nuevos componentes
-            this.components = options.components;
-            this.wrapComponentCallbacks();
-        }
         if (options.timeout !== undefined) {
             this.timeoutMs = options.timeout;
         }
 
-        // Construir el nuevo payload
+        if (options.components !== undefined) {
+            // Eliminar payloads / owners de los componentes anteriores
+            for (const component of this.components) {
+                await component.destroy();
+                ComponentRegistry.unsetOwner(component.getCustomId());
+            }
+
+            this.components = options.components;
+            this.assertNoPayloadsWhenPermanent();
+            await this.commitComponents();
+        } else {
+            // Sin cambio de componentes pero sí pudo cambiar el timeout: validar
+            this.assertNoPayloadsWhenPermanent();
+        }
+
         const payload = this.buildPayload();
 
-        // Obtener el mensaje a editar
         let messageToEdit: Message;
-
         if (this.message instanceof Message) {
             messageToEdit = this.message;
         } else {
             messageToEdit = await this.message.fetch();
         }
 
-        // Editar el mensaje
         await messageToEdit.edit(payload as MessageEditOptions);
 
-        // Gestionar timeout según componentes
-        if (this.components.length > 0) {
-            // Hay componentes: reiniciar timeout
+        if (this.components.length > 0 && this.timeoutMs !== NEVER_EXPIRES) {
             this.resetTimeout();
-        } else {
-            // No hay componentes: limpiar timeout
-            if (this.timeoutId) {
-                clearTimeout(this.timeoutId);
-                this.timeoutId = undefined;
-            }
+        } else if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+            this.timeoutId = undefined;
         }
     }
 
@@ -372,5 +421,27 @@ export class RichMessage {
      */
     public getMessage(): Message | InteractionResponse | undefined {
         return this.message;
+    }
+
+    /**
+     * Garantiza la invariante: en modo permanente ningún componente puede
+     * tener payload (sin TTL no hay forma de evitar crecimiento ilimitado
+     * del store).
+     */
+    private assertNoPayloadsWhenPermanent(): void {
+        if (this.timeoutMs !== NEVER_EXPIRES) return;
+
+        for (const component of this.components) {
+            if (component instanceof Button && component.isLinkButton()) {
+                continue;
+            }
+            if (component.hasPayload()) {
+                throw new Error(
+                    `RichMessage permanente (timeout: null) no admite componentes con payload. ` +
+                        `Componente "${component.getCustomId()}" tiene payload definido. ` +
+                        `Usá un timeout numérico o quitá el payload del componente.`,
+                );
+            }
+        }
     }
 }

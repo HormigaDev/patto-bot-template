@@ -663,21 +663,26 @@ export class CooldownPlugin extends BasePlugin {
 #### RichMessage Timeout
 
 ```typescript
-import { RichMessage } from '@/core/components/RichMessage';
+import { RichMessage, Button, ButtonVariant } from '@/core/components';
 import { Times } from '@/utils/Times';
 
-const richMessage = new RichMessage(ctx)
-    .setTimeout(Times.minutes(10)) // Timeout de 10 minutos
-    .addButton({
-        customId: 'confirm',
-        label: 'Confirmar',
-        style: ButtonStyle.Success,
-        onClick: async () => {
-            // Lógica
-        },
-    });
+// El handler es un método estático de la clase del comando, no una closure.
+// Aquí se asume que MyCommand.buttonConfirm(...) está definido.
+const confirmBtn = new Button({
+    label: 'Confirmar',
+    variant: ButtonVariant.Success,
+    command: 'my',
+    method: 'buttonConfirm',
+    payload: { action: 'confirm-thing' },
+});
 
-await richMessage.send({ content: 'Mensaje con timeout de 10 minutos' });
+const richMessage = new RichMessage({
+    content: 'Mensaje con timeout de 10 minutos',
+    components: [confirmBtn],
+    timeout: Times.minutes(10),
+});
+
+await richMessage.send(this.ctx);
 ```
 
 #### Duraciones en Comandos

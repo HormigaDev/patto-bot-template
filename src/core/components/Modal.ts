@@ -1,5 +1,5 @@
 import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
-import { ComponentRegistry, type ModalCallback } from '@/core/registry/component.registry';
+import { ComponentRegistry } from '@/core/registry/component.registry';
 import { nanoid } from 'nanoid';
 
 /**
@@ -17,52 +17,100 @@ export interface ModalFieldOptions {
 }
 
 /**
- * Opciones para crear un modal
+ * Opciones para crear un modal.
+ *
+ * El handler de un modal es un **método estático** del comando, con prefijo
+ * `modal*`. La instancia solo guarda un `payload`.
  */
-export interface ModalOptions {
+export interface ModalOptions<P = unknown> {
     title: string;
     fields: ModalFieldOptions[];
+    /**
+     * Clave kebab-case del comando que expone el método estático handler
+     */
+    command: string;
+    /**
+     * Nombre exacto del método estático que maneja el submit. Debe empezar
+     * con `modal` (ej. `'modalContact'`).
+     */
+    method: string;
+    /**
+     * Payload asociado a esta instancia. Recordá llamar {@link Modal.commit}
+     * antes de mostrar el modal con `interaction.showModal()`.
+     */
+    payload?: P;
+    /**
+     * TTL del payload en milisegundos. Recomendado para modales ya que la
+     * destrucción manual no siempre se da (el usuario puede no enviarlo).
+     */
+    ttl?: number;
 }
 
 /**
- * Wrapper para crear modales de Discord con callbacks inline
+ * Wrapper para crear modales de Discord.
+ *
+ * Los handlers son métodos estáticos en la clase del comando con prefijo
+ * `modal*`. La instancia solo guarda payload — cero closures.
  *
  * @example
  * ```ts
- * const modal = new Modal({
- *     title: 'Formulario de Contacto',
- *     fields: [
- *         {
- *             customId: 'name',
- *             label: 'Nombre',
- *             style: TextInputStyle.Short,
- *             required: true,
- *         },
- *         {
- *             customId: 'message',
- *             label: 'Mensaje',
- *             style: TextInputStyle.Paragraph,
- *             required: true,
- *         },
- *     ],
- * }).onSubmit(async (interaction) => {
- *     const name = interaction.fields.getTextInputValue('name');
- *     const message = interaction.fields.getTextInputValue('message');
- *     await interaction.reply(`Gracias ${name}! Mensaje: ${message}`);
- * });
+ * export class ContactCommand extends BaseCommand {
+ *     public static async modalContact(
+ *         interaction: ModalSubmitInteraction,
+ *         payload: { topic: string } | undefined,
+ *     ) {
+ *         if (payload === undefined) {
+ *             await BaseCommand.replyEphemeral(interaction, 'Formulario expirado');
+ *             return;
+ *         }
+ *         const name = interaction.fields.getTextInputValue('name');
+ *         await interaction.reply(`Gracias ${name}! Tema: ${payload.topic}`);
+ *     }
  *
- * await interaction.showModal(modal.getBuilder());
+ *     async run() {
+ *         const modal = new Modal({
+ *             command: 'contact',
+ *             method: 'modalContact',
+ *             title: 'Formulario de Contacto',
+ *             payload: { topic: 'soporte' },
+ *             fields: [...],
+ *         });
+ *         await modal.commit();
+ *         await this.ctx.interaction.showModal(modal.getBuilder());
+ *     }
+ * }
  * ```
  */
-export class Modal {
+export class Modal<P = unknown> {
     private customId: string;
     private builder: ModalBuilder;
-    private callback?: ModalCallback;
-    private options: ModalOptions;
+    private command: string;
+    private method: string;
+    private payload?: P;
+    private ttl?: number;
 
-    constructor(options: ModalOptions) {
-        this.options = options;
-        this.customId = `modal_${nanoid(10)}`;
+    constructor(options: ModalOptions<P>) {
+        if (!options.command || !options.method) {
+            throw new Error(
+                'Los modales requieren "command" (clave del comando) y "method" (nombre del método estático).',
+            );
+        }
+        if (!options.method.startsWith('modal')) {
+            throw new Error(
+                `El método "${options.method}" no es válido para un modal: debe empezar con "modal".`,
+            );
+        }
+
+        this.command = options.command;
+        this.method = options.method;
+        this.payload = options.payload;
+        this.ttl = options.ttl;
+        this.customId = ComponentRegistry.buildCustomId(
+            options.command,
+            options.method,
+            nanoid(10),
+        );
+
         this.builder = new ModalBuilder().setCustomId(this.customId).setTitle(options.title);
 
         // Agregar campos de texto
@@ -98,17 +146,41 @@ export class Modal {
     }
 
     /**
-     * Define el callback que se ejecutará cuando se envíe el modal
+     * Actualiza el payload asociado a esta instancia (en memoria local).
+     * Para persistirlo en el store llamar {@link Modal.commit}.
      */
-    public onSubmit(callback: ModalCallback): this {
-        this.callback = callback;
-        ComponentRegistry.registerModal(this.customId, callback);
-
+    public setPayload(payload: P): this {
+        this.payload = payload;
         return this;
     }
 
     /**
-     * Obtiene el ModalBuilder para mostrar el modal
+     * Define el TTL del payload (en milisegundos)
+     */
+    public setTtl(ms: number): this {
+        this.ttl = ms;
+        return this;
+    }
+
+    /**
+     * Persiste el payload en el {@link PayloadStore}.
+     * Llamar antes de `interaction.showModal()`.
+     *
+     * @param defaultTtl TTL a usar si la instancia no definió uno propio
+     */
+    public async commit(defaultTtl?: number): Promise<void> {
+        await ComponentRegistry.setPayload(this.customId, this.payload, this.ttl ?? defaultTtl);
+    }
+
+    /**
+     * Elimina el payload del store
+     */
+    public async destroy(): Promise<void> {
+        await ComponentRegistry.deletePayload(this.customId);
+    }
+
+    /**
+     * Obtiene el ModalBuilder en formato JSON
      */
     public toJSON() {
         return this.builder.toJSON();
@@ -129,9 +201,25 @@ export class Modal {
     }
 
     /**
-     * Desregistra el modal del registry y limpia el timeout
+     * Obtiene la clave del comando handler
      */
-    public destroy(): void {
-        ComponentRegistry.unregisterModal(this.customId);
+    public getCommand(): string {
+        return this.command;
+    }
+
+    /**
+     * Obtiene el nombre del método estático handler
+     */
+    public getMethod(): string {
+        return this.method;
+    }
+
+    /**
+     * Indica si la instancia tiene un payload definido. `undefined` cuenta
+     * como ausencia; cualquier otro valor (incluyendo `null`/`false`/`0`/`''`)
+     * cuenta como payload presente.
+     */
+    public hasPayload(): boolean {
+        return this.payload !== undefined;
     }
 }
