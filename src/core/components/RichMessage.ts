@@ -13,6 +13,9 @@ import { Select } from './Select';
 import { Modal } from './Modal';
 import { Times } from '@/utils/Times';
 import { ComponentRegistry, type ComponentOwner } from '@/core/registry/component.registry';
+import { logger } from '@/utils/Logger';
+
+const log = logger.child('RichMessage');
 
 /**
  * Valor sentinel para indicar que un RichMessage no debe expirar nunca.
@@ -309,6 +312,7 @@ export class RichMessage implements ComponentOwner {
                     } catch (fetchError: any) {
                         // Mensaje no encontrado (fue eliminado) - silenciosamente ignorar
                         if (fetchError.code === 10008 || fetchError.status === 404) {
+                            log.debug('Mensaje ya no existe al hacer fetch para destruir');
                             return;
                         }
                         throw fetchError;
@@ -331,9 +335,12 @@ export class RichMessage implements ComponentOwner {
                 }
 
                 await messageToEdit.edit(updatePayload);
-            } catch (_error: any) {
+            } catch (error: any) {
                 // Silenciosamente ignorar errores comunes de Discord
-                // (mensaje eliminado, sin permisos, etc.)
+                // (mensaje eliminado, sin permisos, etc.). Sólo loguear en DEBUG.
+                log.debug(
+                    `No se pudo limpiar componentes del mensaje (${error?.code ?? error?.status ?? 'unknown'})`,
+                );
             }
         }
 

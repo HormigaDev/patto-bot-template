@@ -7,6 +7,9 @@ import { ISubcommandOptions } from '@/core/decorators/subcommand.decorator';
 import { Category } from '@/utils/CommandCategories';
 import { getPrefix } from '@/core/resolvers/prefix.resolver';
 import { metadataHandler, MetadataStore } from '@/core/metadata';
+import { logger } from '@/utils/Logger';
+
+const log = logger.child('CommandLoader');
 
 type CommandClass = new (...args: any[]) => BaseCommand;
 
@@ -119,7 +122,7 @@ export class CommandLoader {
      * Carga todos los comandos desde el directorio de comandos
      */
     async loadCommands(): Promise<void> {
-        console.log('🔄 Cargando comandos...');
+        log.info('Cargando comandos...');
 
         // Determinar extensión según entorno (desarrollo .ts, producción .js)
         const extension = __filename.endsWith('.ts') ? '.ts' : '.js';
@@ -141,6 +144,7 @@ export class CommandLoader {
 
                 if (!commandClass) {
                     errorCount++;
+                    log.warn(`Archivo sin clase exportable: ${path.basename(filePath)}`);
                     continue;
                 }
 
@@ -148,6 +152,11 @@ export class CommandLoader {
                 const metadata = this.getCommandMetadata(commandClass);
                 if (!metadata) {
                     errorCount++;
+                    log.warn(
+                        `Clase sin metadata de comando (${commandClass.name}) en ${path.basename(
+                            filePath,
+                        )}`,
+                    );
                     continue;
                 }
 
@@ -181,6 +190,7 @@ export class CommandLoader {
 
                 this.commands.set(key, entry);
                 loadedCount++;
+                log.debug(`Comando cargado: ${key} (${relativePath})`);
 
                 // Registrar aliases solo para comandos base
                 if (metadata.type === 'command' && metadata.meta.aliases) {
@@ -190,13 +200,7 @@ export class CommandLoader {
                 }
             } catch (error) {
                 errorCount++;
-                console.error(`  ❌ Error al cargar ${path.basename(filePath)}:`);
-                console.error(`     ${error instanceof Error ? error.message : String(error)}`);
-                if (error instanceof Error && error.stack) {
-                    console.error(
-                        `     Stack: ${error.stack.split('\n').slice(0, 3).join('\n     ')}`,
-                    );
-                }
+                log.error(`Error al cargar ${path.basename(filePath)}`, error);
             }
         }
 
@@ -204,18 +208,18 @@ export class CommandLoader {
         this.useMemoryStorage = loadedCount <= MEMORY_THRESHOLD;
 
         if (this.useMemoryStorage) {
-            console.log('💾 Usando almacenamiento en memoria (comandos <= umbral)');
+            log.debug('Usando almacenamiento en memoria (comandos <= umbral)');
             // Cargar toda la metadata en memoria
             for (const [_key, entry] of this.commands) {
                 this.metadataCache.set(entry.key, entry.metadata);
             }
         } else {
-            console.log('🔄 Usando caché simple (comandos > umbral)');
+            log.debug('Usando caché simple (comandos > umbral)');
         }
 
-        console.log(`\n✅ Comandos cargados exitosamente: ${loadedCount}`);
+        log.info(`Comandos cargados exitosamente: ${loadedCount}`);
         if (errorCount > 0) {
-            console.log(`⚠️  Comandos con errores: ${errorCount}`);
+            log.warn(`Comandos con errores: ${errorCount}`);
         }
 
         if (loadedCount === 0 && commandFiles.length > 0) {
@@ -224,7 +228,7 @@ export class CommandLoader {
 
         // Marcar el MetadataStore como inicializado
         MetadataStore.markInitialized();
-        console.log(`📊 MetadataStore: ${MetadataStore.getStats().commands} comandos registrados`);
+        log.debug(`MetadataStore: ${MetadataStore.getStats().commands} comandos registrados`);
     }
 
     /**

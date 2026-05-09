@@ -1,5 +1,8 @@
 import { ActivityType, Client, Events, PresenceUpdateStatus } from 'discord.js';
 import { SlashCommandLoader } from '@/core/loaders/slash-command.loader';
+import { logger } from '@/utils/Logger';
+
+const log = logger.child('Ready');
 
 /**
  * Evento Ready - Se ejecuta cuando el bot se conecta exitosamente a Discord
@@ -24,7 +27,7 @@ export function registerReadyEvent(slashCommandLoader: SlashCommandLoader) {
         name: Events.ClientReady,
         once: true,
         async execute(client: Client) {
-            console.log(`✅ Bot conectado como ${client.user?.tag}`);
+            log.info(`Bot conectado como ${client.user?.tag}`);
 
             // Registrar slash commands
             await slashCommandLoader.registerSlashCommands();
@@ -129,8 +132,8 @@ function setCustomPresence(client: Client): void {
         //     currentIndex = (currentIndex + 1) % presences.length;
         // }, 10000); // Cambia cada 10 segundos
 
-        console.log('✅ Presencia personalizada establecida');
+        log.info('Presencia personalizada establecida');
     } catch (error) {
-        console.error('❌ Error al establecer presencia:', error);
+        log.error('Error al establecer presencia', error);
     }
 }

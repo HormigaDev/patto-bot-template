@@ -6,7 +6,10 @@ import { registerInteractionCreateEvent } from '@/events/interactionCreate.event
 import { registerMessageCreateEvent } from '@/events/messageCreate.event';
 import { registerReadyEvent } from '@/events/ready.event';
 import { Env } from '@/utils/Env';
+import { logger } from '@/utils/Logger';
 import '@/config/plugins.config';
+
+const log = logger.child('Bot');
 
 export class Bot {
     private client: Client;
@@ -48,13 +51,14 @@ export class Bot {
         const config = Env.get();
 
         try {
+            log.info('Iniciando bot...');
             await this.commandLoader.loadCommands();
 
             this.registerEvents();
 
             await this.client.login(config.BOT_TOKEN);
         } catch (error) {
-            console.error('❌ Error al iniciar el bot:', error);
+            log.fatal('Error al iniciar el bot', error);
             process.exit(1);
         }
     }
@@ -79,10 +83,10 @@ export class Bot {
                 this.commandHandler,
             );
             this.client.on(messageEvent.name as any, messageEvent.execute);
-            console.log('✅ Comandos de texto habilitados (USE_MESSAGE_CONTENT=true)');
+            log.info('Comandos de texto habilitados (USE_MESSAGE_CONTENT=true)');
         } else {
-            console.log(
-                '⚠️  Comandos de texto deshabilitados (USE_MESSAGE_CONTENT no está configurado como true)',
+            log.info(
+                'Comandos de texto deshabilitados (USE_MESSAGE_CONTENT no está configurado como true)',
             );
         }
     }

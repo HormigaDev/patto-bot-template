@@ -1,6 +1,9 @@
 /**
  * Utilidad para cargar y validar variables de entorno de forma segura
  */
+import { logger, Logger, LogLevel } from './Logger';
+
+const envLog = logger.child('Env');
 
 interface EnvConfig {
     BOT_TOKEN: string;
@@ -8,6 +11,7 @@ interface EnvConfig {
     USE_MESSAGE_CONTENT: boolean;
     COMMAND_PREFIX: string;
     INTENTS?: number;
+    LOG_LEVEL: LogLevel;
 }
 
 class EnvValidator {
@@ -45,6 +49,7 @@ class EnvValidator {
         }
 
         const INTENTS = this.parseIntents(process.env.INTENTS);
+        const LOG_LEVEL = this.parseLogLevel(process.env.LOG_LEVEL);
 
         if (errors.length > 0) {
             this.throwError(errors);
@@ -56,7 +61,12 @@ class EnvValidator {
             USE_MESSAGE_CONTENT,
             COMMAND_PREFIX,
             INTENTS,
+            LOG_LEVEL,
         };
+
+        // Aplicar el nivel de logging al singleton ANTES de imprimir la config,
+        // así un LOG_LEVEL=WARN no muestra el banner de configuración.
+        Logger.setLevel(LOG_LEVEL);
 
         this.logConfig();
 
@@ -125,8 +135,8 @@ class EnvValidator {
         const parsed = parseInt(value.trim(), 10);
 
         if (isNaN(parsed)) {
-            console.warn(
-                `⚠️  INTENTS='${value}' no es un número válido. Se usarán los intents automáticos.`,
+            envLog.warn(
+                `INTENTS='${value}' no es un número válido. Se usarán los intents automáticos.`,
             );
             return undefined;
         }
@@ -135,20 +145,37 @@ class EnvValidator {
     }
 
     /**
+     * Parsea LOG_LEVEL. Acepta los nombres de {@link LogLevel} (case-insensitive).
+     * Valor inválido → usa el default (DEBUG en dev, INFO en producción).
+     */
+    private parseLogLevel(value: string | undefined): LogLevel {
+        const current = Logger.getLevel();
+        if (!value) return current;
+
+        const normalized = value.trim().toUpperCase();
+        const candidate = LogLevel[normalized as keyof typeof LogLevel];
+
+        if (typeof candidate !== 'number') {
+            envLog.warn(
+                `LOG_LEVEL='${value}' no es válido. Valores aceptados: DEBUG, INFO, WARN, ERROR, FATAL, SILENT.`,
+            );
+            return current;
+        }
+
+        return candidate;
+    }
+
+    /**
      * Lanza un error con todos los problemas encontrados
      */
     private throwError(errors: string[]): never {
-        console.error('\n╔════════════════════════════════════════════════════════════════╗');
-        console.error('║  ❌ ERROR DE CONFIGURACIÓN                                     ║');
-        console.error('╚════════════════════════════════════════════════════════════════╝\n');
-
-        errors.forEach((error) => console.error(`  ${error}`));
-
-        console.error('\n📋 Solución:');
-        console.error('  1. Copia el archivo .env.template a .env');
-        console.error('  2. Completa las variables obligatorias');
-        console.error('  3. Reinicia el bot\n');
-
+        envLog.fatal('Error de configuración. El bot no puede iniciar.');
+        for (const error of errors) {
+            envLog.fatal(error);
+        }
+        envLog.fatal(
+            'Solución: copia .env.template a .env, completa las variables obligatorias y reinicia el bot.',
+        );
         process.exit(1);
     }
 
@@ -156,17 +183,15 @@ class EnvValidator {
      * Muestra la configuración cargada (sin exponer tokens)
      */
     private logConfig(): void {
-        console.log('\n✅ Configuración cargada correctamente:');
-        console.log(`   • BOT_TOKEN: ${this.maskToken(this.config!.BOT_TOKEN)}`);
-        console.log(`   • CLIENT_ID: ${this.config!.CLIENT_ID}`);
-        console.log(`   • USE_MESSAGE_CONTENT: ${this.config!.USE_MESSAGE_CONTENT}`);
-        console.log(`   • COMMAND_PREFIX: "${this.config!.COMMAND_PREFIX}"`);
-        if (this.config!.INTENTS !== undefined) {
-            console.log(`   • INTENTS: ${this.config!.INTENTS} (personalizado)`);
-        } else {
-            console.log(`   • INTENTS: automático`);
-        }
-        console.log('');
+        const cfg = this.config!;
+        envLog.info('Configuración cargada correctamente', {
+            BOT_TOKEN: this.maskToken(cfg.BOT_TOKEN),
+            CLIENT_ID: cfg.CLIENT_ID,
+            USE_MESSAGE_CONTENT: cfg.USE_MESSAGE_CONTENT,
+            COMMAND_PREFIX: cfg.COMMAND_PREFIX,
+            INTENTS: cfg.INTENTS ?? 'automático',
+            LOG_LEVEL: LogLevel[cfg.LOG_LEVEL],
+        });
     }
 
     /**
