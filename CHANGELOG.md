@@ -5,6 +5,69 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-09
+
+### 🚀 Sharding y Sistema de Logging
+
+Esta versión introduce soporte completo para sharding mediante `ShardingManager` de Discord.js, un sistema de logging profesional con niveles y scopes, y stores distribuidos con Redis para cooldowns y payloads de componentes interactivos.
+
+### ✨ Added
+
+- **Sistema de logging profesional** (`src/utils/Logger.ts`)
+    - Clase `Logger` con niveles: `DEBUG`, `INFO`, `WARN`, `ERROR`, `FATAL`, `SILENT`
+    - Colores ANSI en TTY (desactivables con `NO_COLOR`; forzables con `FORCE_COLOR`)
+    - Loggers hijos con scope via `logger.child('NombreModulo')` para identificar el origen de cada mensaje
+    - Tag automático `[SHARD X]` cuando el proceso corre como worker de sharding
+    - Serialización de `Error` con stack trace, objetos como JSON indentado y strings planos
+    - Errores (`ERROR`, `FATAL`) dirigidos a `stderr`; el resto a `stdout`
+    - Variable de entorno `LOG_LEVEL` para control en runtime (case-insensitive)
+    - Singleton `logger` exportado listo para usar
+
+- **Soporte para Sharding** (`src/sharding.ts`)
+    - Entry point dedicado para modo `ShardingManager`
+    - Compatible con TypeScript (ts-node en desarrollo) y JavaScript compilado (producción)
+    - Respawn automático de shards caídos
+    - Eventos de ciclo de vida de shard: `ready`, `disconnect`, `reconnecting`, `death`
+    - Nuevos scripts: `npm run dev:sharding` y `npm run start:sharding`
+
+- **Stores distribuidos para sharding** (`src/core/store/`)
+    - `CooldownStore` — interfaz para almacenar expiraciones de cooldown (`get`, `set`, `delete`)
+    - `MemoryCooldownStore` — implementación en memoria (default, single-instance / desarrollo)
+    - `RedisCooldownStore` — implementación con Redis via `ioredis`; TTL automático; prefijo `patto:cooldown:`
+    - `RedisPayloadStore` — implementación de `PayloadStore` con Redis; prefijo `patto:payload:`
+    - `StoreRegistry` — registro centralizado para inyectar stores antes de que `plugins.config.ts` se evalúe
+
+- **Nuevas variables de entorno**
+    - `LOG_LEVEL` — nivel de logging (`DEBUG`/`INFO`/`WARN`/`ERROR`/`FATAL`/`SILENT`; default: `DEBUG` en dev, `INFO` en producción)
+    - `SHARDING_ENABLED` — habilita el modo sharding (requiere `REDIS_URL`)
+    - `REDIS_URL` — URL de conexión a Redis (`redis://` o `rediss://`); obligatoria si `SHARDING_ENABLED=true`
+    - `TOTAL_SHARDS` — número de shards a lanzar o `auto` (default: `auto`)
+
+- **Dependencia `ioredis`** — cliente Redis para los stores distribuidos
+
+### 🔧 Changed
+
+- **`src/index.ts`** — migrado a función `bootstrap()` asíncrona con importaciones dinámicas; configura Redis stores antes de cargar `plugins.config.ts`; inyecta `Logger.setShardId()` desde `process.env.SHARDS` antes de `Env.load()`
+- **`src/bot.ts`** — todos los `console.*` reemplazados por `logger.child('Bot')`
+- **`src/utils/Env.ts`** — `console.*` reemplazados por `logger.child('Env')`; configuración cargada como objeto estructurado; `REDIS_URL` enmascarada en logs; nuevo método `maskRedisUrl`; validación del esquema de `REDIS_URL`; parseo robusto de `TOTAL_SHARDS` y `LOG_LEVEL`
+
+### 🐛 Fixed
+
+- Correcciones menores en command handler, loaders y componentes
+
+### 📚 Documentation
+
+- Actualizado `.env.template` con sección de sharding y nuevas variables documentadas
+- Actualizados READMEs de `src/core/`, `src/events/`, `src/plugins/` y `src/utils/`
+
+### ⚠️ Notas
+
+- El sharding requiere Redis; sin `REDIS_URL` válida el proceso termina con `FATAL` al iniciar.
+- Para bots con menos de ~2.500 servidores, usar el entry point normal (`npm run dev` / `npm start`); `SHARDING_ENABLED` debe quedar en `false`.
+- Los stores de Redis deben configurarse **antes** de que `plugins.config.ts` sea evaluado. El bootstrap en `index.ts` ya lo garantiza con importaciones dinámicas.
+
+---
+
 ## [1.2.0] - 2026-03-17
 
 ### 🎯 Refactor de Metadata y Plugins
@@ -413,4 +476,7 @@ npm start
 ---
 
 [1.0.0]: https://github.com/HormigaDev/patto-bot-template/releases/tag/v1.0.0
-[Unreleased]: https://github.com/HormigaDev/patto-bot-template/compare/v1.0.0...HEAD
+[1.1.0]: https://github.com/HormigaDev/patto-bot-template/compare/v1.0.0...v1.1.0
+[1.2.0]: https://github.com/HormigaDev/patto-bot-template/compare/v1.1.0...v1.2.0
+[1.3.0]: https://github.com/HormigaDev/patto-bot-template/compare/v1.2.0...v1.3.0
+[Unreleased]: https://github.com/HormigaDev/patto-bot-template/compare/v1.3.0...HEAD

@@ -12,7 +12,7 @@
 
 **Template moderno y escalable para bots de Discord con TypeScript**
 
-[Características](#-características) • [Instalación](#-instalación) • [Uso](#-uso) • [Testing](#testing) • [Documentación](#-documentación) • [Arquitectura](#-arquitectura)
+[Características](#-características) • [Instalación](#-instalación) • [Uso](#-uso) • [Sharding](#-sharding) • [Testing](#testing) • [Documentación](#-documentación) • [Arquitectura](#-arquitectura)
 
 ---
 
@@ -59,6 +59,16 @@
 - ✅ **Context unificado** para Messages e Interactions
 - ✅ **Plugins reutilizables** (Cooldowns, Permisos, Logging, etc.)
 
+### 🌐 Sharding (para +2.500 servidores)
+
+- ✅ **ShardingManager integrado** — entry point dedicado (`src/sharding.ts`) con respawn automático
+- ✅ **Scripts listos** — `npm run dev:sharding` y `npm run start:sharding`
+- ✅ **Stores distribuidos con Redis** — `RedisCooldownStore` y `RedisPayloadStore` vía `ioredis`
+- ✅ **StoreRegistry** — inyección de stores antes de cargar plugins, sin acoplamiento
+- ✅ **CooldownStore swappable** — en memoria por defecto; intercambiable por Redis sin modificar plugins
+- ✅ **Tag `[SHARD X]`** en todos los logs del proceso worker automáticamente
+- ✅ **Bootstrap asíncrono** — Redis se configura antes de evaluar `plugins.config.ts`
+
 ### 🛠️ Developer Experience
 
 - ✅ **TypeScript** con strict mode
@@ -68,6 +78,7 @@
 - ✅ **Mocks incluidos** para Discord.js
 - ✅ **Documentación completa** por carpeta
 - ✅ **Ejemplos listos para usar**
+- ✅ **Logger profesional** (`Logger`) con niveles, colores ANSI y scopes por módulo
 
 ### ⚙️ Configuración Flexible
 
@@ -75,6 +86,7 @@
 - ✅ **Intents automáticos** según características usadas
 - ✅ **Presencias personalizables** con templates
 - ✅ **Manejo robusto de errores**
+- ✅ **Nivel de logging configurable** vía `LOG_LEVEL` (DEBUG / INFO / WARN / ERROR / FATAL / SILENT)
 
 ---
 
@@ -154,6 +166,12 @@ CLIENT_ID=tu_client_id_aqui    # ID de la aplicación
 USE_MESSAGE_CONTENT=true       # true = habilitar comandos de texto | false/vacío = solo slash commands
 COMMAND_PREFIX=!               # Prefijo para comandos de texto (default: !)
 INTENTS=                       # Intents personalizados (dejar vacío para automático)
+LOG_LEVEL=INFO                 # Nivel de logging: DEBUG, INFO, WARN, ERROR, FATAL, SILENT
+
+# Sharding (solo si el bot supera ~2.500 servidores)
+SHARDING_ENABLED=false         # true = activar ShardingManager (requiere REDIS_URL)
+REDIS_URL=                     # URL de Redis (redis:// o rediss://); obligatoria con SHARDING_ENABLED=true
+TOTAL_SHARDS=auto              # Número de shards o 'auto' para que Discord lo calcule
 ```
 
 **Validación automática:** El bot valida todas las variables al iniciar y muestra errores claros si falta algo obligatorio.
@@ -201,6 +219,21 @@ Compila y ejecuta:
 npm run build
 npm start
 ```
+
+### Sharding (producción con +2.500 servidores)
+
+Asegúrate de configurar `SHARDING_ENABLED=true` y `REDIS_URL` en tu `.env`, luego:
+
+```bash
+# Desarrollo
+npm run dev:sharding
+
+# Producción (requiere build previo)
+npm run build
+npm run start:sharding
+```
+
+> **¿Cuándo usar sharding?** Discord obliga a activar sharding cuando el bot supera los 2.500 servidores. Para bots más pequeños, usa el entry point normal (`npm run dev` / `npm start`).
 
 ### Testing
 
@@ -510,7 +543,8 @@ Cada carpeta importante tiene su propio README con documentación detallada:
 patto-bot-template/
 ├── src/
 │   ├── bot.ts                    # Clase principal del bot
-│   ├── index.ts                  # Punto de entrada
+│   ├── index.ts                  # Punto de entrada (modo normal)
+│   ├── sharding.ts               # Punto de entrada (modo sharding)
 │   ├── commands/                 # Implementaciones de comandos
 │   │   └── *.command.ts
 │   ├── core/                     # Núcleo del framework
@@ -518,6 +552,11 @@ patto-bot-template/
 │   │   ├── handlers/             # CommandHandler
 │   │   ├── loaders/              # CommandLoader, SlashCommandLoader
 │   │   ├── resolvers/            # TypeResolver, ArgumentResolver
+│   │   ├── store/                # Stores distribuidos (cooldown, payload)
+│   │   │   ├── cooldown.store.ts         # CooldownStore + MemoryCooldownStore
+│   │   │   ├── redis.cooldown.store.ts   # RedisCooldownStore
+│   │   │   ├── redis.payload.store.ts    # RedisPayloadStore
+│   │   │   └── store.registry.ts         # StoreRegistry
 │   │   └── structures/           # BaseCommand, CommandContext, BasePlugin
 │   ├── definition/               # Definiciones de comandos (opcional)
 │   │   └── *.definition.ts
@@ -526,6 +565,10 @@ patto-bot-template/
 │   ├── error/                    # Errores personalizados
 │   │   ├── ValidationError.ts
 │   │   └── ReplyError.ts
+│   ├── utils/
+│   │   ├── Logger.ts             # Sistema de logging con niveles y scopes
+│   │   ├── Env.ts                # Carga y validación de variables de entorno
+│   │   └── ...
 │   └── events/                   # Eventos de Discord
 │       ├── ready.event.ts
 │       ├── interactionCreate.event.ts
@@ -830,6 +873,16 @@ intents = [
 **Causa:** Path aliases no configurados  
 **Solución:** Asegúrate de ejecutar con `ts-node -r tsconfig-paths/register`
 
+### Error: "No se pudo conectar a Redis"
+
+**Causa:** `REDIS_URL` incorrecta o Redis no disponible cuando `SHARDING_ENABLED=true`  
+**Solución:** Verifica que `REDIS_URL` comience con `redis://` o `rediss://` y que el servidor Redis esté corriendo
+
+### El bot no usa sharding aunque `SHARDING_ENABLED=true`
+
+**Causa:** Estás ejecutando `npm run dev` (entry point normal) en vez de `npm run dev:sharding`  
+**Solución:** Usa `npm run dev:sharding` para activar el `ShardingManager`
+
 ---
 
 ## 🛠️ Ecosistema Patto
@@ -918,6 +971,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE`](./.licences
 
 - [dotenv](https://github.com/motdotla/dotenv) - Carga variables de entorno desde .env
 - [nanoid](https://github.com/ai/nanoid) - Generador de IDs únicos pequeños y seguros
+- [ioredis](https://github.com/redis/ioredis) - Cliente Redis robusto para stores distribuidos en modo sharding
 
 ### 🚀 CI/CD
 
