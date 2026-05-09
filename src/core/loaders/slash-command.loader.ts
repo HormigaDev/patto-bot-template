@@ -16,11 +16,13 @@ import {
     SlashCommandMentionableOption,
 } from 'discord.js';
 import { CommandLoader } from './command.loader';
-import { ICommandOptions } from '@/core/decorators/command.decorator';
 import { IArgumentOptions } from '@/core/decorators/argument.decorator';
 import { PluginRegistry } from '@/config/plugin.registry';
 import { Env } from '@/utils/Env';
 import { metadataHandler } from '@/core/metadata';
+import { logger } from '@/utils/Logger';
+
+const log = logger.child('SlashCommandLoader');
 
 type SlashCommandOptionBuilder =
     | SlashCommandStringOption
@@ -280,7 +282,7 @@ export class SlashCommandLoader {
      */
     async registerSlashCommands(): Promise<void> {
         const config = Env.get();
-        console.log('🔄 Registrando comandos Slash...');
+        log.info('Registrando comandos Slash...');
 
         const rest = new REST({ version: '10' }).setToken(config.BOT_TOKEN);
         const slashCommandsJSON: any[] = [];
@@ -322,9 +324,7 @@ export class SlashCommandLoader {
 
             commandStructure.set(parentName, commandData);
 
-            console.log(
-                `👻 Comando fantasma creado: "${parentName}" (solo contenedor de subcomandos)`,
-            );
+            log.debug(`Comando fantasma creado: "${parentName}" (solo contenedor de subcomandos)`);
         }
 
         // Paso 4: Procesar con plugins y agregar a la lista final
@@ -350,7 +350,7 @@ export class SlashCommandLoader {
 
                     if (result === false) {
                         shouldRegister = false;
-                        console.log(`⏭️  Comando "${commandName}" omitido por plugin`);
+                        log.debug(`Comando "${commandName}" omitido por plugin`);
                         break;
                     } else if (result && typeof result === 'object') {
                         commandJson = result;
@@ -371,7 +371,7 @@ export class SlashCommandLoader {
                 },
             );
 
-            console.log('✅ Comandos Slash registrados.');
+            log.info(`Comandos Slash registrados (${slashCommandsJSON.length})`);
 
             // Ejecutar onAfterRegisterCommand (solo para comandos reales, no fantasma)
             for (const registeredCommand of registeredCommands) {
@@ -390,7 +390,7 @@ export class SlashCommandLoader {
                 }
             }
         } catch (error) {
-            console.error('❌ Error al registrar comandos Slash:', error);
+            log.error('Error al registrar comandos Slash', error);
         }
     }
 }

@@ -10,6 +10,9 @@ import { ArgumentResolver } from '@/core/resolvers/argument.resolver';
 import { PluginRegistry } from '@/config/plugin.registry';
 import { CommandLoader } from '../loaders/command.loader';
 import { metadataHandler } from '@/core/metadata';
+import { logger } from '@/utils/Logger';
+
+const log = logger.child('CommandHandler');
 
 type CommandClass = new (...args: any[]) => BaseCommand;
 
@@ -34,6 +37,10 @@ export class CommandHandler {
     ): Promise<void> {
         const command = new TCommandClass();
         const ctx = new CommandContext(source);
+
+        log.debug(
+            `Ejecutando "${commandId}" para ${ctx.user.tag ?? ctx.user.username} (${ctx.user.id})`,
+        );
 
         // Inyectar contexto en el comando
         (command as any).id = commandId;
@@ -131,7 +138,7 @@ export class CommandHandler {
                 });
             await ctx.reply({ embeds: [embed] });
         } else {
-            console.error('Ocurrió un error al validar el comando:', error);
+            log.error('Error inesperado al validar argumentos', error);
             await ctx.reply('Ocurrió un error al procesar tus argumentos');
         }
     }
@@ -155,7 +162,10 @@ export class CommandHandler {
             // Tratar ValidationError como error esperado
             await this.handleValidationError(error, ctx);
         } else {
-            console.error('Ocurrió un error al ejecutar el comando:', error);
+            log.error(
+                `Error inesperado al ejecutar comando para ${ctx.user.tag} (${ctx.user.id})`,
+                error,
+            );
             const embed = new EmbedBuilder()
                 .setColor(this.colors.error)
                 .setTitle('Error')

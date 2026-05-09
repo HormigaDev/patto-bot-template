@@ -3,6 +3,9 @@ import { CommandLoader } from '@/core/loaders/command.loader';
 import { CommandHandler } from '@/core/handlers/command.handler';
 import { ComponentRegistry } from '@/core/registry/component.registry';
 import { Permissions } from '@/utils/Permissions';
+import { logger } from '@/utils/Logger';
+
+const log = logger.child('InteractionCreate');
 
 export function registerInteractionCreateEvent(
     commandLoader: CommandLoader,
@@ -54,7 +57,7 @@ export function registerInteractionCreateEvent(
                 ) {
                     const parsed = ComponentRegistry.parseCustomId(interaction.customId);
                     if (!parsed) {
-                        console.warn(`⚠️ customId con formato inválido: ${interaction.customId}`);
+                        log.warn(`customId con formato inválido: ${interaction.customId}`);
                         return;
                     }
 
@@ -67,8 +70,8 @@ export function registerInteractionCreateEvent(
                           : 'modal';
 
                     if (expectedType !== interactionType) {
-                        console.warn(
-                            `⚠️ Tipo de método "${parsed.methodName}" no coincide con interacción ${interactionType} (customId: ${parsed.raw})`,
+                        log.warn(
+                            `Tipo de método "${parsed.methodName}" no coincide con interacción ${interactionType} (customId: ${parsed.raw})`,
                         );
                         return;
                     }
@@ -76,8 +79,8 @@ export function registerInteractionCreateEvent(
                     // Resolver clase del comando
                     const commandClass = commandLoader.getCommand(parsed.commandKey);
                     if (!commandClass) {
-                        console.warn(
-                            `⚠️ No se encontró el comando "${parsed.commandKey}" para el customId ${parsed.raw}`,
+                        log.warn(
+                            `No se encontró el comando "${parsed.commandKey}" para el customId ${parsed.raw}`,
                         );
                         return;
                     }
@@ -87,8 +90,8 @@ export function registerInteractionCreateEvent(
                         parsed.methodName
                     ];
                     if (typeof handler !== 'function') {
-                        console.warn(
-                            `⚠️ El comando "${parsed.commandKey}" no expone el método estático "${parsed.methodName}"`,
+                        log.warn(
+                            `El comando "${parsed.commandKey}" no expone el método estático "${parsed.methodName}"`,
                         );
                         return;
                     }
@@ -134,7 +137,7 @@ export function registerInteractionCreateEvent(
                     }
                 }
             } catch (error) {
-                console.error('❌ Error al manejar interacción:', error);
+                log.error('Error al manejar interacción', error);
 
                 // Intentar responder con error si es posible
                 try {
@@ -149,7 +152,7 @@ export function registerInteractionCreateEvent(
                         }
                     }
                 } catch (replyError) {
-                    console.error('❌ Error al enviar mensaje de error:', replyError);
+                    log.error('Error al enviar mensaje de error al usuario', replyError);
                 }
             }
         },
