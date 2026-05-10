@@ -5,14 +5,18 @@
 ```
 src/
 ├── bot.ts                          # Clase principal del bot (inicialización)
-├── index.ts                        # Punto de entrada con validación de entorno
-├── assets/                         # Recursos estáticos (imágenes, JSON, etc.)
+├── index.ts                        # Punto de entrada — modo normal
+├── sharding.ts                     # Punto de entrada — modo sharding (ShardingManager)
 ├── commands/                       # Implementaciones de comandos
 │   ├── README.md                  # Documentación de patrones y estructura
 │   ├── info/                      # Comandos base (producción)
 │   │   ├── help.command.ts       # Comando base: /help
 │   │   └── ping.command.ts       # Comando base: /ping
-│   └── examples/                  # Ejemplos de subcomandos y grupos
+│   └── examples/                  # Ejemplos demostrativos
+│       ├── components/            # Ejemplos de componentes interactivos
+│       │   ├── color.command.ts         # Ejemplo: botones con payload
+│       │   ├── feedback.command.ts      # Ejemplo: modal con payload
+│       │   └── vote.command.ts          # Ejemplo: RichMessage permanente
 │       ├── subcommands/          # Ejemplos de subcomandos (2 niveles)
 │       │   ├── config-get.command.ts    # Ejemplo: /config get
 │       │   └── config-set.command.ts    # Ejemplo: /config set
@@ -25,57 +29,76 @@ src/
 │   ├── plugins.config.ts          # Configuración centralizada de plugins
 │   └── README.md                  # Documentación completa de scopes
 ├── core/                          # Núcleo del framework
+│   ├── README.md                  # Visión general del núcleo
 │   ├── components/                # Wrappers para componentes interactivos
-│   │   ├── Button.ts              # Wrapper para botones con onClick
-│   │   ├── Select.ts              # Wrapper para selects con onChange
-│   │   ├── Modal.ts               # Wrapper para modales con onSubmit
-│   │   ├── RichMessage.ts         # Gestión centralizada de componentes con timeout
-│   │   ├── index.ts               # Exports de componentes
+│   │   ├── Button.ts              # Wrapper de botones con routing command/method + payload
+│   │   ├── Select.ts              # Wrapper de select menus con routing command/method + payload
+│   │   ├── Modal.ts               # Wrapper de modales con routing command/method + payload
+│   │   ├── RichMessage.ts         # Agrupa componentes con timeout único y reset por interacción
+│   │   ├── index.ts               # Exports de componentes (incluye NEVER_EXPIRES)
 │   │   └── README.md              # Documentación completa de componentes
-│   ├── decorators/                # Decoradores (@Command, @Arg, @UsePlugins, @Subcommand, @SubcommandGroup)
-│   │   ├── command.decorator.ts   # Define metadata de comandos base
-│   │   ├── subcommand.decorator.ts # Define metadata de subcomandos (2 niveles)
-│   │   ├── subcommand-group.decorator.ts # Define metadata de grupos (3 niveles)
-│   │   ├── argument.decorator.ts  # Define metadata de argumentos
-│   │   ├── plugin.decorator.ts    # Define plugins por comando (@UsePlugins)
-│   │   └── README.md              # Documentación de decoradores
+│   ├── decorators/                # Decoradores TypeScript del framework
+│   │   ├── command.decorator.ts          # @Command — metadata de comandos base
+│   │   ├── subcommand.decorator.ts       # @Subcommand — metadata de subcomandos (2 niveles)
+│   │   ├── subcommand-group.decorator.ts # @SubcommandGroup — metadata de grupos (3 niveles)
+│   │   ├── argument.decorator.ts         # @Arg — metadata de argumentos
+│   │   ├── plugin.decorator.ts           # @UsePlugins — plugins por comando
+│   │   ├── permission.decorator.ts       # @RequirePermissions — permisos requeridos del usuario
+│   │   ├── bot-permission.decorator.ts   # @BotPermissions — permisos requeridos del bot
+│   │   ├── cooldown.decorator.ts         # @Cooldown — tiempo de espera entre usos
+│   │   └── README.md                     # Documentación de decoradores
 │   ├── handlers/                  # Manejadores de lógica
-│   │   ├── command.handler.ts     # Ejecuta comandos + plugins
+│   │   ├── command.handler.ts     # Ejecuta comandos con plugins y argumentos
 │   │   └── README.md              # Documentación de handlers
 │   ├── loaders/                   # Cargadores de recursos
-│   │   ├── command.loader.ts      # Carga comandos + rutas desde archivos
-│   │   └── slash-command.loader.ts # Registra slash commands en Discord
+│   │   ├── command.loader.ts      # Escanea sistema de archivos y carga clases de comandos
+│   │   ├── slash-command.loader.ts # Registra slash commands en Discord API
+│   │   └── README.md              # Documentación de loaders
+│   ├── metadata/                  # Capa de acceso a metadata de decoradores
+│   │   ├── metadata.store.ts      # Caché de metadata leída desde Reflect (una lectura por clase)
+│   │   ├── metadata.handler.ts    # API tipada de alto nivel sobre MetadataStore
+│   │   ├── index.ts               # Exports (singleton metadataHandler)
+│   │   └── README.md              # Documentación del subsistema de metadata
 │   ├── registry/                  # Registries globales
-│   │   └── component.registry.ts  # Registry de componentes (id → callback)
+│   │   └── component.registry.ts  # Owners de RichMessage + acceso al PayloadStore
 │   ├── resolvers/                 # Resolvedores de tipos y argumentos
 │   │   ├── type.resolver.ts       # Coerción de tipos primitivos y Discord
 │   │   ├── argument.resolver.ts   # Resolución completa + rawText + parsers
 │   │   ├── prefix.resolver.ts     # Obtiene prefijo desde Env
 │   │   └── README.md              # Documentación de resolvers
+│   ├── store/                     # Stores intercambiables (memoria ↔ Redis)
+│   │   ├── cooldown.store.ts      # Contrato CooldownStore + MemoryCooldownStore
+│   │   ├── redis.cooldown.store.ts # RedisCooldownStore (para sharding)
+│   │   ├── payload.store.ts       # Contrato PayloadStore + MemoryPayloadStore
+│   │   ├── redis.payload.store.ts  # RedisPayloadStore (para sharding)
+│   │   └── store.registry.ts      # StoreRegistry — punto de configuración de stores
 │   └── structures/                # Estructuras base
 │       ├── BaseCommand.ts         # Clase base con getEmbed() y helpers
 │       ├── BasePlugin.ts          # Clase base para plugins extensibles
 │       ├── CommandContext.ts      # Contexto unificado Message/Interaction
 │       └── README.md              # Documentación de estructuras
-├── definition/                    # Definiciones de comandos (metadata + args)
-│   ├── *.definition.ts            # Definiciones abstractas
+├── definitions/                   # Definiciones de comandos (metadata + args)
+│   ├── *.definition.ts            # Clases abstractas con decoradores y @Arg
 │   └── README.md                  # Documentación de definiciones
 ├── error/                         # Errores personalizados
-│   ├── ReplyError.ts              # Errores que se muestran al usuario
+│   ├── ReplyError.ts              # Errores esperados que se muestran al usuario
 │   ├── ValidationError.ts         # Errores de validación de argumentos
 │   └── README.md                  # Documentación de manejo de errores
 ├── events/                        # Eventos de Discord
-│   ├── ready.event.ts             # Inicialización y presencia del bot
-│   ├── interactionCreate.event.ts # Maneja slash commands + componentes interactivos
-│   ├── messageCreate.event.ts     # Maneja text commands + commandPath
+│   ├── ready.event.ts             # Inicialización, registro de comandos y presencia
+│   ├── interactionCreate.event.ts # Dispatcher: slash commands + componentes interactivos
+│   ├── messageCreate.event.ts     # Maneja text commands + construye commandPath
 │   └── README.md                  # Documentación de eventos
 ├── plugins/                       # Implementaciones de plugins
-│   ├── cooldown.plugin.ts         # Plugin funcional de cooldown
+│   ├── cooldown.plugin.ts         # Plugin de cooldown (usa CooldownStore vía StoreRegistry)
+│   ├── permissions.plugin.ts      # Plugin de permisos (@RequirePermissions + @BotPermissions)
 │   └── README.md                  # Documentación completa + 15+ ideas
 └── utils/                         # Utilidades reutilizables
     ├── CommandCategories.ts       # Definiciones de categorías de comandos
-    ├── Times.ts                   # Conversión de tiempo (segundos, minutos, etc.)
+    ├── Times.ts                   # Conversión de tiempo (ms, segundos, minutos, horas)
     ├── Env.ts                     # Validación y carga segura de variables de entorno
+    ├── Logger.ts                  # Logger profesional con niveles, colores ANSI y scopes
+    ├── Permissions.ts             # Constantes de permisos de Discord (bigint)
     └── README.md                  # Documentación de utilidades
 ```
 
@@ -84,7 +107,8 @@ src/
 La carpeta `commands/` en el template incluye:
 
 - **`info/`**: Comandos básicos de producción (`help`, `ping`)
-- **`examples/`**: Ejemplos demostrativos de subcomandos y grupos
+- **`examples/`**: Ejemplos demostrativos listos para explorar
+    - `examples/components/`: Ejemplos de componentes interactivos (botones, modales, RichMessage permanente)
     - `examples/subcommands/`: Ejemplos de comandos de 2 niveles
     - `examples/subcommand-groups/`: Ejemplos de comandos de 3 niveles
 
@@ -206,6 +230,26 @@ config.INTENTS; // number | undefined
 
 **Nuevo**: Almacena `CommandEntry` con clase + ruta + metadata completa. Soporte completo para subcomandos y grupos con optimización de memoria.
 
+### **2.5. MetadataStore / MetadataHandler (`core/metadata/`)**
+
+**Responsabilidad**: Acceso centralizado y cacheado a toda la metadata de decoradores
+
+- **MetadataStore**: lee metadata desde `Reflect` una sola vez por clase y la cachea en `Map<Constructor, CommandMetadataEntry>` — sin relecturas redundantes en runtime
+- **MetadataHandler**: API tipada de alto nivel sobre `MetadataStore`; todos los componentes del framework la usan para leer metadata sin llamar a `Reflect` directamente
+- Cubre todos los decoradores: `@Command`, `@Subcommand`, `@SubcommandGroup`, `@Arg`, `@Cooldown`, `@RequirePermissions`, `@BotPermissions`, `@UsePlugins`
+- Gestiona herencia automáticamente (clase abstracta de definición → clase de implementación)
+- Singleton `metadataHandler` exportado desde `@/core/metadata`
+
+```typescript
+import { metadataHandler } from '@/core/metadata';
+
+const cooldown = metadataHandler.getCooldown(PingCommand);
+const perms   = metadataHandler.getRequiredPermissions(BanCommand);
+const args    = metadataHandler.getArguments(SayCommand);
+const type    = metadataHandler.getCommandType(ServerConfigGetCommand);
+// → 'subcommand-group'
+```
+
 ### **3. SlashCommandLoader (`core/loaders/slash-command.loader.ts`)**
 
 **Responsabilidad**: Registrar comandos slash en Discord API
@@ -276,6 +320,31 @@ import { Env } from '@/utils/Env';
 export function getPrefix(): string {
     return Env.get().COMMAND_PREFIX;
 }
+```
+
+### **6.6. StoreRegistry (`core/store/store.registry.ts`)**
+
+**Responsabilidad**: Punto de configuración centralizado de implementaciones de stores
+
+- Registra las implementaciones concretas de `CooldownStore` usadas en el proceso
+- Por defecto usa `MemoryCooldownStore` (in-memory, adecuado para single-instance)
+- En modo sharding, `index.ts` reemplaza las implementaciones por sus equivalentes Redis **antes** de que `plugins.config.ts` sea evaluado — garantizando que los plugins reciban el store correcto desde el inicio
+- `ComponentRegistry` tiene su propio método `useStore()` para el `PayloadStore` (mismo patrón)
+
+**Stores disponibles**:
+
+| Store           | Implementaciones in-memory       | Implementaciones Redis         | Usado por           |
+| --------------- | -------------------------------- | ------------------------------ | ------------------- |
+| `CooldownStore` | `MemoryCooldownStore`            | `RedisCooldownStore`           | `CooldownPlugin`    |
+| `PayloadStore`  | `MemoryPayloadStore`             | `RedisPayloadStore`            | `ComponentRegistry` |
+
+```typescript
+// En index.ts — configurar Redis antes de importar Bot (solo si SHARDING_ENABLED=true)
+StoreRegistry.useCooldownStore(new RedisCooldownStore(redis));
+ComponentRegistry.useStore(new RedisPayloadStore(redis));
+
+// En plugins.config.ts — el store ya está configurado cuando se instancia el plugin
+new CooldownPlugin(StoreRegistry.getCooldownStore())
 ```
 
 ### **7. PluginRegistry (`config/plugin.registry.ts`)**
@@ -760,22 +829,22 @@ await richMessage.send(this.ctx);
 
 ## 📊 Comparación: Antes vs Ahora
 
-| Característica                 | Antes                        | Ahora                               |
-| ------------------------------ | ---------------------------- | ----------------------------------- |
-| **Plugins**                    | ❌ No existían               | ✅ Sistema completo con scopes      |
-| **Decorador de plugins**       | ❌ No                        | ✅ @UsePlugins                      |
-| **Raw text**                   | ❌ Requerían comillas        | ✅ Captura automática               |
-| **Parsers personalizados**     | ❌ Solo primitivos/Discord   | ✅ Tipos personalizados             |
-| **Rutas de comandos**          | ❌ No se guardaban           | ✅ Almacenadas para scopes          |
-| **getEmbed()**                 | ❌ new EmbedBuilder() manual | ✅ Helper con colores               |
-| **Configuración centralizada** | ❌ Dispersa                  | ✅ /src/config/ + Env.ts            |
-| **Componentes interactivos**   | ❌ Archivos separados        | ✅ Handlers estáticos en la clase del comando   |
-| **Registry de componentes**    | ❌ customId manual           | ✅ CustomId `cmd:method:id` + PayloadStore      |
-| **Gestión de timeouts**        | ❌ N timeouts para N botones | ✅ 1 timeout global con RichMessage             |
-| **Validación de env**          | ⚠️ Manual con process.env    | ✅ Centralizada con Env.ts          |
-| **Manejo de errores**          | ⚠️ Básico                    | ✅ ValidationError + ReplyError     |
-| **Testing**                    | ❌ No existía                | ✅ Jest + 57 tests pasando          |
-| **Documentación**              | ⚠️ Básica                    | ✅ Completa en cada carpeta         |
+| Característica                 | Antes                        | Ahora                                         |
+| ------------------------------ | ---------------------------- | --------------------------------------------- |
+| **Plugins**                    | ❌ No existían               | ✅ Sistema completo con scopes                |
+| **Decorador de plugins**       | ❌ No                        | ✅ @UsePlugins                                |
+| **Raw text**                   | ❌ Requerían comillas        | ✅ Captura automática                         |
+| **Parsers personalizados**     | ❌ Solo primitivos/Discord   | ✅ Tipos personalizados                       |
+| **Rutas de comandos**          | ❌ No se guardaban           | ✅ Almacenadas para scopes                    |
+| **getEmbed()**                 | ❌ new EmbedBuilder() manual | ✅ Helper con colores                         |
+| **Configuración centralizada** | ❌ Dispersa                  | ✅ /src/config/ + Env.ts                      |
+| **Componentes interactivos**   | ❌ Archivos separados        | ✅ Handlers estáticos en la clase del comando |
+| **Registry de componentes**    | ❌ customId manual           | ✅ CustomId `cmd:method:id` + PayloadStore    |
+| **Gestión de timeouts**        | ❌ N timeouts para N botones | ✅ 1 timeout global con RichMessage           |
+| **Validación de env**          | ⚠️ Manual con process.env    | ✅ Centralizada con Env.ts                    |
+| **Manejo de errores**          | ⚠️ Básico                    | ✅ ValidationError + ReplyError               |
+| **Testing**                    | ❌ No existía                | ✅ Jest + 57 tests pasando                    |
+| **Documentación**              | ⚠️ Básica                    | ✅ Completa en cada carpeta                   |
 
 ---
 
@@ -805,25 +874,30 @@ core/
 │   ├── Button.ts              # Wrapper de botón
 │   ├── Select.ts              # Wrapper de select menu
 │   ├── Modal.ts               # Wrapper de modal
-│   ├── RichMessage.ts         # Agrupa componentes con timeout único
-│   └── index.ts               # Barrel
+│   ├── RichMessage.ts         # Agrupa componentes con timeout único y reset por interacción
+│   └── index.ts               # Barrel (incluye NEVER_EXPIRES)
 ├── registry/
 │   └── component.registry.ts  # Owners (RichMessage) + acceso al PayloadStore
 └── store/
-    └── payload.store.ts       # Contrato PayloadStore + impl in-memory
+    ├── cooldown.store.ts       # Contrato CooldownStore + MemoryCooldownStore
+    ├── redis.cooldown.store.ts # RedisCooldownStore (para sharding)
+    ├── payload.store.ts        # Contrato PayloadStore + MemoryPayloadStore
+    ├── redis.payload.store.ts  # RedisPayloadStore (para sharding)
+    └── store.registry.ts       # StoreRegistry — punto de configuración de stores
 ```
 
 ### **Contrato del customId**
 
 Formato: `<commandKey>:<methodName>:<id>`
 
-| Segmento      | Descripción                                                              | Ejemplo           |
-| ------------- | ------------------------------------------------------------------------ | ----------------- |
-| `commandKey`  | Clave kebab-case bajo la que `CommandLoader` registra al comando         | `help`            |
-| `methodName`  | Nombre del método estático (prefijo `button`/`select`/`modal`)           | `selectCategory`  |
-| `id`          | `nanoid(10)` para unicidad de la instancia                               | `xR3p9kLm2Q`      |
+| Segmento     | Descripción                                                      | Ejemplo          |
+| ------------ | ---------------------------------------------------------------- | ---------------- |
+| `commandKey` | Clave kebab-case bajo la que `CommandLoader` registra al comando | `help`           |
+| `methodName` | Nombre del método estático (prefijo `button`/`select`/`modal`)   | `selectCategory` |
+| `id`         | `nanoid(10)` para unicidad de la instancia                       | `xR3p9kLm2Q`     |
 
 El dispatcher en `interactionCreate.event.ts`:
+
 1. Parsea `customId` → `commandKey`, `methodName`, `id`
 2. Valida que `methodName` empiece con el prefijo correcto para el tipo de interacción
 3. Resuelve la clase del comando vía `CommandLoader.getCommand(commandKey)`
@@ -849,7 +923,9 @@ El dispatcher rechaza la interacción si el prefijo no coincide con el tipo reci
 import { Button, ButtonVariant } from '@/core/components';
 import type { ButtonInteraction } from 'discord.js';
 
-interface GreetPayload { name: string; }
+interface GreetPayload {
+    name: string;
+}
 
 export class GreetCommand extends GreetDefinition {
     public static async buttonGreet(
@@ -882,11 +958,11 @@ export class GreetCommand extends GreetDefinition {
 **Variantes disponibles:**
 
 ```typescript
-ButtonVariant.Primary    // Azul
-ButtonVariant.Secondary  // Gris
-ButtonVariant.Success    // Verde
-ButtonVariant.Danger     // Rojo
-ButtonVariant.Link       // Link (sin handler ni payload)
+ButtonVariant.Primary; // Azul
+ButtonVariant.Secondary; // Gris
+ButtonVariant.Success; // Verde
+ButtonVariant.Danger; // Rojo
+ButtonVariant.Link; // Link (sin handler ni payload)
 ```
 
 **Helpers estáticos:**
@@ -905,7 +981,9 @@ Button.link(label, url, emoji?)   // sin handler
 import { Select } from '@/core/components';
 import type { StringSelectMenuInteraction } from 'discord.js';
 
-interface MenuPayload { menu: string; }
+interface MenuPayload {
+    menu: string;
+}
 
 export class FooCommand extends FooDefinition {
     public static async selectPick(
@@ -942,7 +1020,9 @@ export class FooCommand extends FooDefinition {
 import { Modal, TextInputStyle } from '@/core/components';
 import type { ModalSubmitInteraction } from 'discord.js';
 
-interface ContactPayload { topic: string; }
+interface ContactPayload {
+    topic: string;
+}
 
 export class ContactCommand extends ContactDefinition {
     public static async modalContact(
@@ -965,7 +1045,12 @@ export class ContactCommand extends ContactDefinition {
             payload: { topic: 'soporte' },
             fields: [
                 { customId: 'name', label: 'Nombre', style: TextInputStyle.Short, required: true },
-                { customId: 'message', label: 'Mensaje', style: TextInputStyle.Paragraph, required: true },
+                {
+                    customId: 'message',
+                    label: 'Mensaje',
+                    style: TextInputStyle.Paragraph,
+                    required: true,
+                },
             ],
         });
 
@@ -996,6 +1081,7 @@ await richMsg.send(this.ctx);
 ```
 
 **Ciclo de vida de `send()`:**
+
 1. Persiste el payload de cada componente en el `PayloadStore` con TTL = timeout
 2. Registra al `RichMessage` como owner de cada `customId` en `ComponentRegistry`
 3. Envía el mensaje al canal/contexto/interacción
@@ -1081,6 +1167,7 @@ if (interaction.isButton()) {
 ```
 
 **Ventajas:**
+
 - ✅ Lookup O(1) — sin recorrer un Map de funciones
 - ✅ Handlers auditables — son métodos estáticos en código (grep-eables)
 - ✅ Restart-safe con store externo (Redis/Mongo)
@@ -1103,8 +1190,14 @@ export class ListCommand extends ListDefinition {
             await owner.edit({
                 embeds: [createEmbed(newPage)],
                 components: [
-                    Button.secondary('◀️', 'list', 'buttonPrev', { page: newPage, total: payload.total }),
-                    Button.secondary('▶️', 'list', 'buttonNext', { page: newPage, total: payload.total }),
+                    Button.secondary('◀️', 'list', 'buttonPrev', {
+                        page: newPage,
+                        total: payload.total,
+                    }),
+                    Button.secondary('▶️', 'list', 'buttonNext', {
+                        page: newPage,
+                        total: payload.total,
+                    }),
                 ],
             });
         }
@@ -1124,8 +1217,14 @@ export class ListCommand extends ListDefinition {
             await owner.edit({
                 embeds: [createEmbed(newPage)],
                 components: [
-                    Button.secondary('◀️', 'list', 'buttonPrev', { page: newPage, total: payload.total }),
-                    Button.secondary('▶️', 'list', 'buttonNext', { page: newPage, total: payload.total }),
+                    Button.secondary('◀️', 'list', 'buttonPrev', {
+                        page: newPage,
+                        total: payload.total,
+                    }),
+                    Button.secondary('▶️', 'list', 'buttonNext', {
+                        page: newPage,
+                        total: payload.total,
+                    }),
                 ],
             });
         }
@@ -1136,8 +1235,14 @@ export class ListCommand extends ListDefinition {
         const richMessage = new RichMessage({
             embeds: [createEmbed(0)],
             components: [
-                Button.secondary('◀️ Anterior', 'list', 'buttonPrev', { page: 0, total: totalPages }),
-                Button.secondary('Siguiente ▶️', 'list', 'buttonNext', { page: 0, total: totalPages }),
+                Button.secondary('◀️ Anterior', 'list', 'buttonPrev', {
+                    page: 0,
+                    total: totalPages,
+                }),
+                Button.secondary('Siguiente ▶️', 'list', 'buttonNext', {
+                    page: 0,
+                    total: totalPages,
+                }),
             ],
             timeout: Times.minutes(1),
         });
@@ -1148,13 +1253,13 @@ export class ListCommand extends ListDefinition {
 
 ### **Ventajas del Sistema**
 
-| Antes (`.onClick(closure)`)                  | Ahora (`command + method + payload`)          |
-| -------------------------------------------- | --------------------------------------------- |
-| 1 closure por instancia                      | 1 método estático compartido por todas        |
-| Memoria del proceso crece con el uso         | Payload se puede mover a Redis                |
-| El dispatcher recorre un Map de funciones    | Lookup O(1) por `commandKey` + `methodName`   |
-| Imposible auditar handlers vivos             | Los handlers son código fijo, grep-eables     |
-| Restart del bot = sesiones perdidas          | Con store externo, sobreviven al restart      |
+| Antes (`.onClick(closure)`)               | Ahora (`command + method + payload`)        |
+| ----------------------------------------- | ------------------------------------------- |
+| 1 closure por instancia                   | 1 método estático compartido por todas      |
+| Memoria del proceso crece con el uso      | Payload se puede mover a Redis              |
+| El dispatcher recorre un Map de funciones | Lookup O(1) por `commandKey` + `methodName` |
+| Imposible auditar handlers vivos          | Los handlers son código fijo, grep-eables   |
+| Restart del bot = sesiones perdidas       | Con store externo, sobreviven al restart    |
 
 ## 🛡️ Sistema de Manejo de Errores
 
