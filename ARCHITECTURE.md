@@ -726,35 +726,37 @@ config.BOT_TOKEN; // Garantizado string, nunca undefined
 
 ### 8. **RichMessage - Gestión Avanzada de Componentes**
 
-Sistema optimizado para manejar componentes interactivos con un solo timeout global:
+Sistema optimizado para manejar componentes interactivos con un solo timeout global. Los handlers son **métodos estáticos** del comando; sólo el payload (datos serializables) se persiste en el `PayloadStore`:
 
 ```typescript
-const richMessage = new RichMessage()
-    .addButton(
-        Button.primary('Aceptar').onClick(async (i) => {
-            /* ... */
-        }),
-    )
-    .addButton(
-        Button.danger('Rechazar').onClick(async (i) => {
-            /* ... */
-        }),
-    )
-    .setTimeout(30_000); // 30 segundos para TODOS los componentes
+// Handlers estáticos en la clase del comando
+public static async buttonAccept(interaction: ButtonInteraction): Promise<void> {
+    await interaction.update({ content: '✅ Aceptado', components: [] });
+}
 
-await this.reply(
-    richMessage.toReplyOptions({
-        content: '¿Aceptas los términos?',
-    }),
-);
+public static async buttonReject(interaction: ButtonInteraction): Promise<void> {
+    await interaction.update({ content: '❌ Rechazado', components: [] });
+}
+
+// En run(): constructor en lugar de builder chain
+const richMessage = new RichMessage({
+    content: '¿Aceptas los términos?',
+    components: [
+        new Button({ label: 'Aceptar', variant: ButtonVariant.Success, command: 'terms', method: 'buttonAccept' }),
+        new Button({ label: 'Rechazar', variant: ButtonVariant.Danger, command: 'terms', method: 'buttonReject' }),
+    ],
+    timeout: 30_000,
+});
+
+await richMessage.send(this.ctx);
 ```
 
 **Ventajas:**
 
-- ✅ Un timeout para N componentes (mejor performance)
-- ✅ Cleanup automático de callbacks
-- ✅ Métodos builder pattern
-- ✅ Compatible con reply/send/edit
+- ✅ 1 timeout para N componentes (mejor performance)
+- ✅ Handlers como métodos estáticos: cero closures vivas por instancia
+- ✅ Payload serializable: intercambiable por Redis/Mongo sin tocar el código
+- ✅ Compatible con `send()`, `edit()`
 
 ## 📊 Comparación: Antes vs Ahora
 
@@ -767,9 +769,9 @@ await this.reply(
 | **Rutas de comandos**          | ❌ No se guardaban           | ✅ Almacenadas para scopes          |
 | **getEmbed()**                 | ❌ new EmbedBuilder() manual | ✅ Helper con colores               |
 | **Configuración centralizada** | ❌ Dispersa                  | ✅ /src/config/ + Env.ts            |
-| **Componentes interactivos**   | ❌ Archivos separados        | ✅ Wrappers con callbacks inline    |
-| **Registry de componentes**    | ❌ customId manual           | ✅ Registry automático              |
-| **Gestión de timeouts**        | ❌ N timeouts para N botones | ✅ 1 timeout global con RichMessage |
+| **Componentes interactivos**   | ❌ Archivos separados        | ✅ Handlers estáticos en la clase del comando   |
+| **Registry de componentes**    | ❌ customId manual           | ✅ CustomId `cmd:method:id` + PayloadStore      |
+| **Gestión de timeouts**        | ❌ N timeouts para N botones | ✅ 1 timeout global con RichMessage             |
 | **Validación de env**          | ⚠️ Manual con process.env    | ✅ Centralizada con Env.ts          |
 | **Manejo de errores**          | ⚠️ Básico                    | ✅ ValidationError + ReplyError     |
 | **Testing**                    | ❌ No existía                | ✅ Jest + 57 tests pasando          |
@@ -781,274 +783,194 @@ await this.reply(
 
 ### **Problema Resuelto**
 
-Antes, crear botones y selects requería:
+El enfoque anterior basado en callbacks (`.onClick(closure)`) escalaba mal:
 
-- ❌ Crear archivos separados (`*.button.ts`, `*.select.ts`)
-- ❌ Gestionar customIds manualmente
-- ❌ Pasar información en los IDs
-- ❌ Código disperso y difícil de mantener
+- ❌ 1 closure por instancia de componente — en 1.000 servidores con 100 componentes activos = 100.000 closures vivas en el heap
+- ❌ Imposible mover el estado a un store distribuido (Redis/Mongo)
+- ❌ Restart del bot = todas las sesiones perdidas
+- ❌ Imposible auditar qué handlers están activos
 
-Ahora con el sistema de componentes:
+El sistema actual separa **código** (handlers estáticos) de **estado** (payloads serializables):
 
-- ✅ **Callbacks inline** dentro del comando
-- ✅ **Registry automático** de customId → función
-- ✅ **Type-safe** con tipos completos de Discord.js
-- ✅ **Sin boilerplate** ni archivos extra
-- ✅ **RichMessage** para gestión avanzada con timeout único
+- ✅ **Handlers como métodos estáticos** en la clase del comando — K métodos por clase, no N closures por instancia
+- ✅ **Payload serializable** almacenado en `PayloadStore` — intercambiable por Redis/Mongo sin tocar el código
+- ✅ **CustomId con routing** `<commandKey>:<methodName>:<id>` — lookup O(1)
+- ✅ **RichMessage** con timeout único y reset automático por interacción
+
+### **Arquitectura Interna**
+
+```
+core/
+├── components/
+│   ├── Button.ts              # Wrapper de botón
+│   ├── Select.ts              # Wrapper de select menu
+│   ├── Modal.ts               # Wrapper de modal
+│   ├── RichMessage.ts         # Agrupa componentes con timeout único
+│   └── index.ts               # Barrel
+├── registry/
+│   └── component.registry.ts  # Owners (RichMessage) + acceso al PayloadStore
+└── store/
+    └── payload.store.ts       # Contrato PayloadStore + impl in-memory
+```
+
+### **Contrato del customId**
+
+Formato: `<commandKey>:<methodName>:<id>`
+
+| Segmento      | Descripción                                                              | Ejemplo           |
+| ------------- | ------------------------------------------------------------------------ | ----------------- |
+| `commandKey`  | Clave kebab-case bajo la que `CommandLoader` registra al comando         | `help`            |
+| `methodName`  | Nombre del método estático (prefijo `button`/`select`/`modal`)           | `selectCategory`  |
+| `id`          | `nanoid(10)` para unicidad de la instancia                               | `xR3p9kLm2Q`      |
+
+El dispatcher en `interactionCreate.event.ts`:
+1. Parsea `customId` → `commandKey`, `methodName`, `id`
+2. Valida que `methodName` empiece con el prefijo correcto para el tipo de interacción
+3. Resuelve la clase del comando vía `CommandLoader.getCommand(commandKey)`
+4. Ubica el método estático en la clase
+5. Recupera el payload por `customId` desde `PayloadStore`
+6. Invoca `Class.method(interaction, [values,] payload)`
+
+### **Convención de Nombres de Handlers**
+
+```typescript
+public static async buttonXxx(interaction, payload)             // botón
+public static async selectXxx(interaction, values, payload)     // select
+public static async modalXxx(interaction, payload)              // modal
+```
+
+El dispatcher rechaza la interacción si el prefijo no coincide con el tipo recibido.
 
 ### **Componentes Disponibles**
 
-#### 1. Button Wrapper
-
-Crea botones con variantes predefinidas:
+#### 1. Button
 
 ```typescript
 import { Button, ButtonVariant } from '@/core/components';
+import type { ButtonInteraction } from 'discord.js';
 
-// Variantes disponibles
-const primary = Button.primary('Label', '🔵');
-const success = Button.success('Label', '✅');
-const danger = Button.danger('Label', '⛔');
-const secondary = Button.secondary('Label', '⚪');
-const link = Button.link('Label', 'https://...', '🔗');
+interface GreetPayload { name: string; }
 
-// Con callback
-const button = Button.primary('Click me').onClick(async (interaction) => {
-    await interaction.reply('¡Clickeado!');
-});
+export class GreetCommand extends GreetDefinition {
+    public static async buttonGreet(
+        interaction: ButtonInteraction,
+        payload: GreetPayload | undefined,
+    ): Promise<void> {
+        if (payload === undefined) {
+            // payload === undefined ⇒ expirado (null/false/0/'' son válidos)
+            await BaseCommand.replyEphemeral(interaction, 'Esta interacción expiró.');
+            return;
+        }
+        await interaction.reply(`Hola, ${payload.name}!`);
+    }
+
+    async run() {
+        const button = new Button<GreetPayload>({
+            label: 'Saludar',
+            variant: ButtonVariant.Primary,
+            command: 'greet',
+            method: 'buttonGreet',
+            payload: { name: this.user.username },
+        });
+
+        const richMsg = new RichMessage({ components: [button], timeout: Times.minutes(2) });
+        await richMsg.send(this.ctx);
+    }
+}
 ```
 
-#### 2. Select Wrapper
+**Variantes disponibles:**
 
-Crea select menus con onChange:
+```typescript
+ButtonVariant.Primary    // Azul
+ButtonVariant.Secondary  // Gris
+ButtonVariant.Success    // Verde
+ButtonVariant.Danger     // Rojo
+ButtonVariant.Link       // Link (sin handler ni payload)
+```
+
+**Helpers estáticos:**
+
+```typescript
+Button.primary(label, command, method, payload?, emoji?)
+Button.secondary(label, command, method, payload?, emoji?)
+Button.success(label, command, method, payload?, emoji?)
+Button.danger(label, command, method, payload?, emoji?)
+Button.link(label, url, emoji?)   // sin handler
+```
+
+#### 2. Select
 
 ```typescript
 import { Select } from '@/core/components';
+import type { StringSelectMenuInteraction } from 'discord.js';
 
-const select = new Select({
-    placeholder: 'Elige una opción',
-    options: [
-        { label: 'Opción 1', value: 'opt1', emoji: '1️⃣' },
-        { label: 'Opción 2', value: 'opt2', emoji: '2️⃣' },
-    ],
-}).onChange(async (interaction, values) => {
-    // values = ['opt1'] o ['opt2']
-    await interaction.reply(`Seleccionaste: ${values[0]}`);
-});
-```
+interface MenuPayload { menu: string; }
 
-#### 3. Modal Wrapper
+export class FooCommand extends FooDefinition {
+    public static async selectPick(
+        interaction: StringSelectMenuInteraction,
+        values: string[],
+        payload: MenuPayload | undefined,
+    ): Promise<void> {
+        if (payload === undefined) {
+            await BaseCommand.replyEphemeral(interaction, 'Expirado.');
+            return;
+        }
+        await interaction.reply(`En ${payload.menu} elegiste: ${values[0]}`);
+    }
 
-Crea modales (formularios) con onSubmit:
-
-```typescript
-import { Modal } from '@/core/components';
-
-const modal = new Modal({
-    title: 'Formulario de Contacto',
-    fields: [
-        {
-            customId: 'name',
-            label: 'Nombre',
-            style: TextInputStyle.Short,
-            required: true,
-        },
-        {
-            customId: 'message',
-            label: 'Mensaje',
-            style: TextInputStyle.Paragraph,
-            required: true,
-        },
-    ],
-}).onSubmit(async (interaction, values) => {
-    // values = { name: 'Juan', message: 'Hola mundo' }
-    await interaction.reply(`Gracias ${values.name}!`);
-});
-
-// Mostrar modal
-await interaction.showModal(modal.getBuilder());
-```
-
-#### 4. RichMessage - Gestión Avanzada
-
-Gestión centralizada de múltiples componentes con un solo timeout:
-
-```typescript
-import { RichMessage, Button } from '@/core/components';
-
-const richMessage = new RichMessage()
-    .addButton(
-        Button.primary('Aceptar').onClick(async (i) => {
-            await i.update({ content: '✅ Aceptado', components: [] });
-        }),
-    )
-    .addButton(
-        Button.danger('Rechazar').onClick(async (i) => {
-            await i.update({ content: '❌ Rechazado', components: [] });
-        }),
-    )
-    .addSelect(
-        new Select({
-            placeholder: 'Opciones adicionales',
+    async run() {
+        const select = new Select<MenuPayload>({
+            command: 'foo',
+            method: 'selectPick',
+            payload: { menu: 'principal' },
+            placeholder: 'Elige una opción',
             options: [
-                /* ... */
+                { label: 'Opción 1', value: 'opt1', emoji: '1️⃣' },
+                { label: 'Opción 2', value: 'opt2', emoji: '2️⃣' },
             ],
-        }).onChange(async (i, values) => {
-            await i.reply(`Seleccionaste: ${values.join(', ')}`);
-        }),
-    )
-    .setTimeout(30_000) // 30 segundos para TODOS los componentes
-    .onTimeout(() => {
-        console.log('Componentes expirados y limpiados');
-    });
-
-// Enviar con reply/send/edit
-await this.reply(
-    richMessage.toReplyOptions({
-        content: '¿Qué deseas hacer?',
-        embeds: [embed],
-    }),
-);
-```
-
-**Ventajas de RichMessage:**
-
-- ✅ **1 timeout** para N componentes (vs N timeouts)
-- ✅ **Cleanup automático** de callbacks del registry
-- ✅ **Builder pattern** con métodos encadenados
-- ✅ **Compatible** con `reply()`, `send()`, `editReply()`
-- ✅ **Callback onTimeout** para limpieza personalizada
-- ✅ **Mejor performance** - reduce carga del event loop
-
-### **ComponentRegistry**
-
-Registry global que almacena componentes automáticamente:
-
-```typescript
-// Interno - los wrappers lo usan automáticamente
-ComponentRegistry.registerButton(customId, callback);
-ComponentRegistry.registerSelect(customId, callback);
-
-// Obtener estadísticas
-const stats = ComponentRegistry.getStats();
-// { buttons: 5, selects: 2, modals: 0, total: 7 }
-```
-
-### **Event Handler**
-
-El evento `interactionCreate.event.ts` maneja todas las interacciones en un solo lugar:
-
-```typescript
-// En interactionCreate.event.ts
-async execute(interaction: Interaction) {
-    // Slash commands
-    if (interaction.isChatInputCommand()) {
-        // Ejecutar comando
-    }
-
-    // Botones
-    if (interaction.isButton()) {
-        const callback = ComponentRegistry.getButton(interaction.customId);
-        if (callback) await callback(interaction);
-    }
-
-    // Selects
-    if (interaction.isStringSelectMenu()) {
-        const callback = ComponentRegistry.getSelect(interaction.customId);
-        if (callback) await callback(interaction, interaction.values);
+        });
+        // agregar a un RichMessage...
     }
 }
 ```
 
-**Ventajas:**
-
-- ✅ Un solo evento para todo
-- ✅ Flujo profesional y limpio
-- ✅ Fácil de mantener
-
-### **Ejemplo Completo: Paginación con RichMessage**
+#### 3. Modal
 
 ```typescript
-export class ListCommand extends ListDefinition {
-    public async run(): Promise<void> {
-        let page = 0;
-        const totalPages = 5;
+import { Modal, TextInputStyle } from '@/core/components';
+import type { ModalSubmitInteraction } from 'discord.js';
 
-        const richMessage = new RichMessage();
+interface ContactPayload { topic: string; }
 
-        const prevBtn = Button.secondary('◀️ Anterior').onClick(async (interaction) => {
-            if (page > 0) {
-                page--;
-                await interaction.update({
-                    embeds: [createEmbed(page)],
-                });
-            }
-        });
-
-        const nextBtn = Button.secondary('Siguiente ▶️').onClick(async (interaction) => {
-            if (page < totalPages - 1) {
-                page++;
-                await interaction.update({
-                    embeds: [createEmbed(page)],
-                });
-            }
-        });
-
-        richMessage
-            .addButton(prevBtn)
-            .addButton(nextBtn)
-            .setTimeout(60_000) // 1 minuto para ambos botones
-            .onTimeout(() => {
-                console.log('Paginación expirada');
-            });
-
-        await this.reply(
-            richMessage.toReplyOptions({
-                embeds: [createEmbed(page)],
-            }),
-        );
+export class ContactCommand extends ContactDefinition {
+    public static async modalContact(
+        interaction: ModalSubmitInteraction,
+        payload: ContactPayload | undefined,
+    ): Promise<void> {
+        if (payload === undefined) {
+            await BaseCommand.replyEphemeral(interaction, 'Formulario expirado.');
+            return;
+        }
+        const name = interaction.fields.getTextInputValue('name');
+        await interaction.reply(`Gracias ${name}! Tema: ${payload.topic}`);
     }
-}
-```
 
-### **Ejemplo: Formulario con Modal**
-
-```typescript
-export class ReportCommand extends ReportDefinition {
-    public async run(): Promise<void> {
-        const modal = new Modal({
-            title: 'Reportar Usuario',
+    async run() {
+        const modal = new Modal<ContactPayload>({
+            command: 'contact',
+            method: 'modalContact',
+            title: 'Formulario de contacto',
+            payload: { topic: 'soporte' },
             fields: [
-                {
-                    customId: 'user',
-                    label: 'ID del Usuario',
-                    style: TextInputStyle.Short,
-                    required: true,
-                    placeholder: '123456789',
-                },
-                {
-                    customId: 'reason',
-                    label: 'Razón del Reporte',
-                    style: TextInputStyle.Paragraph,
-                    required: true,
-                    minLength: 10,
-                    maxLength: 1000,
-                },
+                { customId: 'name', label: 'Nombre', style: TextInputStyle.Short, required: true },
+                { customId: 'message', label: 'Mensaje', style: TextInputStyle.Paragraph, required: true },
             ],
-        }).onSubmit(async (interaction, values) => {
-            const userId = values.user;
-            const reason = values.reason;
-
-            // Procesar reporte
-            await this.processReport(userId, reason);
-
-            await interaction.reply({
-                content: '✅ Reporte enviado correctamente',
-                ephemeral: true,
-            });
         });
 
-        // Los modales se muestran desde interacciones
+        // Modales no pasan por RichMessage: commit manual + showModal
+        await modal.commit(Times.minutes(5));
         if (this.ctx.isInteraction) {
             await this.ctx.source.showModal(modal.getBuilder());
         }
@@ -1056,16 +978,183 @@ export class ReportCommand extends ReportDefinition {
 }
 ```
 
+#### 4. RichMessage
+
+Agrupa varios componentes bajo un único timeout global.
+
+```typescript
+import { RichMessage, Button, ButtonVariant, Select, NEVER_EXPIRES } from '@/core/components';
+import { Times } from '@/utils/Times';
+
+const richMsg = new RichMessage({
+    embeds: [embed],
+    components: [button1, button2, select],
+    timeout: Times.minutes(2),
+});
+
+await richMsg.send(this.ctx);
+```
+
+**Ciclo de vida de `send()`:**
+1. Persiste el payload de cada componente en el `PayloadStore` con TTL = timeout
+2. Registra al `RichMessage` como owner de cada `customId` en `ComponentRegistry`
+3. Envía el mensaje al canal/contexto/interacción
+4. Arranca el timeout global
+
+**Reset automático por interacción:** el dispatcher invoca `owner.onComponentInteraction(customId)` antes del handler, lo que refresca el TTL de los payloads y reinicia el timeout global. No hay que hacerlo manualmente.
+
+**Edit:**
+
+```typescript
+await richMsg.edit({
+    embeds: [newEmbed],
+    components: [newButton1, newButton2],
+    timeout: Times.seconds(30),
+});
+```
+
+**Modo permanente (sin expiración):**
+
+```typescript
+import { NEVER_EXPIRES } from '@/core/components';
+
+const richMsg = new RichMessage({
+    components: [roleButton], // sin payload
+    timeout: NEVER_EXPIRES,
+});
+```
+
+> Restricción: un `RichMessage` permanente **no puede** tener componentes con payload. Sin TTL el store crecería sin límite.
+
+### **ComponentRegistry**
+
+Gestiona los owners (`RichMessage`) y provee acceso al `PayloadStore`. No almacena callbacks:
+
+```typescript
+// Obtener el RichMessage owner desde un handler estático
+import { ComponentRegistry, RichMessage } from '@/core/components';
+
+const owner = ComponentRegistry.getOwner(interaction.customId);
+if (owner instanceof RichMessage) {
+    await owner.edit({ embeds: [...], components: [...] });
+}
+
+// Configurar un store distribuido (al inicio del bot, antes de crear componentes)
+ComponentRegistry.useStore(new RedisPayloadStore());
+```
+
+### **PayloadStore**
+
+Contrato de persistencia intercambiable definido en `core/store/payload.store.ts`:
+
+```typescript
+interface PayloadStore {
+    set(id: string, payload: unknown, ttlMs?: number): Promise<void>;
+    get<T = unknown>(id: string): Promise<T | undefined>;
+    delete(id: string): Promise<void>;
+    has(id: string): Promise<boolean>;
+}
+```
+
+Implementación por defecto: `MemoryPayloadStore` (in-memory + timers de TTL). Para Redis:
+
+```typescript
+ComponentRegistry.useStore(new RedisPayloadStore());
+```
+
+> Convención obligatoria: `get()` devuelve `undefined` **sólo si** la entrada no existe o expiró. `null`, `false`, `0`, `''` son payloads válidos.
+
+### **Event Handler (Dispatcher)**
+
+El evento `interactionCreate.event.ts` despacha componentes en O(1):
+
+```typescript
+// En interactionCreate.event.ts
+if (interaction.isButton()) {
+    const [commandKey, methodName] = interaction.customId.split(':');
+    const owner = ComponentRegistry.getOwner(interaction.customId);
+    owner?.onComponentInteraction(interaction.customId); // reset TTL + timeout
+    const CommandClass = CommandLoader.getCommand(commandKey);
+    const payload = await PayloadStore.get(interaction.customId);
+    await CommandClass[methodName](interaction, payload);
+}
+```
+
+**Ventajas:**
+- ✅ Lookup O(1) — sin recorrer un Map de funciones
+- ✅ Handlers auditables — son métodos estáticos en código (grep-eables)
+- ✅ Restart-safe con store externo (Redis/Mongo)
+
+### **Ejemplo Completo: Paginación con RichMessage**
+
+```typescript
+export class ListCommand extends ListDefinition {
+    public static async buttonPrev(
+        interaction: ButtonInteraction,
+        payload: { page: number; total: number } | undefined,
+    ): Promise<void> {
+        if (payload === undefined) {
+            await BaseCommand.replyEphemeral(interaction, 'Paginación expirada.');
+            return;
+        }
+        const newPage = Math.max(0, payload.page - 1);
+        const owner = ComponentRegistry.getOwner(interaction.customId);
+        if (owner instanceof RichMessage) {
+            await owner.edit({
+                embeds: [createEmbed(newPage)],
+                components: [
+                    Button.secondary('◀️', 'list', 'buttonPrev', { page: newPage, total: payload.total }),
+                    Button.secondary('▶️', 'list', 'buttonNext', { page: newPage, total: payload.total }),
+                ],
+            });
+        }
+    }
+
+    public static async buttonNext(
+        interaction: ButtonInteraction,
+        payload: { page: number; total: number } | undefined,
+    ): Promise<void> {
+        if (payload === undefined) {
+            await BaseCommand.replyEphemeral(interaction, 'Paginación expirada.');
+            return;
+        }
+        const newPage = Math.min(payload.total - 1, payload.page + 1);
+        const owner = ComponentRegistry.getOwner(interaction.customId);
+        if (owner instanceof RichMessage) {
+            await owner.edit({
+                embeds: [createEmbed(newPage)],
+                components: [
+                    Button.secondary('◀️', 'list', 'buttonPrev', { page: newPage, total: payload.total }),
+                    Button.secondary('▶️', 'list', 'buttonNext', { page: newPage, total: payload.total }),
+                ],
+            });
+        }
+    }
+
+    public async run(): Promise<void> {
+        const totalPages = 5;
+        const richMessage = new RichMessage({
+            embeds: [createEmbed(0)],
+            components: [
+                Button.secondary('◀️ Anterior', 'list', 'buttonPrev', { page: 0, total: totalPages }),
+                Button.secondary('Siguiente ▶️', 'list', 'buttonNext', { page: 0, total: totalPages }),
+            ],
+            timeout: Times.minutes(1),
+        });
+        await richMessage.send(this.ctx);
+    }
+}
+```
+
 ### **Ventajas del Sistema**
 
-1. **Sin archivos extra**: Todo en el mismo comando
-2. **Type-safe**: TypeScript valida los tipos
-3. **Limpio**: Callbacks inline, sin pasar datos en IDs
-4. **Mantenible**: Código relacionado junto
-5. **Automático**: Registry y cleanup automático
-6. **Flexible**: Soporta botones, selects, modales
-7. **Optimizado**: RichMessage con timeout único
-8. **Performance**: Menos carga en el event loop
+| Antes (`.onClick(closure)`)                  | Ahora (`command + method + payload`)          |
+| -------------------------------------------- | --------------------------------------------- |
+| 1 closure por instancia                      | 1 método estático compartido por todas        |
+| Memoria del proceso crece con el uso         | Payload se puede mover a Redis                |
+| El dispatcher recorre un Map de funciones    | Lookup O(1) por `commandKey` + `methodName`   |
+| Imposible auditar handlers vivos             | Los handlers son código fijo, grep-eables     |
+| Restart del bot = sesiones perdidas          | Con store externo, sobreviven al restart      |
 
 ## 🛡️ Sistema de Manejo de Errores
 
