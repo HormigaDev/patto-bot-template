@@ -8,24 +8,35 @@ Sistema de testing completo para el bot de Discord. Incluye tests unitarios, de 
 
 ```
 tests/
-├── unit/                  # Tests unitarios (funciones individuales)
-│   ├── utils/            # Tests de utilidades
-│   ├── error/            # Tests de errores personalizados
-│   ├── core/             # Tests de componentes core
-│   └── plugins/          # Tests de plugins (ej: permissions.plugin.test.ts)
-├── integration/           # Tests de integración (múltiples componentes)
-│   ├── core/             # Tests de integración del core
-│   └── plugins/          # Tests de flujo completo de plugins
-├── e2e/                  # Tests end-to-end (flujo completo del bot)
-├── mocks/                # Mocks reutilizables (Discord.js, etc)
-├── fixtures/             # Datos de prueba predefinidos
-├── setup.ts              # Configuración global de tests
-└── README.md             # Este archivo
+├── unit/                        # Tests unitarios — 106 tests
+│   ├── utils/
+│   │   ├── Times.test.ts              # 11 tests
+│   │   ├── CommandCategories.test.ts  # 9 tests
+│   │   └── Env.test.ts                # 46 tests
+│   ├── error/
+│   │   ├── ValidationError.test.ts    # 6 tests
+│   │   └── ReplyError.test.ts         # 6 tests
+│   └── plugins/
+│       ├── permissions.plugin.test.ts # 13 tests
+│       └── cooldown.plugin.test.ts    # 15 tests
+├── integration/                 # Tests de integración — 14 tests
+│   ├── core/
+│   │   └── CommandContext.test.ts     # 7 tests
+│   └── plugins/
+│       └── permissions.plugin.test.ts # 7 tests
+├── e2e/                         # Tests end-to-end con mocks — 5 tests
+│   └── bot.e2e.test.ts
+├── mocks/                       # Mocks reutilizables (Discord.js, etc)
+│   └── discord.mock.ts
+├── fixtures/                    # Datos de prueba predefinidos
+├── helpers/                     # Utilidades para tests
+├── setup.ts                     # Configuración global de tests
+└── README.md                    # Este archivo
 ```
 
 ## 🎯 Tests Incluidos
 
-El template incluye tests completos para componentes críticos:
+El template incluye **125 tests** cubriendo componentes críticos:
 
 ### ✅ PermissionsPlugin (20 tests)
 
@@ -46,6 +57,40 @@ El template incluye tests completos para componentes críticos:
 - **Ejecutar**:
     ```bash
     npm test -- permissions.plugin.test.ts
+    ```
+
+### ✅ CooldownPlugin (15 tests)
+
+- **Ubicación**:
+    - `tests/unit/plugins/cooldown.plugin.test.ts` (15 tests)
+
+- **Cobertura**:
+    - ✅ Cooldown con decorador @Cooldown
+    - ✅ Cooldown con opción en PluginRegistry
+    - ✅ Expiración y reinicio de cooldown
+    - ✅ Aislamiento por usuario + comando
+    - ✅ Integración con CooldownStore (in-memory)
+
+- **Ejecutar**:
+    ```bash
+    npm test -- cooldown.plugin.test.ts
+    ```
+
+### ✅ Bot E2E (5 tests)
+
+- **Ubicación**:
+    - `tests/e2e/bot.e2e.test.ts` (5 tests)
+
+- **Cobertura**:
+    - ✅ Inicio del bot (loadCommands + login)
+    - ✅ Respuesta a slash commands
+    - ✅ Manejo de comandos de texto
+    - ✅ Ciclo de vida completo de un comando
+    - ✅ Manejo de errores de forma elegante
+
+- **Ejecutar**:
+    ```bash
+    npm run test:e2e
     ```
 
 ## 🚀 Comandos Disponibles
@@ -166,40 +211,39 @@ describe('Integración CommandContext', () => {
 
 ### 🔴 End-to-End Tests (`/tests/e2e/`)
 
-**Objetivo:** Probar flujo completo del bot como lo haría un usuario.
+**Objetivo:** Probar flujos completos del bot a nivel de proceso, usando spies y mocks de Discord.js (sin conexión real a Discord).
 
 **Características:**
 
-- 🐌 Lentos (varios segundos por test)
-- 🌐 Bot real conectado a Discord
-- 📊 Verifican comportamiento completo
-- ⚠️ Requieren configuración especial
+- ⏱️ Moderadamente lentos (mocks de red)
+- 🎭 Usan `jest.spyOn` sobre `CommandLoader`, `client.login`, `client.on`, etc.
+- 📊 Verifican el comportamiento completo del arranque y ciclo de vida
+- ✅ No requieren token ni servidor de Discord
 
 **Ejemplos:**
 
-- Bot inicia y se conecta a Discord
-- Usuario envía comando y recibe respuesta
-- Flujo completo de plugins + comando + respuesta
+- Bot inicia correctamente (login + registro de eventos)
+- Respuesta a slash commands
+- Manejo de comandos de texto
+- Ciclo completo plugins → comando → respuesta
+- Manejo elegante de errores
 
 **Estructura de ejemplo:**
 
 ```typescript
 // tests/e2e/bot.e2e.test.ts
-describe('E2E: Ejecución de comandos', () => {
-    it.skip('debería ejecutar comando end-to-end', async () => {
-        // 1. Usuario envía !ping
-        // 2. Bot procesa comando
-        // 3. Plugins se ejecutan
-        // 4. Bot responde "Pong!"
+describe('E2E: Ciclo de vida del Bot', () => {
+    it('debería iniciar el bot exitosamente', async () => {
+        jest.spyOn(CommandLoader.prototype, 'loadCommands').mockResolvedValue();
+        const bot = new Bot();
+        jest.spyOn(bot.getClient(), 'login').mockResolvedValue('token');
+
+        await bot.start();
+
+        expect(CommandLoader.prototype.loadCommands).toHaveBeenCalled();
     });
 });
 ```
-
-**⚠️ Nota:** Los tests e2e están como `.skip` por defecto porque requieren:
-
-- Token de Discord de testing
-- Servidor de Discord de pruebas
-- Configuración adicional
 
 ## 🎭 Mocks
 

@@ -843,7 +843,7 @@ await richMessage.send(this.ctx);
 | **Gestión de timeouts**        | ❌ N timeouts para N botones | ✅ 1 timeout global con RichMessage           |
 | **Validación de env**          | ⚠️ Manual con process.env    | ✅ Centralizada con Env.ts                    |
 | **Manejo de errores**          | ⚠️ Básico                    | ✅ ValidationError + ReplyError               |
-| **Testing**                    | ❌ No existía                | ✅ Jest + 57 tests pasando                    |
+| **Testing**                    | ❌ No existía                | ✅ Jest + 125 tests pasando                   |
 | **Documentación**              | ⚠️ Básica                    | ✅ Completa en cada carpeta                   |
 
 ---
@@ -1326,7 +1326,7 @@ Error lanzado
 ### **Infraestructura**
 
 - **Jest 29** con soporte completo para TypeScript
-- **57 tests** pasando (unit + integration)
+- **125 tests** pasando (unit + integration + e2e)
 - **Mocks de Discord.js** pre-configurados
 - **Path aliases** (`@/`, `@tests/*`) funcionando
 - **CI/CD** con GitHub Actions
@@ -1336,22 +1336,28 @@ Error lanzado
 
 ```
 tests/
-├── unit/              # Tests unitarios (utils, errors)
+├── unit/              # Tests unitarios (106 tests)
 │   ├── utils/
-│   │   ├── Times.test.ts           # 11 tests
-│   │   ├── CommandCategories.test.ts # 9 tests
-│   │   └── Env.test.ts             # 18 tests
-│   └── error/
-│       ├── ValidationError.test.ts  # 6 tests
-│       └── ReplyError.test.ts       # 6 tests
-├── integration/       # Tests de integración
-│   └── core/
-│       └── CommandContext.test.ts   # 7 tests
-├── e2e/              # Tests end-to-end (placeholders)
-├── mocks/            # Mocks reutilizables
+│   │   ├── Times.test.ts              # 11 tests
+│   │   ├── CommandCategories.test.ts  # 9 tests
+│   │   └── Env.test.ts                # 46 tests
+│   ├── error/
+│   │   ├── ValidationError.test.ts    # 6 tests
+│   │   └── ReplyError.test.ts         # 6 tests
+│   └── plugins/
+│       ├── permissions.plugin.test.ts # 13 tests
+│       └── cooldown.plugin.test.ts    # 15 tests
+├── integration/       # Tests de integración (14 tests)
+│   ├── core/
+│   │   └── CommandContext.test.ts     # 7 tests
+│   └── plugins/
+│       └── permissions.plugin.test.ts # 7 tests
+├── e2e/               # Tests end-to-end con mocks (5 tests)
+│   └── bot.e2e.test.ts
+├── mocks/             # Mocks reutilizables
 │   └── discord.mock.ts
-├── fixtures/         # Datos de prueba
-└── helpers/          # Utilidades para tests
+├── fixtures/          # Datos de prueba
+└── helpers/           # Utilidades para tests
 ```
 
 ### **Comandos de Testing**
@@ -1412,7 +1418,7 @@ Cada carpeta tiene su `README.md` completo:
 - Componentes interactivos (Button, Select, Modal, RichMessage)
 - Validación de variables de entorno (Env.ts)
 - Manejo de errores (ValidationError, ReplyError)
-- Testing completo (57 tests pasando)
+- Testing completo (125 tests pasando)
 - CI/CD con GitHub Actions
 - Documentación completa
 - Path aliases funcionando
@@ -1436,4 +1442,4 @@ Cada carpeta tiene su `README.md` completo:
 
 **Última actualización:** 5 de Noviembre, 2025  
 **Versión del proyecto:** 1.0.0  
-**Tests:** 57/57 pasando ✅
+**Tests:** 125/125 pasando ✅
