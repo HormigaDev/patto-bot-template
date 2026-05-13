@@ -11,6 +11,7 @@ import {
     InteractionResponse,
     GuildMember,
 } from 'discord.js';
+import { DEFAULT_LOCALE, type SupportedLocale } from '@/i18n';
 
 type ReplyOptions = InteractionReplyOptions & MessageReplyOptions;
 
@@ -19,6 +20,14 @@ export class CommandContext {
 
     public readonly isInteraction: boolean;
     public readonly args: Map<string, any> = new Map();
+
+    /**
+     * Locale efectivo de la petición. Se asigna desde el `CommandHandler`
+     * tras la resolución y queda inmutable durante la ejecución del
+     * comando: cualquier código aguas abajo (resolver de argumentos,
+     * plugins, helpers de respuesta) puede confiar en este valor.
+     */
+    public locale: SupportedLocale = DEFAULT_LOCALE;
 
     constructor(source: CommandInteraction | Message) {
         this.source = source;

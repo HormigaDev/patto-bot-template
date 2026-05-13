@@ -41,9 +41,7 @@ import {
     createMockGuild,
 } from '@tests/mocks/discord.mock';
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Config de entorno reutilizable
-// ─────────────────────────────────────────────────────────────────────────────
 
 const mockEnvConfig = {
     BOT_TOKEN: 'test-bot-token',
@@ -55,9 +53,7 @@ const mockEnvConfig = {
     TOTAL_SHARDS: 'auto' as const,
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Helpers
-// ─────────────────────────────────────────────────────────────────────────────
 
 /** Guild mock con members.me y permisos de SendMessages */
 function createGuildWithPermissions() {
@@ -104,9 +100,7 @@ function createCommandEntry(name: string) {
     };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Setup global: restaurar Env.get tras resetMocks y limpiar registros
-// ─────────────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
     (Env.get as jest.Mock).mockReturnValue(mockEnvConfig);
@@ -114,9 +108,7 @@ beforeEach(() => {
     MetadataStore.clear();
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
 // E2E: Ciclo de vida del Bot
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe('E2E: Ciclo de vida del Bot', () => {
     it('debería iniciar el bot exitosamente', async () => {
@@ -187,9 +179,7 @@ describe('E2E: Ciclo de vida del Bot', () => {
     });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
 // E2E: Flujo de ejecución de comandos
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe('E2E: Flujo de ejecución de comandos', () => {
     it('debería ejecutar el ciclo de vida completo de un comando', async () => {

@@ -1,6 +1,6 @@
 import { ButtonBuilder, ButtonStyle, type APIButtonComponent } from 'discord.js';
 import { ComponentRegistry } from '@/core/registry/component.registry';
-import { nanoid } from 'nanoid';
+import { generateId } from '@/utils/Id';
 
 /**
  * Estilos de botón disponibles con nombres intuitivos
@@ -134,7 +134,7 @@ export class Button<P = unknown> {
             this.customId = ComponentRegistry.buildCustomId(
                 options.command,
                 options.method,
-                nanoid(10),
+                generateId(10),
             );
             this.builder.setCustomId(this.customId);
         }

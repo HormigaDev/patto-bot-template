@@ -53,9 +53,7 @@ export class ArgumentResolver {
                     value = meta.parser(rawValue);
                 } catch (error) {
                     throw new ValidationError(
-                        `Error al parsear \`${meta.name}\`: ${
-                            error instanceof Error ? error.message : 'Valor inválido'
-                        }`,
+                        `Error al parsear \`${meta.name}\`: ${error instanceof Error ? error.message : 'Valor inválido'}`,
                     );
                 }
 
@@ -64,7 +62,7 @@ export class ArgumentResolver {
                     const expectedType = meta.type();
                     if (!(value instanceof expectedType)) {
                         throw new ValidationError(
-                            `El parser de \`${meta.name}\` debe retornar una instancia de \`${expectedType.name}\``,
+                            `El valor \`${meta.name}\` es inválido. Tipo esperado: \`${expectedType.name}\``,
                         );
                     }
                 }
@@ -111,6 +109,9 @@ export class ArgumentResolver {
                 ].includes(typeName);
 
                 if (!isPrimitive && !isDiscordType) {
+                    // Mensaje en español: es un error del desarrollador
+                    // (mal uso de @Arg), no algo que el usuario final deba
+                    // leer en producción.
                     throw new ValidationError(
                         `El argumento \`${meta.name}\` es de tipo personalizado \`${designType.name}\` y requiere un parser.\n` +
                             `Ejemplo: @Arg({ ..., parser: (val) => new ${designType.name}(val), type: () => ${designType.name} })`,

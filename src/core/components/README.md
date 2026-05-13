@@ -46,9 +46,9 @@ Todos los componentes generan un `customId` con el siguiente formato:
 | ------------- | -------------------------------------------------------------- | ----------------- |
 | `commandKey`  | Clave kebab-case bajo la que `CommandLoader` registra al comando | `help`            |
 | `methodName`  | Nombre exacto del método estático handler. El prefijo (`button`/`select`/`modal`) determina el tipo | `selectCategory`  |
-| `id`          | `nanoid(10)` para unicidad de la instancia                     | `xR3p9kLm2Q`      |
+| `id`          | `generateId(10)` (`@/utils/Id`) para unicidad de la instancia  | `0Mj7QzAk9F`      |
 
-CustomId resultante: `help:selectCategory:xR3p9kLm2Q`
+CustomId resultante: `help:selectCategory:0Mj7QzAk9F`
 
 El dispatcher en [`interactionCreate.event.ts`](../../events/interactionCreate.event.ts):
 

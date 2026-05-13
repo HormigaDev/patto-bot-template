@@ -35,10 +35,17 @@ describe('CooldownPlugin', () => {
         const mockEmbed = {
             setDescription: jest.fn().mockReturnThis(),
         };
+        // `t` se invoca como función: ignora la clave y devuelve un
+        // marcador determinístico para verificar que el plugin la usó.
+        const tMock = jest.fn((key: string, ...args: unknown[]) =>
+            args.length > 0 ? `${key}(${args.join(',')})` : key,
+        );
         return {
             constructor: commandClass,
             user: { id: userId },
             id: commandId,
+            locale: 'es',
+            t: tMock,
             getEmbed: jest.fn().mockReturnValue(mockEmbed),
             reply: jest.fn().mockResolvedValue(undefined),
         } as any;

@@ -1,5 +1,9 @@
 /**
- * Ejemplo de test unitario para utilidad CommandCategories
+ * Tests unitarios para `CommandCategories`.
+ *
+ * El array es la fuente de verdad del comando `/help` para listar
+ * categorías. Verifica que tenga nombre/descripción y que cada
+ * categoría tenga un `tag` único.
  */
 
 import { CommandCategories, Category } from '@/utils/CommandCategories';
@@ -25,6 +29,9 @@ describe('Utilidad CommandCategories', () => {
 
             expect(infoCategory).toBeDefined();
             expect(infoCategory?.name).toBe('Información');
+            expect(infoCategory?.description).toBe(
+                'Comandos relacionados con la información del bot y del servidor.',
+            );
             expect(infoCategory?.icon).toBe('ℹ️');
         });
 
@@ -43,7 +50,7 @@ describe('Utilidad CommandCategories', () => {
             expect(tags.length).toBe(uniqueTags.size);
         });
 
-        it('debería tener todas las propiedades requeridas', () => {
+        it('cada entrada debe tener nombre, descripción y tag válidos', () => {
             CommandCategories.forEach((category) => {
                 expect(category).toHaveProperty('name');
                 expect(category).toHaveProperty('description');

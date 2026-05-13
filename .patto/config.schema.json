@@ -20,6 +20,18 @@
             "enum": ["auto", "es"],
             "default": "es"
         },
+        "features": {
+            "type": "object",
+            "description": "Características que el proyecto utiliza, útil para que el linter aplique reglas estrictas sobre dichas características",
+            "properties": {
+                "i18n": {
+                    "type": "boolean",
+                    "description": "Define si el proyecto utiliza la característica de internacionalización",
+                    "default": true
+                }
+            },
+            "additionalProperties": false
+        },
         "lint-rules": {
             "type": "object",
             "description": "Sobreescribe la severidad de reglas de lint individuales",
@@ -79,6 +91,22 @@
                 "component-handler-methods": {
                     "$ref": "#/definitions/severity",
                     "description": "Handlers de componentes (button*/select*/modal*) mal definidos. Default: error"
+                },
+                "feature-config": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Valida que features sea un objeto de flags booleanos soportados. Default: warning"
+                },
+                "i18n-missing-keys": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Cuando features.i18n esta activo, valida que las keys usadas con this.t existan en los locales. Default: warning"
+                },
+                "i18n-dynamic-keys": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Cuando features.i18n esta activo, advierte sobre keys dinamicas que no pueden validarse estaticamente. Default: warning"
+                },
+                "i18n-locale-parity": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Cuando features.i18n esta activo, valida que los archivos de locale tengan las mismas keys. Default: warning"
                 }
             },
             "additionalProperties": false
