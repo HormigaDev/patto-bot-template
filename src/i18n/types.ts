@@ -7,12 +7,10 @@
  * ## Agregar un nuevo idioma
  *
  * 1. Añade el código ISO 639-1 al tuple `SUPPORTED_LOCALES` (en minúsculas).
- * 2. Crea el archivo de traducción correspondiente (`<comando>.<locale>.ts`)
- *    en cada comando que use i18n. El tipo `typeof <baseEnEspañol>` garantiza
- *    que el compilador exija todas las claves.
- *
- * No se necesita tocar el resto del módulo: el `Translator` consumirá
- * automáticamente cualquier locale presente en este tuple.
+ * 2. Crea `src/i18n/locale/<locale>.ts` tipado contra `typeof es` para que
+ *    el compilador exija todas las claves.
+ * 3. Registra el nuevo bundle en `src/i18n/translator.ts` para que
+ *    `i18n.for(locale)` pueda resolverlo en runtime.
  */
 
 export const SUPPORTED_LOCALES = ['es', 'en', 'pt'] as const;

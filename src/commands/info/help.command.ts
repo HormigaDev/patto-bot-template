@@ -18,6 +18,7 @@ interface HelpCommandInfo {
 
 interface HelpCategoryPayload {
     isInteraction: boolean;
+    prefix: string;
     commandsByCategory: Record<string, HelpCommandInfo[]>;
     categoryTitleByTag: Record<string, string>;
 }
@@ -42,7 +43,7 @@ function buildCategoryListPage(
     page: number,
     totalPages: number,
 ): EmbedBuilder {
-    const prefix = payload.isInteraction ? '/' : '!';
+    const prefix = payload.prefix;
     const commands = payload.commandsByCategory[selectedTag] ?? [];
     const start = page * COMMANDS_PER_PAGE;
     const pageCommands = commands.slice(start, start + COMMANDS_PER_PAGE);
@@ -64,6 +65,7 @@ function buildCategoryListPage(
 function buildPaginationButtons(payload: HelpPaginationPayload): Button[] {
     const basePayload: HelpCategoryPayload = {
         isInteraction: payload.isInteraction,
+        prefix: payload.prefix,
         commandsByCategory: payload.commandsByCategory,
         categoryTitleByTag: payload.categoryTitleByTag,
     };
@@ -243,6 +245,7 @@ export class HelpCommand extends HelpDefinition {
 
         return {
             isInteraction: this.ctx.isInteraction,
+            prefix: this.ctx.isInteraction ? '/' : this.loader.prefix,
             commandsByCategory,
             categoryTitleByTag,
         };

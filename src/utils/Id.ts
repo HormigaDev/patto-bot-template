@@ -9,17 +9,17 @@ import { randomBytes } from 'node:crypto';
  *
  * `<timestamp><random>` codificado en base62 (`0-9A-Za-z`).
  *
- * - **Timestamp** (primeros `min(size, 7)` caracteres): `Date.now()` en
+ * - **Timestamp** (primeros `min(size, 8)` caracteres): `Date.now()` en
  *   milisegundos codificado en base62 ASCII-sort. Esto hace que los IDs
  *   generados antes ordenen lexicográficamente antes que los generados
- *   después. 7 caracteres base62 cubren ~3.5×10¹² ms, suficiente hasta
- *   bien entrado el año 3000.
+ *   después. 8 caracteres base62 cubren ~2.18×10¹⁴ ms desde Unix epoch:
+ *   suficiente hasta bastante después del año 3000.
  * - **Random** (caracteres restantes): bytes obtenidos de
  *   `crypto.randomBytes` para evitar colisiones dentro del mismo
  *   milisegundo. Cada carácter adicional multiplica el espacio de
  *   entropía por 62.
  *
- * Para el tamaño por defecto de 10 caracteres: 7 de timestamp + 3 de
+ * Para el tamaño por defecto de 11 caracteres: 8 de timestamp + 3 de
  * entropía → ~238 mil identificadores únicos por milisegundo.
  *
  * ## Cuándo usarlo
@@ -35,11 +35,11 @@ import { randomBytes } from 'node:crypto';
  * ```ts
  * import { generateId } from '@/utils/Id';
  *
- * const id = generateId();       // 10 caracteres por defecto
+ * const id = generateId();       // 11 caracteres por defecto
  * const big = generateId(20);    // 20 caracteres (más entropía)
  * ```
  */
-export function generateId(size: number = 10): string {
+export function generateId(size: number = DEFAULT_ID_SIZE): string {
     if (!Number.isInteger(size) || size < 1) {
         throw new RangeError(`Tamaño inválido para generateId: ${size}`);
     }
@@ -59,11 +59,12 @@ const ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
 const RADIX = ALPHABET.length; // 62
 
 /**
- * 7 caracteres base62 → 62⁷ ≈ 3.52×10¹² valores, ≈ 111 años de ms.
- * Más allá de 7 chars el timestamp empieza a desperdiciar espacio que
- * conviene reservar para entropía aleatoria.
+ * 8 caracteres base62 → 62⁸ ≈ 2.18×10¹⁴ valores, ≈ 6918 años de ms
+ * desde Unix epoch. Cubre holgadamente el año 3000 manteniendo orden
+ * lexicográfico cronológico.
  */
-const MAX_TIMESTAMP_CHARS = 7;
+const MAX_TIMESTAMP_CHARS = 8;
+const DEFAULT_ID_SIZE = MAX_TIMESTAMP_CHARS + 3;
 
 function encodeTimestamp(ms: number, length: number): string {
     if (length === 0) return '';
@@ -78,12 +79,18 @@ function encodeTimestamp(ms: number, length: number): string {
 
 function randomTail(length: number): string {
     if (length === 0) return '';
-    const bytes = randomBytes(length);
+
     const out: string[] = new Array(length);
-    for (let i = 0; i < length; i++) {
-        // El módulo introduce un sesgo despreciable (256 % 62 = 8): para
-        // identificadores no criptográficos es perfectamente aceptable.
-        out[i] = ALPHABET[bytes[i] % RADIX];
+
+    const maxUnbiased = Math.floor(256 / RADIX) * RADIX; // 248 para base62
+    let outIndex = 0;
+    while (outIndex < length) {
+        const bytes = randomBytes(length - outIndex);
+        for (let i = 0; i < bytes.length && outIndex < length; i++) {
+            const value = bytes[i];
+            if (value >= maxUnbiased) continue; // descartar para evitar sesgo
+            out[outIndex++] = ALPHABET[value % RADIX];
+        }
     }
     return out.join('');
 }
