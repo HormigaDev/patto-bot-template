@@ -33,9 +33,10 @@ const LOCALE_LABELS: Record<SupportedLocale, string> = {
  *
  * Demuestra el patrón recomendado para consumir el módulo i18n:
  *
- * 1. Acceder a las traducciones con `this.t('clave.con.puntos', ...)`.
- * 2. La función `t` está cacheada en `CommandContext`, sin overhead.
- * 3. Cero `const t = ...` repetitivo en cada función.
+ * 1. Para el locale actual del contexto, acceder a las traducciones con
+ *    `this.t('clave.con.puntos', ...)`.
+ * 2. Si hace falta responder en un locale distinto al actual, usar
+ *    `i18n.for(locale)` de forma explícita.
  */
 @Command({
     name: 'setlocale',

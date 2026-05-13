@@ -39,8 +39,8 @@ type ArgsFor<K extends TranslationKey> = Bundle[K] extends (...a: infer A) => st
  * Firma de la función traductora.
  *
  * Es **el único punto de acceso** que comandos, plugins e infraestructura
- * usan para traducir. `BaseCommand.t` y `CommandContext.t` la exponen
- * cacheada por petición; los handlers estáticos la obtienen con
+ * usan para traducir. `BaseCommand.t` la expone ligada al locale efectivo
+ * del comando; los handlers estáticos la obtienen con
  * `i18n.for(locale)` donde `locale` se resuelve con
  * `resolveLocaleFromInteraction`.
  *
@@ -74,8 +74,7 @@ function bundleFor(locale: SupportedLocale | null | undefined): Bundle {
  * O(1). No mantiene estado por petición: dos invocaciones consecutivas
  * con el mismo locale devuelven traductores funcionalmente idénticos.
  *
- * Lo usan internamente `BaseCommand.t`/`CommandContext.t` (cacheado por
- * petición) y `i18n.for(locale)`.
+ * Lo usan internamente `BaseCommand.t` y `i18n.for(locale)`.
  */
 function makeT(locale: SupportedLocale | null | undefined): TFn {
     const bundle = bundleFor(locale);

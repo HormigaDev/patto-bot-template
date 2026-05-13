@@ -8,9 +8,8 @@
  * - `i18n.for(locale)` — devuelve la función traductora ligada al
  *   `locale` dado. Es lo único que se usa en runtime para mostrar
  *   mensajes al usuario final.
- * - `BaseCommand.t` / `CommandContext.t` — exponen la misma función
- *   ya ligada al locale efectivo de la petición. Es el punto de
- *   acceso recomendado dentro de comandos, plugins e infraestructura;
+ * - `BaseCommand.t` — expone la misma función ligada al locale efectivo
+ *   de la petición. Es el punto de acceso recomendado dentro de comandos;
  *   eliminar i18n del bot solo requiere borrar **este accesor** y
  *   TypeScript marcará todos los call sites afectados.
  * - `resolveLocaleFromInteraction(i)` — helper para handlers
@@ -43,7 +42,7 @@ import type { SupportedLocale } from './types';
  * cualquier objeto con `guildId` y opcionalmente `locale`).
  *
  * Es la forma recomendada de obtener el locale en handlers **estáticos**
- * de botones/selects/modales: como no hay `BaseCommand`/`CommandContext`
+ * de botones/selects/modales: como no hay `BaseCommand`
  * disponibles, este helper aplica la misma resolución que el
  * `CommandHandler` (preferencia del servidor → locale de Discord →
  * default) usando el `LocaleRegistry` configurado.
