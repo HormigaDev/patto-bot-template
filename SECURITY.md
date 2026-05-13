@@ -6,8 +6,9 @@ Actualmente estamos dando soporte de seguridad a las siguientes versiones:
 
 | Versión | Soportada          |
 | ------- | ------------------ |
-| 1.3.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+| 1.4.x   | :white_check_mark: |
+| 1.3.x   | :x:                |
+| < 1.3   | :x:                |
 
 > **Nota:** Siempre recomendamos usar la última versión estable para obtener las últimas correcciones de seguridad.
 

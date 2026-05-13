@@ -7,6 +7,7 @@ import { REQUIRE_PERMISSIONS_METADATA_KEY } from '@/core/decorators/permission.d
 import { BaseCommand } from '@/core/structures/BaseCommand';
 import { Permissions } from '@/utils/Permissions';
 import { MetadataStore } from '@/core/metadata/metadata.store';
+import { i18n } from '@/i18n';
 import 'reflect-metadata';
 
 /**
@@ -189,6 +190,8 @@ describe('PermissionsPlugin', () => {
 
             const mockCommand = {
                 constructor: TestCommand,
+                locale: 'es' as const,
+                t: i18n.for('es'),
                 ctx: {
                     member: {
                         permissions: {
@@ -226,6 +229,8 @@ describe('PermissionsPlugin', () => {
 
             const mockCommand = {
                 constructor: TestCommand,
+                locale: 'es' as const,
+                t: i18n.for('es'),
                 ctx: {
                     member: {
                         permissions: {
@@ -298,6 +303,8 @@ describe('PermissionsPlugin', () => {
 
             const mockCommand = {
                 constructor: TestCommand,
+                locale: 'es' as const,
+                t: i18n.for('es'),
                 ctx: {
                     member: {
                         permissions: {

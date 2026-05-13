@@ -5,6 +5,86 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-05-13
+
+### 🌍 Internacionalización (i18n) y generador propio de IDs
+
+Esta versión introduce un subsistema de internacionalización **opt-in** para comandos que quieran responder en varios idiomas, con catálogo único, claves planas en notación de puntos y el helper `this.t(...)`. También sustituye la dependencia `nanoid` (ESM-only, problemática en Jest) por un generador propio.
+
+### ✨ Added
+
+- **Subsistema de i18n** (`src/i18n/`)
+    - Catálogo único en [`src/i18n/locale/es.ts`](src/i18n/locale/es.ts) (fuente de verdad), [`en.ts`](src/i18n/locale/en.ts) y [`pt.ts`](src/i18n/locale/pt.ts), con claves planas en notación de puntos: `'ping.response.title'`, `'system.argument.parse_error'`, `'help.subcommand_groups.footer'`, etc.
+    - `en.ts` y `pt.ts` tipados como `typeof es`: el compilador exige paridad total de claves; firmas de funciones inferidas automáticamente.
+    - **API única**: `i18n.for(locale)` devuelve la función traductora `t(key, ...args)` con tipos completos. Los argumentos se validan en cada call site según la firma del valor en el bundle.
+    - **Opt-in por comando**: `BaseCommand.t` expone `this.t('clave', ...args)` para comandos que quieran respuestas traducidas. Los comandos base pueden seguir con strings literales.
+    - **Cadena de precedencia per-guild**: preferencia explícita del **servidor** (`LocaleStore`) → `interaction.locale` de Discord (normalizado) → `DEFAULT_LOCALE` (`'es'`).
+    - El locale es una configuración **global del servidor**: todos los miembros ven al bot en el mismo idioma. Cambiarlo requiere `ManageGuild`.
+    - `LocaleResolver` resuelve el locale **una sola vez por petición** y lo deposita en `ctx.locale`.
+    - `LocaleStore` (interfaz per-guild) + `MemoryLocaleStore` por defecto; swappable por Redis u otro store distribuido vía `LocaleRegistry.useStore(...)`.
+    - `LocaleRegistry` estático — mismo patrón que `StoreRegistry` y `PluginRegistry`.
+    - Helper `resolveLocaleFromInteraction(interaction)` para handlers estáticos de botones/selects/modales (no tienen acceso a `BaseCommand`/`CommandContext`).
+    - Helpers `isSupportedLocale`, `normalizeLocale` para validar input externo (env vars, locales de Discord, etc.).
+    - Soporte listo para `es`, `en`, `pt` (añadir un idioma = un nuevo archivo `locale/<loc>.ts` + entrada en `SUPPORTED_LOCALES`).
+
+- **Comando de ejemplo `/setlocale`** (`src/commands/examples/setlocale.command.ts`)
+    - Cambia el idioma de respuesta para **todo el servidor**.
+    - Restringido con `@RequirePermissions(Permissions.ManageGuild)`.
+    - Devuelve la confirmación **en el nuevo idioma** seleccionado.
+    - Aliases: `idioma`, `language`.
+- **Comando de ejemplo `/help-translated`** (`src/commands/info/help-translated.command.ts`)
+    - Versión traducida del comando de ayuda. El `/help` normal queda hardcoded para que el usuario elija qué enfoque conservar.
+
+- **Generador propio de IDs** (`src/utils/Id.ts`)
+    - `generateId(size?: number)` — IDs base62 con prefijo de timestamp (sortables lexicográficamente, estilo UUIDv7 reducido) y cola aleatoria de `crypto.randomBytes`.
+    - Tamaño por defecto 10 caracteres (7 timestamp + 3 entropía).
+    - Sin sesgo de seguridad relevante para identificadores efímeros (customIds de componentes, claves de payloads, etc.).
+
+### 🔧 Changed
+
+- **`BaseCommand`** — nuevos getters:
+    - `locale: SupportedLocale` (delegado en `ctx.locale`).
+    - `t: TFn`, usado sólo por comandos opt-in como `setlocale` y `help-translated`.
+- **`CommandContext`** — nueva propiedad `locale: SupportedLocale`, fijada por el `CommandHandler` antes de ejecutar el comando.
+- **`CommandHandler`** — resuelve el locale una sola vez por petición para que los comandos opt-in puedan usar `this.locale`/`this.t`.
+- **`HelpCommand`** — vuelve a ser el comando hardcoded base.
+- **Comandos de ejemplo** — `PingCommand`, componentes y subcomandos se mantienen hardcoded para no imponer i18n en el template.
+- **`Button` / `Select` / `Modal`** (`src/core/components/`) — sustituidos los `nanoid(10)` por `generateId(10)` del nuevo módulo `@/utils/Id`.
+
+### 🗑 Removed
+
+- **Dependencia `nanoid`** — eliminada del `package.json`. La v5 se distribuye como ESM puro y rompía `ts-jest`. Su rol queda cubierto por `src/utils/Id.ts` sin nueva dependencia.
+- **`LocaleStore.getUserLocale` / `setUserLocale` / `deleteUserLocale`** — reemplazados por sus equivalentes per-guild (`getGuildLocale`, etc.). El idioma del bot es una configuración del **servidor**, no del usuario.
+
+### 📚 Documentation
+
+- Nuevo [`src/i18n/README.md`](src/i18n/README.md) — guía completa: filosofía, arquitectura, cómo añadir un mensaje, cómo añadir un idioma, cómo configurar un store distribuido, cómo eliminar i18n del bot en un único punto, API pública.
+- `README.md` principal — nueva sección "🌍 Internacionalización (i18n)" en Características y enlace en la navegación.
+- Actualizadas referencias a generación de IDs (`src/core/components/README.md`, `src/core/registry/component.registry.ts`): ahora apuntan a `@/utils/Id`.
+- `README.md` principal — eliminada la referencia a `nanoid` de la sección "Utilidades".
+
+### ✅ Testing
+
+- Nuevos tests en [`tests/unit/i18n/`](tests/unit/i18n/):
+    - `types.test.ts` — `SUPPORTED_LOCALES`, `isSupportedLocale`, `normalizeLocale`.
+    - `translator.test.ts` — bundle global `i18n` + función `TFn` (claves planas, args tipados, fallback, concurrencia).
+    - `memory.locale.store.test.ts` — `MemoryLocaleStore` per-guild (incluye escrituras paralelas).
+    - `locale.resolver.test.ts` — cadena de precedencia per-guild completa.
+    - `registry.test.ts` — comportamiento estático del `LocaleRegistry`.
+- Nuevo [`tests/unit/utils/Id.test.ts`](tests/unit/utils/Id.test.ts) — formato, validación, orden temporal, unicidad.
+- Tests existentes actualizados: `CommandCategories.test.ts`, `cooldown.plugin.test.ts` y `permissions.plugin.test.ts`.
+- **212 tests pasan**.
+
+### ⚠️ Notas de migración
+
+- **Locale per-guild, no per-user**: `LocaleStore.getUserLocale` → `getGuildLocale`. Si tu bot ya tenía preferencias persistidas por usuario, hay que migrar las claves a `guildId`.
+- **Convención de claves**: planas con notación de puntos (`'<dominio>.<seccion>.<mensaje>'`). No camelCase, no objetos anidados.
+- **Consumo opt-in**: usa `this.t('clave', ...args)` sólo en comandos que quieras traducir. Para eliminar i18n, borra `setlocale`, `help-translated`, el getter `t` de `BaseCommand` y el módulo `src/i18n`.
+- Para añadir un mensaje nuevo: editar primero `src/i18n/locale/es.ts`; el compilador hará fallar `en.ts` y `pt.ts` hasta que se añadan las traducciones (contrato a propósito).
+- Si se usa `nanoid` desde código propio downstream, migrar a `generateId` de `@/utils/Id` o reinstalar `nanoid` como dependencia propia.
+
+---
+
 ## [1.3.0] - 2026-05-09
 
 ### 🚀 Sharding y Sistema de Logging

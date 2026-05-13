@@ -2,6 +2,7 @@ import { PluginRegistry, PluginScope } from './plugin.registry';
 import { PermissionsPlugin } from '@/plugins/permissions.plugin';
 import { CooldownPlugin } from '@/plugins/cooldown.plugin';
 import { StoreRegistry } from '@/core/store/store.registry';
+import { HelpCommand } from '@/commands/info/help.command';
 
 // Aquí defines tus plugins con sus scopes
 
@@ -70,4 +71,5 @@ PluginRegistry.register({
     plugin: new CooldownPlugin(StoreRegistry.getCooldownStore()),
     scope: PluginScope.Specified,
     folderPath: '',
+    commands: [HelpCommand],
 });

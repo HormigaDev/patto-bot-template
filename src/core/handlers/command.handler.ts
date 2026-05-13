@@ -11,6 +11,7 @@ import { PluginRegistry } from '@/config/plugin.registry';
 import { CommandLoader } from '../loaders/command.loader';
 import { metadataHandler } from '@/core/metadata';
 import { logger } from '@/utils/Logger';
+import { LocaleRegistry } from '@/i18n';
 
 const log = logger.child('CommandHandler');
 
@@ -41,6 +42,17 @@ export class CommandHandler {
         log.debug(
             `Ejecutando "${commandId}" para ${ctx.user.tag ?? ctx.user.username} (${ctx.user.id})`,
         );
+
+        // Resolver el locale del usuario una sola vez por petición. La
+        // resolución ocurre fuera del flujo de plugins/argumentos para que
+        // todos los pasos posteriores (incluidas las respuestas de error)
+        // puedan asumir un locale estable e inyectado.
+        const discordLocale =
+            source instanceof Message ? undefined : (source.locale as string | undefined);
+        ctx.locale = await LocaleRegistry.getResolver().resolve({
+            guildId: ctx.guild?.id,
+            discordLocale,
+        });
 
         // Inyectar contexto en el comando
         (command as any).id = commandId;

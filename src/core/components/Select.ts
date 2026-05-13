@@ -4,7 +4,7 @@ import {
     type APISelectMenuComponent,
 } from 'discord.js';
 import { ComponentRegistry } from '@/core/registry/component.registry';
-import { nanoid } from 'nanoid';
+import { generateId } from '@/utils/Id';
 
 /**
  * Opción de un select menu
@@ -107,7 +107,7 @@ export class Select<P = unknown> {
         this.customId = ComponentRegistry.buildCustomId(
             options.command,
             options.method,
-            nanoid(10),
+            generateId(10),
         );
 
         this.builder = new StringSelectMenuBuilder().setCustomId(this.customId);

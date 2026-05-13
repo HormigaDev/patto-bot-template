@@ -1,4 +1,4 @@
-![Banner](./assets/patto-banner.png)
+![Banner](./docs/assets/patto-banner.png)
 
 # Patto Bot Template
 
@@ -12,7 +12,7 @@
 
 **Template moderno y escalable para bots de Discord con TypeScript**
 
-[Características](#-características) • [Instalación](#-instalación) • [Uso](#-uso) • [Sharding](#-sharding) • [Testing](#testing) • [Documentación](#-documentación) • [Arquitectura](#-arquitectura)
+[Características](#-características) • [Instalación](#-instalación) • [Uso](#-uso) • [i18n](#-internacionalización-i18n) • [Sharding](#-sharding) • [Testing](#testing) • [Documentación](#-documentación) • [Arquitectura](#-arquitectura)
 
 ---
 
@@ -58,6 +58,16 @@
 - ✅ **Decoradores reutilizables** (@Command, @Arg, @UsePlugins)
 - ✅ **Context unificado** para Messages e Interactions
 - ✅ **Plugins reutilizables** (Cooldowns, Permisos, Logging, etc.)
+
+### 🌍 Internacionalización (i18n)
+
+- ✅ **Catálogo único y plano** — tres archivos (`es.ts`, `en.ts`, `pt.ts`) en `src/i18n/`
+- ✅ **Español como fuente de verdad** — `en.ts` y `pt.ts` se tipan como `typeof es`, así el compilador exige paridad total de claves
+- ✅ **Interpolación tipada** — claves como `(ms: number) => string`: TypeScript valida cada call site
+- ✅ **Opt-in por comando** — usa `this.t(...)` sólo donde quieras respuestas traducidas
+- ✅ **Cadena de precedencia** — preferencia explícita del servidor → `interaction.locale` de Discord → default
+- ✅ **`LocaleStore` swappable** — memoria por defecto; intercambiable por Redis u otro store distribuido
+- ✅ **Comandos de ejemplo opt-in** — `/setlocale` y `/help-translated`; el `/help` normal y el resto de ejemplos siguen hardcoded
 
 ### 🌐 Sharding (para +2.500 servidores)
 
@@ -944,7 +954,7 @@ Las contribuciones son bienvenidas! Por favor:
 
 ## 📝 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE`](./.licences/LICENSE_SPANISH) para más detalles.
+Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE`](./LICENSE) para más detalles.
 
 ---
 
@@ -981,7 +991,6 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [`LICENSE`](./.licences
 ### ⚙️ Utilidades
 
 - [dotenv](https://github.com/motdotla/dotenv) - Carga variables de entorno desde .env
-- [nanoid](https://github.com/ai/nanoid) - Generador de IDs únicos pequeños y seguros
 - [ioredis](https://github.com/redis/ioredis) - Cliente Redis robusto para stores distribuidos en modo sharding
 
 ### 🚀 CI/CD

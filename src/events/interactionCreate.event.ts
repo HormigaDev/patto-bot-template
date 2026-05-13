@@ -141,8 +141,10 @@ export function registerInteractionCreateEvent(
                 // Intentar responder con error si es posible
                 try {
                     if (interaction.isRepliable()) {
-                        const content = '❌ Ocurrió un error al procesar esta acción.';
-                        const payload = { content, flags: [MessageFlags.Ephemeral] as const };
+                        const payload = {
+                            content: '❌ Ocurrió un error al procesar esta acción.',
+                            flags: [MessageFlags.Ephemeral] as const,
+                        };
 
                         if (interaction.replied || interaction.deferred) {
                             await interaction.followUp(payload);

@@ -1,6 +1,6 @@
 import { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
 import { ComponentRegistry } from '@/core/registry/component.registry';
-import { nanoid } from 'nanoid';
+import { generateId } from '@/utils/Id';
 
 /**
  * Opciones para un campo de texto en el modal
@@ -108,7 +108,7 @@ export class Modal<P = unknown> {
         this.customId = ComponentRegistry.buildCustomId(
             options.command,
             options.method,
-            nanoid(10),
+            generateId(10),
         );
 
         this.builder = new ModalBuilder().setCustomId(this.customId).setTitle(options.title);

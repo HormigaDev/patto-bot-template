@@ -23,15 +23,6 @@
  *
  * 1. Agrega el tag al enum `Category`
  * 2. Agrega la definición completa al array `CommandCategories`
- *
- * @example
- * ```typescript
- * export enum Category {
- *     Info = 'info',
- *     Moderation = 'moderation', // Nueva categoría
- *     Other = 'other',
- * }
- * ```
  */
 
 export enum Category {
@@ -62,5 +53,11 @@ export const CommandCategories: CommandCategory[] = [
         description: 'Comandos que no encajan en otras categorías.',
         tag: Category.Other,
         icon: '❓',
+    },
+    {
+        name: 'Ajustes',
+        description: 'Configuración del bot y del servidor.',
+        tag: Category.Settings,
+        icon: '⚙️',
     },
 ];

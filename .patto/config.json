@@ -1,5 +1,8 @@
 {
     "$schema": "./config.schema.json",
     "schemaVersion": 1,
-    "lang": "es"
+    "lang": "es",
+    "features": {
+        "i18n": true
+    }
 }

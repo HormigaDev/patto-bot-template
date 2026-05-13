@@ -13,6 +13,7 @@ import {
 import { InteractionReplyOptions, MessageReplyOptions } from 'discord.js';
 import { CommandLoader } from '../loaders/command.loader';
 import { ReplyError } from '@/error/ReplyError';
+import { DEFAULT_LOCALE, i18n, type SupportedLocale, type TFn } from '@/i18n';
 
 type ReplyOptions = InteractionReplyOptions & MessageReplyOptions;
 
@@ -32,6 +33,38 @@ export abstract class BaseCommand {
     public readonly guild!: Guild;
     public readonly client!: Client;
     public readonly loader!: CommandLoader;
+
+    /**
+     * Locale efectivo de la petición en curso. Delegado en `ctx.locale`,
+     * que es el valor fijado por el `CommandHandler` antes de invocar
+     * `run()`. Es de solo lectura: los comandos no deberían cambiarlo
+     * en tiempo de ejecución.
+     */
+    public get locale(): SupportedLocale {
+        return this.ctx?.locale ?? DEFAULT_LOCALE;
+    }
+
+    /**
+     * Función traductora ligada al locale efectivo de la petición.
+     *
+     * El template recomienda usarla solo en comandos que opten por
+     * i18n (por ejemplo `setlocale` y `help-translated`). Los comandos
+     * de ejemplo pueden seguir con texto hardcoded sin depender de esta
+     * capa.
+     *
+     * ```ts
+     * this.t('ping.response.title');           // string
+     * this.t('ping.response.latency', 120);    // string ya interpolado
+     * ```
+     *
+     * Si no quieres usar i18n, elimina los comandos de ejemplo que lo
+     * consumen (`setlocale`, `help-translated`), borra este getter y
+     * luego elimina `src/i18n`. TypeScript marcará cualquier uso
+     * restante de `this.t(...)`.
+     */
+    public get t(): TFn {
+        return i18n.for(this.locale);
+    }
 
     public abstract run(): Promise<void>;
 
@@ -92,9 +125,7 @@ export abstract class BaseCommand {
         return this.user.globalName || this.user.username;
     }
 
-    // ──────────────────────────────────────────────────────────────────
     // Helpers estáticos de respuesta para handlers de componentes
-    // ──────────────────────────────────────────────────────────────────
 
     /**
      * Responde de forma efímera a una interacción. Centraliza el uso de

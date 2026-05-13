@@ -44,7 +44,8 @@ export interface ParsedCustomId {
  *     `CommandLoader` (ej. `help`, `config-set`).
  *   - `methodName`: nombre exacto del método estático (ej. `buttonNext`,
  *     `selectCategory`, `modalContact`). El prefijo determina el tipo.
- *   - `id`: nanoid único de la instancia.
+ *   - `id`: identificador único de la instancia, generado por
+ *     `generateId()` (ver `src/utils/Id.ts`).
  *
  * @example Definir handlers como métodos estáticos
  * ```ts
