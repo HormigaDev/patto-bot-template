@@ -102,13 +102,15 @@
 
 Tienes dos opciones para instalar Patto Bot Template:
 
-### 🎯 Opción 1: Con Patto CLI (Recomendado)
+### 🎯 Opción 1: Con `@patto/cli` (Recomendado)
 
 La forma más rápida y sencilla usando la herramienta oficial:
 
 ```bash
-# Instalar Patto CLI globalmente
-npm install -g patto-cli
+# Instalar @patto/cli globalmente
+npm install -g @patto/cli
+# o con pnpm (recomendado)
+pnpm add -g @patto/cli
 
 # Crear un nuevo proyecto
 patto init mi-bot-discord
@@ -120,8 +122,8 @@ cd mi-bot-discord
 **✨ Ventajas:**
 
 - ✅ Setup automático en 2-3 minutos
-- ✅ Instalación de dependencias automática
-- ✅ Generación de código integrada
+- ✅ Generación de código integrada (comandos, subcomandos, plugins)
+- ✅ Análisis estático del proyecto (`patto lint`, `patto doctor`, `patto check`)
 - ✅ Validaciones y mejores prácticas incluidas
 
 **📚 Guía completa:** Ver [`docs/Patto_CLI_Installation.README.md`](docs/Patto_CLI_Installation.README.md)
@@ -887,29 +889,38 @@ intents = [
 
 ## 🛠️ Ecosistema Patto
 
-### Patto CLI ✅ (Disponible)
+### `@patto/cli` ✅ (Disponible)
 
-**Patto CLI** es la herramienta oficial de línea de comandos para trabajar con Patto Bot Template. Agiliza el desarrollo de bots con generación automática de código y setup instantáneo.
+**`@patto/cli`** es la herramienta oficial de línea de comandos para proyectos Patto Bot Template. Combina generación de código con análisis estático nativo (Rust) para un workflow profesional.
 
 **Características:**
 
-- 🚀 Inicialización rápida de proyectos
-- 🎨 Generación de comandos, subcomandos y plugins
-- ✅ Validaciones integradas y mejores prácticas
-- 📦 30+ tests garantizando su funcionamiento
+- 🚀 Inicialización rápida de proyectos (`patto init`)
+- 🎨 Generación de comandos, subcomandos, grupos y plugins (`patto generate`)
+- 🔍 Análisis estático del proyecto (`patto lint`)
+- 🩺 Diagnóstico de salud del entorno (`patto doctor`)
+- ✅ Pipeline completo listo para CI (`patto check`)
+- ⚡ Núcleo nativo en Rust para análisis de alta velocidad
 
 **Instalación:**
 
 ```bash
-npm install -g patto-cli
+npm install -g @patto/cli
 patto init mi-bot-discord
+```
+
+**Workflow recomendado:**
+
+```bash
+# Antes de hacer commit o en CI
+patto check --root .
 ```
 
 **Enlaces:**
 
-- 📦 [Patto CLI en npm](https://www.npmjs.com/package/patto-cli)
-- 🏠 [Repositorio en GitHub](https://github.com/HormigaDev/patto-cli)
-- 📖 [Guía de instalación detallada](docs/Patto_CLI_Installation.README.md)
+- 📦 [@patto/cli en npm](https://www.npmjs.com/package/@patto/cli)
+- 🏠 [Repositorio en GitHub](https://github.com/HormigaDev/patto-monorepo)
+- 📖 [Documentación completa](docs/Patto_CLI_Installation.README.md)
 
 ---
 

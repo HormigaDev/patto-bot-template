@@ -1,0 +1,96 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Patto CLI Configuration",
+    "description": "Configuracion para @patto/cli (.patto/config.json)",
+    "type": "object",
+    "properties": {
+        "$schema": {
+            "type": "string",
+            "description": "Apunta al esquema JSON para autocompletado en el editor"
+        },
+        "schemaVersion": {
+            "type": "integer",
+            "description": "Version del esquema de configuracion de Patto",
+            "enum": [1],
+            "default": 1
+        },
+        "lang": {
+            "type": "string",
+            "description": "Idioma para la salida de diagnosticos del core Rust",
+            "enum": ["auto", "es"],
+            "default": "es"
+        },
+        "lint-rules": {
+            "type": "object",
+            "description": "Sobreescribe la severidad de reglas de lint individuales",
+            "properties": {
+                "duplicate-commands": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Detecta comandos con el mismo nombre registrados mas de una vez. Default: error"
+                },
+                "duplicate-aliases": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Detecta aliases de texto duplicados entre comandos. Default: error"
+                },
+                "invalid-command-names": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Verifica que los nombres de comandos cumplan las restricciones de Discord. Default: warning"
+                },
+                "unknown-command-files": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Archivos .command.ts sin decorador @Command/@Subcommand/@SubcommandGroup reconocido. Default: warning"
+                },
+                "decorated-base-command": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Clases abstractas de definicion con decorador de comando incorrecto. Default: error"
+                },
+                "missing-run-method": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Clases de comando concretas sin metodo run() implementado. Default: error"
+                },
+                "subcommand-consistency": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Inconsistencias entre subcomandos y sus definiciones. Default: error"
+                },
+                "ghost-parent-mix": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Mezcla de comandos reales y fantasma bajo el mismo padre. Default: warning"
+                },
+                "invalid-arguments": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Decoradores @Arg con configuracion invalida. Default: warning"
+                },
+                "command-folder-convention": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Archivos de comando fuera de la convencion de carpetas esperada. Default: warning"
+                },
+                "broken-alias-imports": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Imports con alias de ruta (@/) que no resuelven a un archivo existente. Default: error"
+                },
+                "plugin-specified-commands": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Plugins con PluginScope.Specified sin lista de commands valida. Default: warning"
+                },
+                "sharding-redis-config": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Configuracion de sharding/Redis incompleta o inconsistente. Default: warning"
+                },
+                "component-handler-methods": {
+                    "$ref": "#/definitions/severity",
+                    "description": "Handlers de componentes (button*/select*/modal*) mal definidos. Default: error"
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "required": ["schemaVersion"],
+    "additionalProperties": false,
+    "definitions": {
+        "severity": {
+            "type": "string",
+            "enum": ["off", "info", "warning", "error"],
+            "description": "Nivel de severidad: off | info | warning | error"
+        }
+    }
+}

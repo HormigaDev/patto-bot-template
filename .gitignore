@@ -2,6 +2,9 @@ node_modules/
 dist/
 .env
 
+# Patto CLI - indice generado por patto scan
+.patto/index.json
+
 # Testing
 coverage/
 *.lcov

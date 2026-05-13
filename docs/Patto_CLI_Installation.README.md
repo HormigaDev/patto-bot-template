@@ -1,477 +1,395 @@
-# 🚀 Instalación con Patto CLI
+# `@patto/cli` — Guía de uso con Patto Bot Template
 
-**Patto CLI** es la herramienta oficial de línea de comandos para trabajar con **Patto Bot Template**. Facilita la inicialización de proyectos y acelera el desarrollo con generación automática de código.
-
----
-
-## 📋 Tabla de Contenidos
-
-- [¿Qué es Patto CLI?](#-qué-es-patto-cli)
-- [Instalación de Patto CLI](#-instalación-de-patto-cli)
-- [Crear un Proyecto Nuevo](#-crear-un-proyecto-nuevo)
-- [Ventajas vs Instalación Manual](#-ventajas-vs-instalación-manual)
-- [Primeros Pasos](#-primeros-pasos)
-- [Generar Código Automáticamente](#️-generar-código-automáticamente)
-- [Solución de Problemas](#-solución-de-problemas)
-- [Enlaces Útiles](#-enlaces-útiles)
+**`@patto/cli`** es la herramienta oficial de línea de comandos para proyectos Patto Bot Template.
+Combina generación de código con análisis estático nativo (núcleo en Rust) para un workflow profesional.
 
 ---
 
-## 🎯 ¿Qué es Patto CLI?
+## Tabla de Contenidos
 
-**Patto CLI** es una herramienta de línea de comandos que simplifica el trabajo con Patto Bot Template:
-
-- ✅ **Inicialización rápida** de proyectos desde el template oficial
-- ✅ **Generación automática** de comandos, subcomandos, grupos y plugins
-- ✅ **Validaciones integradas** para nombres y estructura
-- ✅ **30+ tests** garantizando su funcionamiento
-- ✅ **TypeScript nativo** con soporte completo
+- [Instalación](#instalación)
+- [Inicializar un proyecto](#inicializar-un-proyecto)
+- [Generación de código](#generación-de-código)
+- [Análisis del proyecto](#análisis-del-proyecto)
+- [Configuración `.patto/config.json`](#configuración-pattoconfigjson)
+- [Workflow recomendado](#workflow-recomendado)
+- [API por stdin](#api-por-stdin)
+- [Solución de problemas](#solución-de-problemas)
+- [Enlaces útiles](#enlaces-útiles)
 
 ---
 
-## 📦 Instalación de Patto CLI
-
-Tienes tres opciones para usar Patto CLI:
-
-### Opción 1: Instalación Global (Recomendado)
-
-Instala Patto CLI globalmente para usarlo en cualquier proyecto:
+## Instalación
 
 ```bash
-npm install -g patto-cli
+# Con npm
+npm install -g @patto/cli
+
+# Con pnpm (recomendado)
+pnpm add -g @patto/cli
 ```
 
-**Ventajas:**
-
-- ✅ Disponible en cualquier carpeta
-- ✅ Comando `patto` accesible globalmente
-- ✅ Ideal para crear múltiples proyectos
-
-**Verificar instalación:**
+Verificar instalación:
 
 ```bash
 patto --version
+patto --help
 ```
 
-### Opción 2: Uso con npx (Sin instalación)
+### Plataformas compatibles
 
-Usa Patto CLI directamente sin instalarlo:
+`@patto/cli` descarga automáticamente el núcleo nativo para tu plataforma:
 
-```bash
-npx patto-cli <comando>
-```
-
-**Ventajas:**
-
-- ✅ Sin instalación previa necesaria
-- ✅ Siempre usa la última versión
-- ✅ Ideal para uso ocasional
-
-### Opción 3: Instalación Local (Desarrollo)
-
-Instala Patto CLI como dependencia de desarrollo en un proyecto existente:
-
-```bash
-npm install --save-dev patto-cli
-```
-
-**Ventajas:**
-
-- ✅ Versionado con el proyecto
-- ✅ Ideal para equipos de desarrollo
-- ✅ Consistencia entre entornos
-
-**Uso:** Ejecuta con `npx patto` o agrega scripts en `package.json`
+- **Linux x64** — `@patto/cli-core-linux-x64`
+- **Linux arm64** — `@patto/cli-core-linux-arm64`
+- **Windows x64** — `@patto/cli-core-win32-x64`
 
 ---
 
-## 🚀 Crear un Proyecto Nuevo
+## Inicializar un proyecto
 
-### Método Interactivo
-
-La forma más sencilla es dejar que Patto CLI te guíe:
+### Modo interactivo
 
 ```bash
 patto init
 ```
 
-El CLI te preguntará:
+El CLI te guiará con preguntas:
 
 ```
-? ¿Cuál será el nombre de tu proyecto? › mi-bot-discord
+? Nombre del proyecto (ej. MiBot): MiSuperBot
+? Descripcion del proyecto: Un bot de Discord increíble
 ```
 
-**¿Qué hace este comando?**
-
-1. ✅ Clona el repositorio oficial de Patto Bot Template
-2. ✅ Crea una carpeta con el nombre de tu proyecto
-3. ✅ Preserva mayúsculas/minúsculas en el nombre de la carpeta
-4. ✅ Convierte a kebab-case para `package.json`
-5. ✅ Instala todas las dependencias automáticamente
-6. ✅ Limpia el historial de git
-7. ✅ Deja el proyecto listo para usar
-
-### Método Directo
-
-Puedes especificar el nombre del proyecto directamente:
+### Modo directo (sin preguntas)
 
 ```bash
-patto init MiSuperBot
+patto init MiSuperBot --description "Un bot de Discord increíble"
 ```
 
-Esto creará:
+### ¿Qué hace `patto init`?
 
-- 📁 Carpeta: `./MiSuperBot/`
-- 📦 `package.json` con `name: "mi-super-bot"`
+1. Clona el repositorio oficial de Patto Bot Template vía `git clone` (si Git está disponible)
+2. Si Git no está instalado, descarga la última release como ZIP desde GitHub
+3. Elimina el historial de git del template
+4. Actualiza `package.json` con el nombre y descripción del proyecto
+5. Inicializa un nuevo repositorio Git con un commit inicial
 
-### Ejemplos de Nombres
+### Nombres de proyecto
 
 ```bash
-# Preserva mayúsculas en carpeta
+# Preserva mayúsculas en la carpeta
 patto init MyAwesomeBot
-# Crea: ./MyAwesomeBot/
+# Carpeta: ./MyAwesomeBot/
 # package.json: "my-awesome-bot"
 
-# Nombres con guiones
-patto init my-discord-bot
-# Crea: ./my-discord-bot/
-# package.json: "my-discord-bot"
-
-# Nombres con espacios (se convierten)
-patto init "My Cool Bot"
-# Crea: ./My Cool Bot/
-# package.json: "my-cool-bot"
+# Acepta espacios (la carpeta los elimina)
+patto init "Mi Bot Discord"
+# Carpeta: ./MiBotDiscord/
+# package.json: "mi-bot-discord"
 ```
 
----
-
-## ⚡ Ventajas vs Instalación Manual
-
-| Característica            | Con Patto CLI         | Instalación Manual            |
-| ------------------------- | --------------------- | ----------------------------- |
-| **Tiempo de setup**       | 2-3 minutos           | 5-10 minutos                  |
-| **Clonado del repo**      | Automático            | Manual con `git clone`        |
-| **Instalación de deps**   | Automática            | Manual con `npm install`      |
-| **Configuración de .env** | Manual (una vez)      | Manual (una vez)              |
-| **Generar comandos**      | `patto g c -n ping`   | Crear archivos manualmente    |
-| **Generar plugins**       | `patto g p -n logger` | Crear y registrar manualmente |
-| **Validaciones**          | Automáticas           | Manual                        |
-| **Registro de plugins**   | Automático            | Manual en `plugins.config.ts` |
-
-**Conclusión:** Patto CLI ahorra tiempo y reduce errores humanos.
-
----
-
-## 🎮 Primeros Pasos
-
-Una vez creado el proyecto, sigue estos pasos:
-
-### 1. Entrar al proyecto
+### Primeros pasos tras `patto init`
 
 ```bash
 cd MiSuperBot
+cp .env.template .env        # Configura tus credenciales
+pnpm install                 # Instala dependencias
+pnpm dev                     # Inicia en modo desarrollo
 ```
-
-### 2. Configurar Variables de Entorno
-
-Copia el template de configuración:
-
-```bash
-cp .env.template .env
-```
-
-Edita `.env` con tus credenciales de Discord:
-
-```env
-# Variables OBLIGATORIAS
-BOT_TOKEN=tu_token_aqui        # Token del bot
-CLIENT_ID=tu_client_id_aqui    # ID de la aplicación
-
-# Variables OPCIONALES
-USE_MESSAGE_CONTENT=true       # true = comandos de texto | false = solo slash
-COMMAND_PREFIX=!               # Prefijo para comandos de texto
-```
-
-**📚 Más información:** Ver [`docs/MESSAGE_CONTENT_CONFIG.md`](./MESSAGE_CONTENT_CONFIG.md) para configuración detallada.
-
-### 3. Iniciar el Bot
-
-#### Desarrollo (con hot reload):
-
-```bash
-npm run dev
-```
-
-#### Producción:
-
-```bash
-npm run build
-npm start
-```
-
-### 4. Verificar que Funciona
-
-Si todo está bien, verás en consola:
-
-```
-[INFO] Bot conectado como: TuBot#1234
-✅ Comandos Slash registrados (X comandos)
-```
-
-Prueba en Discord:
-
-- `/ping` - Verifica latencia
-- `/help` - Lista de comandos
 
 ---
 
-## 🛠️ Generar Código Automáticamente
+## Generación de código
 
-Una de las grandes ventajas de Patto CLI es la generación automática de código.
+### Comando
 
-### Generar un Comando Básico
-
-```bash
-patto generate command --name ping --description "Verifica latencia del bot"
-# o usando el alias corto:
-patto g c -n ping -d "Verifica latencia del bot"
-```
-
-**Genera:**
-
-```
-src/
-├── commands/
-│   └── ping.command.ts          # Implementación
-└── definitions/
-    └── ping.definition.ts       # Decorador y definición
-```
-
-### Generar un Subcomando
+Crea un comando dividido en definición + implementación:
 
 ```bash
-patto generate subcommand --name info --parent user --description "Información de usuario"
-# o alias:
-patto g s -n info -p user -d "Información de usuario"
+patto generate command info/ping
+# Alias: patto g command info/ping
 ```
 
-**Genera:**
+Crea:
 
 ```
-src/
-├── commands/
-│   └── user-info.command.ts
-└── definitions/
-    └── user-info.definition.ts
+src/definitions/info/ping.definition.ts
+src/commands/info/ping.command.ts
 ```
 
-### Generar un Grupo de Subcomandos
+Para un único archivo:
 
 ```bash
-patto generate subcommand-group --name roles -parent admin --subcomand manage --description "Gestión de roles"
-# o alias:
-patto g g -n roles -p admin -s manage -d "Gestión de roles"
+patto generate command info/ping --single-file
 ```
 
-**Genera:**
-
-```
-src/
-├── commands/
-│   └── admin-manage-roles.command.ts
-└── definitions/
-    └── admin-manage-roles.definition.ts
-```
-
-### Generar un Plugin
+Con descripción y categoría:
 
 ```bash
-patto generate plugin --name logger --global
-# o alias:
-patto g p -n logger --global
+patto generate command info/ping --description "Verifica la latencia" --category info
 ```
 
-**Genera:**
+### Subcomando
 
-```
-src/
-├── plugins/
-│   └── logger.plugin.ts
-└── config/
-    └── plugins.config.ts        # ← Actualizado automáticamente
+```bash
+patto generate subcommand get --parent config
+# Crea: src/commands/config/get.command.ts
 ```
 
-**El plugin se registra automáticamente** - No necesitas editar manualmente `plugins.config.ts`.
+### Grupo de subcomandos
 
-### Ejemplo: Bot Completo desde Cero
+```bash
+patto generate subcommand-group set --parent server --group config
+# Crea: src/commands/server/config/set.command.ts
+```
+
+### Definición independiente
+
+```bash
+patto generate definition help
+patto generate definition get --kind subcommand --parent config
+patto generate definition set --kind subcommand-group --parent server --group config
+```
+
+### Plugin
+
+```bash
+# Plugin global
+patto generate plugin audit-log --scope deep-folder --folder moderation
+
+# Plugin para comandos específicos
+patto generate plugin review-gate --scope specified --commands info/about,admin/ban
+
+# Sin registro automático en plugins.config.ts
+patto generate plugin my-plugin --no-register
+```
+
+### Aliases
+
+```bash
+patto g command ping          # alias de generate
+patto scaffold command ping   # alias de generate
+```
+
+---
+
+## Análisis del proyecto
+
+Todos los comandos de análisis aceptan `--root <path>` para indicar la raíz del bot.
+Si se omite, usa el directorio actual.
+
+### `patto scan`
+
+Indexa el proyecto y escribe `.patto/index.json`:
+
+```bash
+patto scan --root /ruta/al/bot
+```
+
+### `patto lint`
+
+Ejecuta las reglas estáticas de Patto sobre comandos, definiciones, plugins y convenciones:
+
+```bash
+patto lint --root /ruta/al/bot
+```
+
+### `patto doctor`
+
+Verifica la salud del proyecto: runtime, dependencias, scripts, archivos env, tsconfig,
+configuración de Patto, sharding/Redis y salida de compilación:
+
+```bash
+patto doctor --root /ruta/al/bot
+```
+
+### `patto check` (recomendado para CI)
+
+Ejecuta `scan + lint + doctor` en un solo comando:
+
+```bash
+patto check --root /ruta/al/bot
+```
+
+### Salida JSON
+
+Usa `--json` para obtener el JSON crudo del núcleo Rust:
+
+```bash
+patto check --json
+```
+
+Ejemplo de diagnóstico en la salida legible por humanos:
+
+```
+src/config/plugins.config.ts:45:15 WARNING plugin-specified-commands
+  PluginScope.Specified no tiene una lista de commands válida.
+  45 | //     scope: PluginScope.Specified,
+     |               ^^^^^^^^^^^^^^^^^^^^^
+  hint: Agrega commands: [MiCommand] cuando uses PluginScope.Specified.
+```
+
+Colores de severidad: rojo = error, amarillo = warning, azul = info.
+
+---
+
+## Configuración `.patto/config.json`
+
+El template ya incluye `.patto/config.json` con la configuración mínima.
+El archivo `.patto/index.json` (generado por `patto scan`) está en `.gitignore`.
+
+### Configuración mínima
+
+```json
+{
+    "$schema": "./config.schema.json",
+    "schemaVersion": 1,
+    "lang": "es"
+}
+```
+
+El `$schema` activa el autocompletado en VSCode y otros editores compatibles con JSON Schema.
+
+### Ajustar reglas de lint
+
+```json
+{
+    "schemaVersion": 1,
+    "lang": "es",
+    "lint-rules": {
+        "duplicate-commands": "error",
+        "invalid-command-names": "warning",
+        "ghost-parent-mix": "off"
+    }
+}
+```
+
+Niveles disponibles: `off` | `info` | `warning` | `error`
+
+### Reglas de lint disponibles
+
+| Regla | Default | Descripción |
+|---|---|---|
+| `duplicate-commands` | error | Comandos con el mismo nombre registrados más de una vez |
+| `duplicate-aliases` | error | Aliases de texto duplicados entre comandos |
+| `invalid-command-names` | warning | Nombres de comandos que no cumplen restricciones de Discord |
+| `unknown-command-files` | warning | Archivos `.command.ts` sin decorador reconocido |
+| `decorated-base-command` | error | Clases abstractas de definición con decorador incorrecto |
+| `missing-run-method` | error | Clases de comando concretas sin método `run()` |
+| `subcommand-consistency` | error | Inconsistencias entre subcomandos y sus definiciones |
+| `ghost-parent-mix` | warning | Mezcla de comandos reales y fantasma bajo el mismo padre |
+| `invalid-arguments` | warning | Decoradores `@Arg` con configuración inválida |
+| `command-folder-convention` | warning | Archivos de comando fuera de la convención de carpetas |
+| `broken-alias-imports` | error | Imports `@/` que no resuelven a un archivo existente |
+| `plugin-specified-commands` | warning | Plugins `PluginScope.Specified` sin lista de comandos |
+| `sharding-redis-config` | warning | Configuración de sharding/Redis incompleta |
+| `component-handler-methods` | error | Handlers de componentes mal definidos |
+
+---
+
+## Workflow recomendado
+
+### Flujo de desarrollo
 
 ```bash
 # 1. Crear proyecto
 patto init MiBot
 cd MiBot
+cp .env.template .env
+pnpm install
 
-# 2. Generar comandos básicos
-patto g c -n ping -d "Verifica latencia"
-patto g c -n help -d "Muestra ayuda"
+# 2. Generar comandos
+patto generate command info/ping --description "Verifica la latencia"
+patto generate command admin/ban --description "Banea un usuario"
 
-# 3. Generar comando de usuario con subcomandos
-patto g c -n user -d "Gestión de usuarios"
-patto g s -n info -p user -d "Info de usuario"
-patto g s -n avatar -p user -d "Avatar de usuario"
+# 3. Generar subcomandos
+patto generate subcommand get --parent config --description "Obtiene config"
+patto generate subcommand set --parent config --description "Establece config"
 
-# 4. Generar comando admin con grupos
-patto g c -n admin -d "Comandos administrativos"
-patto g s -n manage -p admin -d "Gestión"
-patto g g -n roles -p admin -s manage -d "Roles"
-patto g g -n channels -p admin -s manage -d "Canales"
+# 4. Generar plugin
+patto generate plugin cooldown --scope deep-folder
 
-# 5. Generar plugins
-patto g p -n auth --folder commands
-patto g p -n logger --global
+# 5. Desarrollar
+pnpm dev
 
-# 6. Iniciar el bot
-npm run dev
+# 6. Verificar antes de commit
+patto check --root .
 ```
 
-**Resultado:** Un bot funcional con estructura profesional en minutos.
+### En CI/CD
+
+```yaml
+# GitHub Actions (ejemplo)
+- name: Patto check
+  run: patto check --root . --json
+```
 
 ---
 
-## 🐛 Solución de Problemas
+## API por stdin
+
+Para extensiones, scripts o integraciones de editor:
+
+```bash
+printf '{"command":"check","root":"/ruta/al/bot","lang":"es"}' | patto core --stdin
+```
+
+Formato de respuesta:
+
+```json
+{
+    "ok": true,
+    "command": "check",
+    "exitCode": 0,
+    "stderr": "",
+    "output": {},
+    "diagnostics": []
+}
+```
+
+Comandos válidos para `command`: `scan`, `lint`, `doctor`, `check`.
+
+---
+
+## Solución de problemas
 
 ### Error: "comando 'patto' no encontrado"
 
-**Causa:** Patto CLI no está instalado globalmente o no está en el PATH.
-
-**Solución:**
-
 ```bash
-# Opción 1: Instalar globalmente
-npm install -g patto-cli
-
-# Opción 2: Usar npx
-npx patto-cli init MiBot
+# Reinstalar globalmente
+npm install -g @patto/cli
+# o
+pnpm add -g @patto/cli
 ```
 
-### Error: "nombre debe estar en kebab-case"
+### Error: "No hay un binario nativo compatible disponible"
 
-**Causa:** El nombre del comando/plugin contiene mayúsculas o caracteres inválidos.
+Tu plataforma aún no tiene soporte nativo. Los comandos `generate` e `init` funcionan en todas las plataformas; `scan`, `lint`, `doctor` y `check` requieren el binario nativo.
+Consulta [el repositorio](https://github.com/HormigaDev/patto-monorepo/issues) para solicitar soporte.
 
-**Solución:** Usa solo minúsculas y guiones:
+### `patto init` clona con Git en lugar del ZIP
 
-```bash
-# ❌ Incorrecto
-patto g c -n MyCommand
-patto g c -n my_command
-patto g c -n "my command"
+Esto es correcto. Si Git está instalado, se usa `git clone` (más rápido). Si no, se descarga la última release como ZIP automáticamente.
 
-# ✅ Correcto
-patto g c -n my-command
-patto g c -n user-info
-patto g c -n utils/helper
-```
+### Error: "El directorio ya existe"
 
-### Error: "archivo ya existe"
+Ya existe una carpeta con ese nombre en el directorio actual. Usa otro nombre o elimina la carpeta existente.
 
-**Causa:** Ya existe un comando/plugin con ese nombre.
+### Error al lint: "No parece ser un proyecto Patto válido"
 
-**Solución:**
-
-1. Verifica si el archivo ya existe:
-
-    ```bash
-    ls src/commands/
-    ```
-
-2. Usa otro nombre o elimina el archivo existente:
-    ```bash
-    rm src/commands/mi-comando.command.ts
-    rm src/definitions/mi-comando.definition.ts
-    ```
-
-### Error: Dependencias no se instalan
-
-**Causa:** Problemas de red o caché de npm.
-
-**Solución:**
-
-```bash
-# Limpiar caché de npm
-npm cache clean --force
-
-# Instalar dependencias manualmente
-cd MiBot
-npm install
-```
-
-### Comando `patto init` se queda colgado
-
-**Causa:** Problemas de conexión con GitHub o npm.
-
-**Solución:**
-
-1. Verifica tu conexión a internet
-2. Intenta clonar manualmente:
-    ```bash
-    git clone https://github.com/HormigaDev/patto-bot-template.git MiBot
-    cd MiBot
-    npm install
-    ```
+El comando `scan`/`lint`/`doctor`/`check` no encuentra los archivos base del template.
+Verifica que estás en la raíz del proyecto o usa `--root /ruta/correcta`.
 
 ---
 
-## 📚 Enlaces Útiles
+## Enlaces útiles
 
-### Documentación
-
-- 📖 [README Principal del Template](../README.md)
-- 📖 [Arquitectura del Proyecto](../ARCHITECTURE.md)
-- 📖 [Guía de Contribución](../CONTRIBUTING.md)
-- 📖 [Guía de Subcomandos](./Subcommands.README.md)
-- 📖 [Guía de Grupos de Subcomandos](./SubcommandGroups.README.md)
-- 📖 [Sistema de Permisos](../src/plugins/permissions.plugin.README.md)
-- 📖 [Componentes Interactivos](../src/core/components/README.md)
-
-### Patto CLI
-
-- 🔧 [Repositorio de Patto CLI](https://github.com/HormigaDev/patto-cli)
-- 📦 [Patto CLI en npm](https://www.npmjs.com/package/patto-cli)
-- 🐛 [Reportar Bug en Patto CLI](https://github.com/HormigaDev/patto-cli/issues)
-
-### Patto Bot Template
-
-- 🏠 [Repositorio del Template](https://github.com/HormigaDev/patto-bot-template)
-- 🐛 [Reportar Bug en Template](https://github.com/HormigaDev/patto-bot-template/issues)
-- 💬 [Servidor de Discord](https://discord.gg/x79VjB37vQ)
-
-### Discord.js
-
-- 📖 [Documentación de Discord.js](https://discord.js.org/)
-- 🎓 [Guía de Discord.js](https://discordjs.guide/)
-- 🏠 [Discord Developer Portal](https://discord.com/developers/applications)
-
----
-
-## 🎯 Próximos Pasos
-
-Ahora que tienes tu proyecto configurado con Patto CLI:
-
-1. ✅ **Lee la documentación** del template en el README principal
-2. ✅ **Explora los ejemplos** incluidos en `src/commands/examples/`
-3. ✅ **Genera tus propios comandos** con `patto generate`
-4. ✅ **Escribe tests** para tu código (ver `tests/README.md`)
-5. ✅ **Personaliza el bot** según tus necesidades
-6. ✅ **Comparte tu experiencia** en el servidor de Discord
-
----
-
-## 🙏 Agradecimientos
-
-Gracias por usar **Patto CLI** y **Patto Bot Template**. Si te gusta el proyecto:
-
-- ⭐ Dale una estrella en [GitHub](https://github.com/HormigaDev/patto-cli)
-- 🐛 Reporta bugs o sugiere features en [Issues](https://github.com/HormigaDev/patto-cli/issues)
-- 🤝 Contribuye al proyecto siguiendo la [Guía de Contribución](../CONTRIBUTING.md)
+- 📦 [@patto/cli en npm](https://www.npmjs.com/package/@patto/cli)
+- 🏠 [Repositorio en GitHub](https://github.com/HormigaDev/patto-monorepo)
+- 🐛 [Reportar un bug](https://github.com/HormigaDev/patto-monorepo/issues)
+- 📖 [README del template](../README.md)
+- 📖 [Arquitectura del proyecto](../ARCHITECTURE.md)
 
 ---
 
@@ -479,6 +397,6 @@ Gracias por usar **Patto CLI** y **Patto Bot Template**. Si te gusta el proyecto
 
 **Happy Coding! 🚀**
 
-[Volver al README Principal](../README.md) • [Ver Template en GitHub](https://github.com/HormigaDev/patto-bot-template) • [Ver CLI en GitHub](https://github.com/HormigaDev/patto-cli)
+[Volver al README Principal](../README.md) • [Template en GitHub](https://github.com/HormigaDev/patto-bot-template)
 
 </div>
