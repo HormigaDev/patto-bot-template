@@ -110,6 +110,10 @@ describe('CooldownPlugin', () => {
             const descCall = mockEmbed.setDescription.mock.calls[0][0] as string;
             // El timestamp de Discord tiene el formato <t:SECONDS:FORMAT>
             expect(descCall).toMatch(/<t:\d+:T>/);
+            expect(command.t).toHaveBeenCalledWith(
+                'cooldown.wait_until',
+                expect.stringMatching(/<t:\d+:T>/),
+            );
         });
 
         it('debería usar la key correcta combinando userId y commandId', async () => {

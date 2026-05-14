@@ -11,8 +11,10 @@ src/
 │   ├── README.md                  # Documentación de patrones y estructura
 │   ├── info/                      # Comandos base (producción)
 │   │   ├── help.command.ts       # Comando base: /help
+│   │   ├── help-translated.command.ts # Comando base: /help-translated (i18n)
 │   │   └── ping.command.ts       # Comando base: /ping
 │   └── examples/                  # Ejemplos demostrativos
+│       ├── setlocale.command.ts   # Ejemplo: /setlocale (i18n por servidor)
 │       ├── components/            # Ejemplos de componentes interactivos
 │       │   ├── color.command.ts         # Ejemplo: botones con payload
 │       │   ├── feedback.command.ts      # Ejemplo: modal con payload
@@ -89,6 +91,19 @@ src/
 │   ├── interactionCreate.event.ts # Dispatcher: slash commands + componentes interactivos
 │   ├── messageCreate.event.ts     # Maneja text commands + construye commandPath
 │   └── README.md                  # Documentación de eventos
+├── i18n/                          # Internacionalización (i18n) por servidor
+│   ├── README.md                  # Guía y convenciones del módulo
+│   ├── index.ts                   # API pública (i18n, resolveLocaleFromInteraction, ...)
+│   ├── types.ts                   # SupportedLocale, DEFAULT_LOCALE, helpers
+│   ├── translator.ts              # i18n.for(locale) + bundles tipados
+│   ├── locale.resolver.ts         # Resolución del locale por petición
+│   ├── registry.ts                # LocaleRegistry (store + resolver)
+│   ├── locale/                    # Catálogos por idioma
+│   │   ├── es.ts                  # Fuente de verdad
+│   │   ├── en.ts                  # Traducciones (typeof es)
+│   │   └── pt.ts                  # Traducciones (typeof es)
+│   └── store/
+│       └── locale.store.ts        # LocaleStore + MemoryLocaleStore
 ├── plugins/                       # Implementaciones de plugins
 │   ├── cooldown.plugin.ts         # Plugin de cooldown (usa CooldownStore vía StoreRegistry)
 │   ├── permissions.plugin.ts      # Plugin de permisos (@RequirePermissions + @BotPermissions)
@@ -106,8 +121,8 @@ src/
 
 La carpeta `commands/` en el template incluye:
 
-- **`info/`**: Comandos básicos de producción (`help`, `ping`)
-- **`examples/`**: Ejemplos demostrativos listos para explorar
+- **`info/`**: Comandos básicos de producción (`help`, `help-translated`, `ping`)
+- **`examples/`**: Ejemplos demostrativos listos para explorar (incluye `setlocale`)
     - `examples/components/`: Ejemplos de componentes interactivos (botones, modales, RichMessage permanente)
     - `examples/subcommands/`: Ejemplos de comandos de 2 niveles
     - `examples/subcommand-groups/`: Ejemplos de comandos de 3 niveles
@@ -244,9 +259,9 @@ config.INTENTS; // number | undefined
 import { metadataHandler } from '@/core/metadata';
 
 const cooldown = metadataHandler.getCooldown(PingCommand);
-const perms   = metadataHandler.getRequiredPermissions(BanCommand);
-const args    = metadataHandler.getArguments(SayCommand);
-const type    = metadataHandler.getCommandType(ServerConfigGetCommand);
+const perms = metadataHandler.getRequiredPermissions(BanCommand);
+const args = metadataHandler.getArguments(SayCommand);
+const type = metadataHandler.getCommandType(ServerConfigGetCommand);
 // → 'subcommand-group'
 ```
 
@@ -271,6 +286,7 @@ const type    = metadataHandler.getCommandType(ServerConfigGetCommand);
 
 - Instancia el comando
 - Inyecta contexto y argumentos
+- Resuelve el locale efectivo una sola vez por petición y lo inyecta en `CommandContext.locale`
 - **Obtiene plugins** de dos fuentes:
 
 1. Plugins de `@UsePlugins` (decorador) - Máxima prioridad
@@ -333,10 +349,10 @@ export function getPrefix(): string {
 
 **Stores disponibles**:
 
-| Store           | Implementaciones in-memory       | Implementaciones Redis         | Usado por           |
-| --------------- | -------------------------------- | ------------------------------ | ------------------- |
-| `CooldownStore` | `MemoryCooldownStore`            | `RedisCooldownStore`           | `CooldownPlugin`    |
-| `PayloadStore`  | `MemoryPayloadStore`             | `RedisPayloadStore`            | `ComponentRegistry` |
+| Store           | Implementaciones in-memory | Implementaciones Redis | Usado por           |
+| --------------- | -------------------------- | ---------------------- | ------------------- |
+| `CooldownStore` | `MemoryCooldownStore`      | `RedisCooldownStore`   | `CooldownPlugin`    |
+| `PayloadStore`  | `MemoryPayloadStore`       | `RedisPayloadStore`    | `ComponentRegistry` |
 
 ```typescript
 // En index.ts — configurar Redis antes de importar Bot (solo si SHARDING_ENABLED=true)
@@ -344,7 +360,7 @@ StoreRegistry.useCooldownStore(new RedisCooldownStore(redis));
 ComponentRegistry.useStore(new RedisPayloadStore(redis));
 
 // En plugins.config.ts — el store ya está configurado cuando se instancia el plugin
-new CooldownPlugin(StoreRegistry.getCooldownStore())
+new CooldownPlugin(StoreRegistry.getCooldownStore());
 ```
 
 ### **7. PluginRegistry (`config/plugin.registry.ts`)**
@@ -395,16 +411,31 @@ new CooldownPlugin(StoreRegistry.getCooldownStore())
 **Responsabilidad**: Clase base para todos los comandos
 
 - Propiedades inyectadas: `ctx`, `user`, `channel`
+- `locale`: idioma efectivo de la petición (solo lectura)
 - Método abstracto: `run()`
 - Helpers:
 - `reply()`: Responde al usuario
 - `send()`: Envía mensaje al canal
 - **`getEmbed(type)`**: Crea embeds preconfigurados (error, success, warning, info)
+- **`t(key, ...args)`**: Traducciones tipadas ligadas al locale (opt-in)
 - Soporte para plugins (`onBeforeExecute`, `onAfterExecute`)
 
 **Nuevo**: Método `getEmbed()` para embeds consistentes
 
-### **10. Events (`events/*.event.ts`)**
+### **10. i18n (`src/i18n/`)**
+
+**Responsabilidad**: Internacionalización opt-in de respuestas del bot (por servidor)
+
+- Catálogos por idioma en `src/i18n/locale/*`, con `es` como fuente de verdad (`en`/`pt` tipados como `typeof es`)
+- `LocaleStore` guarda la preferencia del servidor; por defecto `MemoryLocaleStore`
+- `LocaleResolver` aplica la precedencia: store del servidor → `interaction.locale` → `DEFAULT_LOCALE`
+- `LocaleRegistry` permite reemplazar el store al arranque (Redis en sharding/multi-instancia)
+- `BaseCommand.t` expone `i18n.for(locale)`; handlers estáticos usan `resolveLocaleFromInteraction`
+- Si no usas i18n, en `CommandHandler` existen versiones hardcoded comentadas de `handleValidationError` y `handleExecutionError` para alternar
+
+**Nuevo**: i18n modular con locale por servidor y traductor tipado.
+
+### **11. Events (`events/*.event.ts`)**
 
 **Responsabilidad**: Manejar eventos de Discord
 
@@ -464,6 +495,8 @@ CommandLoader.getCommandEntry(key) [incluye ruta + metadata]
     ↓
 CommandHandler.executeCommand(interaction, class, undefined, path)
     ↓
+Resolver locale (LocaleRegistry → ctx.locale)
+    ↓
 ArgumentResolver.resolveArguments()
     ↓
     ├─ TypeResolver (tipos Discord ya resueltos por Discord.js)
@@ -504,6 +537,8 @@ Ajustar argumentos según nivel encontrado:
     └─ Base: args.slice(1) → argumentos después del comando
     ↓
 CommandHandler.executeCommand(message, class, args, path)
+    ↓
+Resolver locale (LocaleRegistry → ctx.locale)
     ↓
 ArgumentResolver.resolveArguments()
     ↓
@@ -1080,6 +1115,16 @@ const richMsg = new RichMessage({
 await richMsg.send(this.ctx);
 ```
 
+### 9. **i18n modular (por servidor)**
+
+Internacionalización opt-in para respuestas del bot:
+
+- Catálogos tipados por idioma (`src/i18n/locale/*`) con `es` como fuente de verdad
+- `LocaleStore` por servidor y resolución por precedencia (store → Discord → default)
+- `BaseCommand.t` para comandos y `resolveLocaleFromInteraction` para handlers estáticos
+- `LocaleRegistry.useStore(...)` permite usar Redis en sharding/multi-instancia
+- Si no usas i18n, en `CommandHandler` hay versiones hardcoded comentadas de `handleValidationError` y `handleExecutionError`
+
 **Ciclo de vida de `send()`:**
 
 1. Persiste el payload de cada componente en el `PayloadStore` con TTL = timeout
@@ -1388,6 +1433,7 @@ Cada carpeta tiene su `README.md` completo:
 - 📁 [`/src/core/resolvers/`](src/core/resolvers/README.md) - Resolución de tipos y argumentos
 - 📁 [`/src/core/structures/`](src/core/structures/README.md) - BaseCommand, BasePlugin, CommandContext
 - 📁 [`/src/core/components/`](src/core/components/README.md) - Button, Select, Modal, RichMessage
+- 📁 [`/src/i18n/`](src/i18n/README.md) - Módulo i18n
 - 📁 [`/tests/`](tests/README.md) - Testing completo con Jest
 
 ### **Ejemplos Funcionales**
@@ -1397,6 +1443,8 @@ Cada carpeta tiene su `README.md` completo:
 - **Plugin funcional**: [`/src/plugins/cooldown.plugin.ts`](src/plugins/cooldown.plugin.ts)
 - **Configuración de plugins**: [`/src/config/plugins.config.ts`](src/config/plugins.config.ts)
 - **Componentes interactivos**: Ver ejemplos en [`/src/core/components/README.md`](src/core/components/README.md)
+- **Comando i18n (setlocale)**: [`/src/commands/examples/setlocale.command.ts`](src/commands/examples/setlocale.command.ts)
+- **Ayuda i18n**: [`/src/commands/info/help-translated.command.ts`](src/commands/info/help-translated.command.ts)
 - **Tests**: [`/tests/unit/utils/Env.test.ts`](tests/unit/utils/Env.test.ts)
 
 ### **Archivos de Configuración**
@@ -1416,6 +1464,7 @@ Cada carpeta tiene su `README.md` completo:
 - Sistema de comandos completo (slash + text)
 - Sistema de plugins con scopes
 - Componentes interactivos (Button, Select, Modal, RichMessage)
+- Internacionalización (i18n) por servidor
 - Validación de variables de entorno (Env.ts)
 - Manejo de errores (ValidationError, ReplyError)
 - Testing completo (125 tests pasando)
@@ -1432,7 +1481,6 @@ Cada carpeta tiene su `README.md` completo:
 - [ ] Sistema de logs robusto
 - [ ] Comandos de administración
 - [ ] Dashboard web
-- [ ] Internacionalización (i18n)
 - [ ] Sistema de economía
 - [ ] Comandos de música
 - [ ] Comandos de moderación avanzados

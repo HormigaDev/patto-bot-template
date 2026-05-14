@@ -84,7 +84,7 @@ Por defecto: `es`, `en`, `pt` (declarados en [`types.ts`](./types.ts)).
 import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from '@/i18n';
 
 SUPPORTED_LOCALES; // readonly ['es', 'en', 'pt']
-DEFAULT_LOCALE;    // 'es' — fuente de verdad y fallback
+DEFAULT_LOCALE; // 'es' — fuente de verdad y fallback
 ```
 
 ---
@@ -95,29 +95,28 @@ DEFAULT_LOCALE;    // 'es' — fuente de verdad y fallback
 
 1. Edita `es.ts` y añade la clave con su dominio y notación de puntos. Usa una **función** para mensajes con interpolación: TypeScript validará los argumentos en cada call site.
 
-   ```ts
-   // en locale/es.ts
-   export const es = {
-       // …
-       'ping.response.latency': (ms: number) => `Latencia \`${ms}ms\``,
-       'moderation.kicked': (target: string, reason: string) =>
-           `${target} ha sido expulsado. Motivo: ${reason}`,
-   };
-   ```
+    ```ts
+    // en locale/es.ts
+    export const es = {
+        // …
+        'ping.response.latency': (ms: number) => `Latencia \`${ms}ms\``,
+        'moderation.kicked': (target: string, reason: string) =>
+            `${target} ha sido expulsado. Motivo: ${reason}`,
+    };
+    ```
 
 2. Ejecuta `tsc --noEmit` (o deja que el build/IDE lo haga). Verás errores en `en.ts` y `pt.ts` diciendo qué claves faltan.
 
 3. Traduce esas claves. Las firmas de funciones (`(ms: number) => string`, etc.) se infieren automáticamente desde el español: sólo escribes el cuerpo.
 
-   ```ts
-   // en locale/en.ts
-   export const en: typeof es = {
-       // …
-       'ping.response.latency': (ms) => `Latency \`${ms}ms\``,
-       'moderation.kicked': (target, reason) =>
-           `${target} has been kicked. Reason: ${reason}`,
-   };
-   ```
+    ```ts
+    // en locale/en.ts
+    export const en: typeof es = {
+        // …
+        'ping.response.latency': (ms) => `Latency \`${ms}ms\``,
+        'moderation.kicked': (target, reason) => `${target} has been kicked. Reason: ${reason}`,
+    };
+    ```
 
 4. Listo. Cualquier consumidor que use `this.t('moderation.kicked', target, reason)` ve la nueva clave con autocompletado y tipos completos en los tres idiomas.
 
@@ -169,8 +168,7 @@ public static async buttonOpen(interaction: ButtonInteraction, payload: P | unde
 El `CommandHandler` lo resuelve **una sola vez** antes de invocar `run()` y lo deposita en `ctx.locale`:
 
 ```ts
-const discordLocale =
-    source instanceof Message ? undefined : (source.locale as string | undefined);
+const discordLocale = source instanceof Message ? undefined : (source.locale as string | undefined);
 
 ctx.locale = await LocaleRegistry.getResolver().resolve({
     guildId: ctx.guild?.id,
@@ -244,26 +242,26 @@ export class RedisLocaleStore implements LocaleStore {
 
 1. Añade el código ISO 639-1 al tuple `SUPPORTED_LOCALES` en [`types.ts`](./types.ts):
 
-   ```ts
-   export const SUPPORTED_LOCALES = ['es', 'en', 'pt', 'fr'] as const;
-   ```
+    ```ts
+    export const SUPPORTED_LOCALES = ['es', 'en', 'pt', 'fr'] as const;
+    ```
 
 2. Crea `src/i18n/locale/fr.ts` tipado como `typeof es`. El compilador te dirá exactamente qué claves faltan.
 
-   ```ts
-   import type { es } from './es';
+    ```ts
+    import type { es } from './es';
 
-   export const fr: typeof es = {
-       // …todas las claves de es traducidas
-   };
-   ```
+    export const fr: typeof es = {
+        // …todas las claves de es traducidas
+    };
+    ```
 
 3. Inclúyelo en `BUNDLES` dentro de `translator.ts`:
 
-   ```ts
-   import { fr } from './locale/fr';
-   const BUNDLES = { es, en, pt, fr };
-   ```
+    ```ts
+    import { fr } from './locale/fr';
+    const BUNDLES = { es, en, pt, fr };
+    ```
 
 No hace falta tocar el resolver, el registry ni ningún comando.
 
@@ -275,7 +273,8 @@ No hace falta tocar el resolver, el registry ni ningún comando.
 
 1. Elimina los comandos opt-in que usan i18n (`setlocale` y `help-translated`).
 2. Borra `get t(): TFn { … }` en [`BaseCommand`](../core/structures/BaseCommand.ts).
-3. Borra `src/i18n` y retira la resolución de locale en `CommandHandler`/`CommandContext` si ya no necesitas `BaseCommand.locale`.
+3. En [src/core/handlers/command.handler.ts](src/core/handlers/command.handler.ts), comenta las versiones i18n de `handleValidationError`/`handleExecutionError` y descomenta las versiones hardcoded.
+4. Borra `src/i18n` y retira la resolución de locale en `CommandHandler`/`CommandContext` si ya no necesitas `BaseCommand.locale`.
 
 TypeScript marcará cualquier `this.t(...)` que quede vivo.
 
@@ -285,24 +284,24 @@ TypeScript marcará cualquier `this.t(...)` que quede vivo.
 
 Todo se exporta desde `@/i18n`:
 
-| Símbolo                            | Propósito                                                                  |
-| ---------------------------------- | -------------------------------------------------------------------------- |
-| `i18n.for(locale)`                 | Devuelve la función traductora `t(key, ...args)` ligada al locale dado.    |
-| `i18n.has(locale)`                 | Indica si el locale tiene traducción explícita.                            |
-| `i18n.availableLocales()`          | Lista de locales con traducción real.                                      |
-| `TFn`                              | Firma de la función traductora.                                            |
-| `TranslationKey`                   | Unión de todas las claves del bundle.                                      |
-| `Bundle`                           | Tipo del catálogo (alias de `typeof es`).                                  |
-| `SupportedLocale`                  | Unión de tipos de locales soportados.                                      |
-| `SUPPORTED_LOCALES`                | Tuple readonly con todos los locales.                                      |
-| `DEFAULT_LOCALE`                   | Locale base (`'es'`).                                                      |
-| `isSupportedLocale(v)`             | Type-guard para input externo.                                             |
-| `normalizeLocale(raw)`             | Acepta `'es-ES'`, `'pt-BR'`, etc. Devuelve el código base o `null`.        |
-| `resolveLocaleFromInteraction(i)`  | Helper para handlers estáticos (botones/selects/modales).                  |
-| `LocaleResolver`                   | Resuelve el locale efectivo de una petición.                               |
-| `LocaleStore` (interface)          | Contrato de persistencia per-guild (`getGuildLocale`, etc.).               |
-| `MemoryLocaleStore`                | Implementación por defecto en memoria.                                     |
-| `LocaleRegistry`                   | Punto único de configuración (`useStore`, `getStore`, `getResolver`).      |
+| Símbolo                           | Propósito                                                               |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| `i18n.for(locale)`                | Devuelve la función traductora `t(key, ...args)` ligada al locale dado. |
+| `i18n.has(locale)`                | Indica si el locale tiene traducción explícita.                         |
+| `i18n.availableLocales()`         | Lista de locales con traducción real.                                   |
+| `TFn`                             | Firma de la función traductora.                                         |
+| `TranslationKey`                  | Unión de todas las claves del bundle.                                   |
+| `Bundle`                          | Tipo del catálogo (alias de `typeof es`).                               |
+| `SupportedLocale`                 | Unión de tipos de locales soportados.                                   |
+| `SUPPORTED_LOCALES`               | Tuple readonly con todos los locales.                                   |
+| `DEFAULT_LOCALE`                  | Locale base (`'es'`).                                                   |
+| `isSupportedLocale(v)`            | Type-guard para input externo.                                          |
+| `normalizeLocale(raw)`            | Acepta `'es-ES'`, `'pt-BR'`, etc. Devuelve el código base o `null`.     |
+| `resolveLocaleFromInteraction(i)` | Helper para handlers estáticos (botones/selects/modales).               |
+| `LocaleResolver`                  | Resuelve el locale efectivo de una petición.                            |
+| `LocaleStore` (interface)         | Contrato de persistencia per-guild (`getGuildLocale`, etc.).            |
+| `MemoryLocaleStore`               | Implementación por defecto en memoria.                                  |
+| `LocaleRegistry`                  | Punto único de configuración (`useStore`, `getStore`, `getResolver`).   |
 
 ---
 

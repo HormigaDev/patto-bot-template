@@ -27,11 +27,12 @@ export class CommandContext {
      * comando: cualquier código aguas abajo (resolver de argumentos,
      * plugins, helpers de respuesta) puede confiar en este valor.
      */
-    public locale: SupportedLocale = DEFAULT_LOCALE;
+    public readonly locale: SupportedLocale = DEFAULT_LOCALE;
 
-    constructor(source: CommandInteraction | Message) {
+    constructor(source: CommandInteraction | Message, locale: SupportedLocale) {
         this.source = source;
         this.isInteraction = source instanceof CommandInteraction;
+        this.locale = locale;
     }
 
     get client(): Client {

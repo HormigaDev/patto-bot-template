@@ -31,7 +31,7 @@ export class CooldownPlugin extends BasePlugin {
         const date = new CustomDate(expiry);
         const embed = command
             .getEmbed('error')
-            .setDescription(`Espera hasta ${date.toDiscordTimestamp('T')} para usar este comando`);
+            .setDescription(command.t('cooldown.wait_until', date.toDiscordTimestamp('T')));
         await command.reply({ embeds: [embed] });
         return false;
     }

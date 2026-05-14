@@ -11,7 +11,7 @@ import { PluginRegistry } from '@/config/plugin.registry';
 import { CommandLoader } from '../loaders/command.loader';
 import { metadataHandler } from '@/core/metadata';
 import { logger } from '@/utils/Logger';
-import { LocaleRegistry } from '@/i18n';
+import { i18n, LocaleRegistry } from '@/i18n';
 
 const log = logger.child('CommandHandler');
 
@@ -37,22 +37,21 @@ export class CommandHandler {
         commandPath?: string,
     ): Promise<void> {
         const command = new TCommandClass();
-        const ctx = new CommandContext(source);
-
-        log.debug(
-            `Ejecutando "${commandId}" para ${ctx.user.tag ?? ctx.user.username} (${ctx.user.id})`,
-        );
-
         // Resolver el locale del usuario una sola vez por petición. La
         // resolución ocurre fuera del flujo de plugins/argumentos para que
         // todos los pasos posteriores (incluidas las respuestas de error)
         // puedan asumir un locale estable e inyectado.
         const discordLocale =
             source instanceof Message ? undefined : (source.locale as string | undefined);
-        ctx.locale = await LocaleRegistry.getResolver().resolve({
-            guildId: ctx.guild?.id,
+        const locale = await LocaleRegistry.getResolver().resolve({
+            guildId: source.guildId || undefined,
             discordLocale,
         });
+        const ctx = new CommandContext(source, locale);
+
+        log.debug(
+            `Ejecutando "${commandId}" para ${ctx.user.tag ?? ctx.user.username} (${ctx.user.id})`,
+        );
 
         // Inyectar contexto en el comando
         (command as any).id = commandId;
@@ -139,6 +138,29 @@ export class CommandHandler {
      * Maneja errores de validación de argumentos
      */
     private async handleValidationError(error: unknown, ctx: CommandContext): Promise<void> {
+        const t = i18n.for(ctx.locale);
+        if (error instanceof ValidationError) {
+            const embed = new EmbedBuilder()
+                .setTitle(t('system.usage_error.title'))
+                .setDescription(error.message)
+                .setColor(this.colors.error)
+                .setFooter({
+                    text: `${ctx.user.globalName}`,
+                    iconURL: ctx.user.displayAvatarURL(),
+                });
+            await ctx.reply({ embeds: [embed] });
+        } else {
+            log.error('Error inesperado al validar argumentos', error);
+            await ctx.reply(t('system.unexpected_arguments_error'));
+        }
+    }
+
+    /**
+     * Si no usas i18n, comenta o elimina la función anterior y descomenta
+     * esta versión con mensajes hardcoded.
+     */
+    /*
+    private async handleValidationError(error: unknown, ctx: CommandContext): Promise<void> {
         if (error instanceof ValidationError) {
             const embed = new EmbedBuilder()
                 .setTitle('Error de uso')
@@ -154,10 +176,50 @@ export class CommandHandler {
             await ctx.reply('Ocurrió un error al procesar tus argumentos');
         }
     }
+    */
 
     /**
      * Maneja errores durante la ejecución del comando
      */
+    private async handleExecutionError(error: unknown, ctx: CommandContext): Promise<void> {
+        const t = i18n.for(ctx.locale);
+        if (error instanceof ReplyError) {
+            const embed = new EmbedBuilder()
+                .setColor(this.colors.error)
+                .setTitle(t('system.error.title'))
+                .setDescription(error.message)
+                .setFooter({
+                    text: t('system.requested_by', ctx.user.username),
+                    iconURL: ctx.user.displayAvatarURL(),
+                });
+
+            await ctx.reply({ embeds: [embed] });
+        } else if (error instanceof ValidationError) {
+            // Tratar ValidationError como error esperado
+            await this.handleValidationError(error, ctx);
+        } else {
+            log.error(
+                `Error inesperado al ejecutar comando para ${ctx.user.tag} (${ctx.user.id})`,
+                error,
+            );
+            const embed = new EmbedBuilder()
+                .setColor(this.colors.error)
+                .setTitle(t('system.error.title'))
+                .setDescription(t('system.unexpected_error'))
+                .setFooter({
+                    text: t('system.requested_by', ctx.user.username),
+                    iconURL: ctx.user.displayAvatarURL(),
+                });
+
+            await ctx.send({ embeds: [embed] });
+        }
+    }
+
+    /**
+     * Si no usas i18n, comenta o elimina la función anterior y descomenta
+     * esta versión con mensajes hardcoded.
+     */
+    /*
     private async handleExecutionError(error: unknown, ctx: CommandContext): Promise<void> {
         if (error instanceof ReplyError) {
             const embed = new EmbedBuilder()
@@ -192,4 +254,5 @@ export class CommandHandler {
             await ctx.send({ embeds: [embed] });
         }
     }
+    */
 }

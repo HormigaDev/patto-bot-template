@@ -36,9 +36,8 @@ Esta versión introduce un subsistema de internacionalización **opt-in** para c
     - Versión traducida del comando de ayuda. El `/help` normal queda hardcoded para que el usuario elija qué enfoque conservar.
 
 - **Generador propio de IDs** (`src/utils/Id.ts`)
-    - `generateId(size?: number)` — IDs base62 con prefijo de timestamp (sortables lexicográficamente, estilo UUIDv7 reducido) y cola aleatoria de `crypto.randomBytes`.
-    - Tamaño por defecto 10 caracteres (7 timestamp + 3 entropía).
-    - Sin sesgo de seguridad relevante para identificadores efímeros (customIds de componentes, claves de payloads, etc.).
+    - `generateId(size?: number)` — IDs de alta entropía y cola aleatoria de `crypto.randomBytes`.
+    - Tamaño por defecto 10 caracteres.
 
 ### 🔧 Changed
 
