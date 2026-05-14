@@ -18,6 +18,9 @@
 
 </div>
 
+> ⚡ Patto Bot Template está diseñado para bots de Discord medianos y grandes que necesitan una arquitectura modular, escalable y mantenible desde el inicio.
+> Si buscas un bot minimalista de pocos comandos, probablemente este template sea más complejo de lo necesario.
+
 ---
 
 ## 🌟 Características
