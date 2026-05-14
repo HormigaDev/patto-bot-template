@@ -25,10 +25,10 @@ Ejecuta un comando con sus argumentos y plugins.
 
 **Parámetros:**
 
--   `source`: `Message | ChatInputCommandInteraction` - Fuente del comando
--   `TCommandClass`: `CommandClass` - Clase del comando a ejecutar
--   `textArgs?`: `any[]` - Argumentos parseados (solo para text commands)
--   `commandPath?`: `string` - Ruta del comando (para plugins de scope)
+- `source`: `Message | ChatInputCommandInteraction` - Fuente del comando
+- `TCommandClass`: `CommandClass` - Clase del comando a ejecutar
+- `textArgs?`: `any[]` - Argumentos parseados (solo para text commands)
+- `commandPath?`: `string` - Ruta del comando (para plugins de scope)
 
 **Flujo:**
 
@@ -123,9 +123,9 @@ export class MyCommand extends BaseCommand {}
 
 Si un plugin lanza un error en `onBeforeExecute`:
 
--   ❌ El comando **NO se ejecuta**
--   ❌ `onAfterExecute` **NO se llama**
--   ✅ El error se maneja normalmente
+- ❌ El comando **NO se ejecuta**
+- ❌ `onAfterExecute` **NO se llama**
+- ✅ El error se maneja normalmente
 
 ```typescript
 class PermissionPlugin extends BasePlugin {
@@ -142,16 +142,18 @@ class PermissionPlugin extends BasePlugin {
 
 El handler maneja tres tipos de errores:
 
+**Nota:** la implementación actual usa i18n para los mensajes al usuario. Si tu bot no usa i18n, en [src/core/handlers/command.handler.ts](src/core/handlers/command.handler.ts) hay versiones hardcoded comentadas de `handleValidationError` y `handleExecutionError` para alternar.
+
 #### 1. ValidationError
 
 Errores de validación de argumentos.
 
 **Respuesta:**
 
--   Embed con título "Error de uso"
--   Color: rojo (#ca5c5c)
--   Mensaje descriptivo
--   Footer con el usuario
+- Embed con título "Error de uso"
+- Color: rojo (#ca5c5c)
+- Mensaje descriptivo
+- Footer con el usuario
 
 #### 2. ReplyError
 
@@ -159,10 +161,10 @@ Errores esperados que deben mostrarse al usuario.
 
 **Respuesta:**
 
--   Embed con título "Error"
--   Color: rojo (#ca5c5c)
--   Mensaje del error
--   Footer con el usuario
+- Embed con título "Error"
+- Color: rojo (#ca5c5c)
+- Mensaje del error
+- Footer con el usuario
 
 #### 3. Error Genérico
 
@@ -170,10 +172,10 @@ Errores inesperados.
 
 **Respuesta:**
 
--   Embed con título "Error"
--   Mensaje genérico
--   Log en consola del error real
--   Footer con el usuario
+- Embed con título "Error"
+- Mensaje genérico
+- Log en consola del error real
+- Footer con el usuario
 
 ### Colores de Embeds
 
@@ -213,6 +215,6 @@ command.run()
 
 ## 📚 Recursos Relacionados
 
--   `/src/core/resolvers/argument.resolver.ts` - Resuelve argumentos
--   `/src/core/structures/CommandContext.ts` - Contexto de comandos
--   `/src/error/` - Tipos de errores
+- `/src/core/resolvers/argument.resolver.ts` - Resuelve argumentos
+- `/src/core/structures/CommandContext.ts` - Contexto de comandos
+- `/src/error/` - Tipos de errores

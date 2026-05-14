@@ -81,7 +81,15 @@ export class SetLocaleCommand extends BaseCommand {
             return;
         }
 
-        await LocaleRegistry.getStore().setGuildLocale(this.guild.id, target);
+        const guildId = this.guild?.id;
+        if (!guildId) {
+            const embed = this.getEmbed('error').setDescription(
+                'este comando solo puede ser ejecutado en un servidor',
+            );
+            await this.reply({ embeds: [embed] });
+            return;
+        }
+        await LocaleRegistry.getStore().setGuildLocale(guildId, target);
 
         // Confirmación en el NUEVO idioma: si se pidió cambiar a 'en',
         // los miembros del servidor verán "Language updated", no
