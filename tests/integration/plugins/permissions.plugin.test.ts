@@ -9,6 +9,7 @@ import { Command } from '@/core/decorators/command.decorator';
 import { BaseCommand } from '@/core/structures/BaseCommand';
 import { Permissions } from '@/utils/Permissions';
 import { CommandContext } from '@/core/structures/CommandContext';
+import { DEFAULT_LOCALE } from '@/i18n';
 import { createMockInteraction, createMockMember } from '@tests/mocks/discord.mock';
 import 'reflect-metadata';
 
@@ -58,7 +59,7 @@ describe('Integración PermissionsPlugin', () => {
 
             mockInteraction.member = mockMember;
 
-            const ctx = new CommandContext(mockInteraction);
+            const ctx = new CommandContext(mockInteraction, DEFAULT_LOCALE);
             const command = new BanCommand();
             (command as any).ctx = ctx;
 
@@ -103,7 +104,7 @@ describe('Integración PermissionsPlugin', () => {
 
             mockInteraction.member = mockMember;
 
-            const ctx = new CommandContext(mockInteraction);
+            const ctx = new CommandContext(mockInteraction, DEFAULT_LOCALE);
             const command = new KickCommand();
             (command as any).ctx = ctx;
             (command as any).getEmbed = jest.fn().mockReturnValue({
@@ -164,7 +165,7 @@ describe('Integración PermissionsPlugin', () => {
 
             mockInteraction.member = mockMember;
 
-            const ctx = new CommandContext(mockInteraction);
+            const ctx = new CommandContext(mockInteraction, DEFAULT_LOCALE);
             const command = new LockdownCommand();
             (command as any).ctx = ctx;
 
@@ -210,7 +211,7 @@ describe('Integración PermissionsPlugin', () => {
 
             mockInteraction.member = mockMember;
 
-            const ctx = new CommandContext(mockInteraction);
+            const ctx = new CommandContext(mockInteraction, DEFAULT_LOCALE);
             const command = new PingCommand();
             (command as any).ctx = ctx;
 
@@ -260,7 +261,7 @@ describe('Integración PermissionsPlugin', () => {
 
             mockInteraction.member = mockMember;
 
-            const ctx = new CommandContext(mockInteraction);
+            const ctx = new CommandContext(mockInteraction, DEFAULT_LOCALE);
             const command = new ConfigCommand();
             (command as any).ctx = ctx;
 
@@ -293,7 +294,7 @@ describe('Integración PermissionsPlugin', () => {
 
             mockInteraction.member = mockMember;
 
-            const ctx = new CommandContext(mockInteraction);
+            const ctx = new CommandContext(mockInteraction, DEFAULT_LOCALE);
             const command = new DangerousCommand();
             (command as any).ctx = ctx;
             (command as any).getEmbed = jest.fn().mockReturnValue({
@@ -348,7 +349,7 @@ describe('Integración PermissionsPlugin', () => {
             });
 
             mockInteraction.member = mockMember;
-            const ctx = new CommandContext(mockInteraction);
+            const ctx = new CommandContext(mockInteraction, DEFAULT_LOCALE);
 
             // Kick - Debería funcionar
             const kickCommand = new KickCommand();

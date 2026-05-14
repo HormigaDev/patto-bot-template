@@ -3,15 +3,17 @@
  */
 
 import { CommandContext } from '@/core/structures/CommandContext';
+import { DEFAULT_LOCALE } from '@/i18n';
 import { createMockMessage, createMockInteraction } from '@tests/mocks/discord.mock';
 
 describe('Integración CommandContext', () => {
     describe('con fuente Message', () => {
         it('debería crear contexto desde message', () => {
             const message = createMockMessage();
-            const ctx = new CommandContext(message);
+            const ctx = new CommandContext(message, DEFAULT_LOCALE);
 
             expect(ctx.isInteraction).toBe(false);
+            expect(ctx.locale).toBe(DEFAULT_LOCALE);
             expect(ctx.user).toBe(message.author);
             expect(ctx.guild).toBe(message.guild);
             expect(ctx.channel).toBe(message.channel);
@@ -19,7 +21,7 @@ describe('Integración CommandContext', () => {
 
         it('debería responder al message', async () => {
             const message = createMockMessage();
-            const ctx = new CommandContext(message);
+            const ctx = new CommandContext(message, DEFAULT_LOCALE);
 
             await ctx.reply('Respuesta de prueba');
 
@@ -32,7 +34,7 @@ describe('Integración CommandContext', () => {
 
         it('debería enviar message al canal', async () => {
             const message = createMockMessage();
-            const ctx = new CommandContext(message);
+            const ctx = new CommandContext(message, DEFAULT_LOCALE);
 
             await ctx.send('Mensaje de prueba');
 
@@ -49,9 +51,10 @@ describe('Integración CommandContext', () => {
     describe('con fuente Interaction', () => {
         it('debería crear contexto desde interaction', () => {
             const interaction = createMockInteraction();
-            const ctx = new CommandContext(interaction);
+            const ctx = new CommandContext(interaction, DEFAULT_LOCALE);
 
             expect(ctx.isInteraction).toBe(true);
+            expect(ctx.locale).toBe(DEFAULT_LOCALE);
             expect(ctx.user).toBe(interaction.user);
             expect(ctx.guild).toBe(interaction.guild);
             expect(ctx.channel).toBe(interaction.channel);
@@ -59,7 +62,7 @@ describe('Integración CommandContext', () => {
 
         it('debería responder a la interaction', async () => {
             const interaction = createMockInteraction();
-            const ctx = new CommandContext(interaction);
+            const ctx = new CommandContext(interaction, DEFAULT_LOCALE);
 
             await ctx.reply('Respuesta de prueba');
 
@@ -72,7 +75,7 @@ describe('Integración CommandContext', () => {
 
         it('debería enviar mensaje para la interaction', async () => {
             const interaction = createMockInteraction();
-            const ctx = new CommandContext(interaction);
+            const ctx = new CommandContext(interaction, DEFAULT_LOCALE);
 
             await ctx.send('Mensaje de prueba');
 
@@ -90,8 +93,8 @@ describe('Integración CommandContext', () => {
             const message = createMockMessage();
             const interaction = createMockInteraction();
 
-            const ctxMessage = new CommandContext(message);
-            const ctxInteraction = new CommandContext(interaction);
+            const ctxMessage = new CommandContext(message, DEFAULT_LOCALE);
+            const ctxInteraction = new CommandContext(interaction, DEFAULT_LOCALE);
 
             // Ambos deben tener las mismas propiedades
             expect(ctxMessage).toHaveProperty('user');

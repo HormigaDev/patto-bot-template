@@ -84,7 +84,7 @@ export class SetLocaleCommand extends BaseCommand {
         const guildId = this.guild?.id;
         if (!guildId) {
             const embed = this.getEmbed('error').setDescription(
-                'este comando solo puede ser ejecutado en un servidor',
+                this.t('setlocale.response.only_in_guild'),
             );
             await this.reply({ embeds: [embed] });
             return;
