@@ -79,7 +79,7 @@ export const pt: typeof es = {
         `O idioma \`${raw}\` não é suportado. Idiomas disponíveis: \`es\`, \`en\`, \`pt\`.`,
     'setlocale.response.same_locale': (locale) =>
         `Este servidor já estava configurado em **${localeNames[locale]}**.`,
-
+    'setlocale.response.only_in_guild': 'Este comando só pode ser usado em um servidor.',
     // ─── HelpCommand ───────────────────────────────────────────────────
     'help.command_description': 'Mostra a ajuda dos comandos disponíveis',
     'help.argument.description': 'O nome do comando para obter ajuda',

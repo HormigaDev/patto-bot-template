@@ -145,7 +145,7 @@ export class CommandHandler {
                 .setDescription(error.message)
                 .setColor(this.colors.error)
                 .setFooter({
-                    text: `${ctx.user.globalName}`,
+                    text: `${ctx.user.globalName || ctx.user.username}`,
                     iconURL: ctx.user.displayAvatarURL(),
                 });
             await ctx.reply({ embeds: [embed] });
@@ -167,7 +167,7 @@ export class CommandHandler {
                 .setDescription(error.message)
                 .setColor(this.colors.error)
                 .setFooter({
-                    text: `${ctx.user.globalName}`,
+                    text: `${ctx.user.globalName || ctx.user.username}`,
                     iconURL: ctx.user.displayAvatarURL(),
                 });
             await ctx.reply({ embeds: [embed] });
@@ -227,7 +227,7 @@ export class CommandHandler {
                 .setTitle('Error')
                 .setDescription(error.message)
                 .setFooter({
-                    text: `Solicitado por: ${ctx.user.username}`,
+                    text: `Solicitado por: ${ctx.user.globalName || ctx.user.username}`,
                     iconURL: ctx.user.displayAvatarURL(),
                 });
 
@@ -247,7 +247,7 @@ export class CommandHandler {
                     `Ocurrió un error inesperado al procesar el comando. Intenta nuevamente más tarde`,
                 )
                 .setFooter({
-                    text: `Solicitado por: ${ctx.user.username}`,
+                    text: `Solicitado por: ${ctx.user.globalName || ctx.user.username}`,
                     iconURL: ctx.user.displayAvatarURL(),
                 });
 
